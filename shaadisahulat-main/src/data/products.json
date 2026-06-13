@@ -1,0 +1,92 @@
+[
+  {
+    "id": 101,
+    "name": "Royal Velvet 7-Seater Sofa Set",
+    "price": 185000,
+    "rating": 4.9,
+    "category": "Furniture",
+    "image": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=500",
+    "description": "Solid mahogany wood frame with premium velvet upholstery."
+  },
+  {
+    "id": 102,
+    "name": "Maria B. Bridal Couture Lehenga",
+    "price": 350000,
+    "rating": 5.0,
+    "category": "Apparel",
+    "image": "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=500",
+    "description": "Hand-embellished silk lehenga with intricate zardozi work."
+  },
+  {
+    "id": 103,
+    "name": "Haier 1.5 Ton DC Inverter AC",
+    "price": 145000,
+    "rating": 4.7,
+    "category": "Electronics",
+    "image": "https://images.unsplash.com/photo-1585336139118-b319223b7c45?w=500",
+    "description": "Energy-efficient cooling with smart control features."
+  },
+  {
+    "id": 104,
+    "name": "Samsung 65\" QLED 4K Smart TV",
+    "price": 285000,
+    "rating": 4.8,
+    "category": "Electronics",
+    "image": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=500",
+    "description": "Vibrant colors and immersive sound for your new home."
+  },
+  {
+    "id": 105,
+    "name": "Habitt King Size Bedroom Set",
+    "price": 225000,
+    "rating": 4.6,
+    "category": "Furniture",
+    "image": "https://images.unsplash.com/photo-1505693419148-ad30b3a4e33b?w=500",
+    "description": "Elegant design with high-quality walnut finish."
+  },
+  {
+    "id": 106,
+    "name": "Kenwood Fully Automatic Washing Machine",
+    "price": 85000,
+    "rating": 4.5,
+    "category": "Electronics",
+    "image": "https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=500",
+    "description": "12kg capacity with multiple wash programs."
+  },
+  {
+    "id": 107,
+    "name": "Khaadi Silk Sherwani",
+    "price": 65000,
+    "rating": 4.9,
+    "category": "Apparel",
+    "image": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=500",
+    "description": "Traditional groom's wear with modern tailoring."
+  },
+  {
+    "id": 108,
+    "name": "Luxury Bone China Dinner Set (72pcs)",
+    "price": 45000,
+    "rating": 4.7,
+    "category": "Kitchenware",
+    "image": "https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=500",
+    "description": "Exquisite porcelain set with gold-rimmed detailing."
+  },
+  {
+    "id": 109,
+    "name": "Dawlance French Door Refrigerator",
+    "price": 195000,
+    "rating": 4.8,
+    "category": "Electronics",
+    "image": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=500",
+    "description": "Spacious and efficient with advanced cooling technology."
+  },
+  {
+    "id": 110,
+    "name": "Philips Air Fryer XXL",
+    "price": 38000,
+    "rating": 4.9,
+    "category": "Kitchenware",
+    "image": "https://images.unsplash.com/photo-1626074353765-517a681e40be?w=500",
+    "description": "Healthy cooking with rapid air technology."
+  }
+]

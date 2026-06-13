@@ -1,0 +1,39 @@
+{
+  "_instructions": "Write a natural-language description for each image. Example: 'deep red bridal lehenga with heavy gold zardozi embroidery and intricate floral patterns'. Leave the string empty to auto-generate from image analysis.",
+  "bridal_lehenga": {
+    "bridal_lehenga_001.jpg": "deep red bridal lehenga with heavy gold zardozi embroidery and floral patterns",
+    "bridal_lehenga_002.jpg": "deep white bridal lehenga with heavy gold mirror work embroidery and floral patterns",
+    "bridal_lehenga_003.jpg": "deep blue bridal lehenga with heavy gold zardozi embroidery and floral patterns",
+    "bridal_lehenga_004.jpg": "deep maroon bridal lehenga with heavy gold gota embroidery and floral patterns",
+    "bridal_lehenga_005.jpg": "deep maroon bridal lehenga with heavy gold zardozi embroidery and floral patterns",
+    "bridal_lehenga_006.jpg": "deep pink bridal lehenga with heavy gold gota embroidery and floral patterns",
+    "bridal_lehenga_007.jpg": "deep red bridal lehenga with heavy gold zardozi embroidery and floral patterns",
+    "bridal_lehenga_008.jpg": "deep black bridal lehenga with heavy gold zardozi embroidery and floral patterns",
+    "bridal_lehenga_009.jpg": "deep yellow bridal lehenga with heavy gold gota embroidery and floral patterns",
+    "bridal_lehenga_0010.jpg": "deep golden bridal lehenga with heavy gold gota embroidery and floral patterns"
+  },
+  "bridal_sharara": {
+    "bridal_sharara_001.jpg": "deep green bridal sharara with heavy silver embroidery and floral patterns",
+    "bridal_sharara_002.jpg": "deep red bridal sharara with heavy gold zardozi embroidery and floral patterns",
+    "bridal_sharara_003.jpg": "deep blue bridal sharara with heavy gold zardozi embroidery and floral patterns",
+    "bridal_sharara_004.jpg": "deep gray bridal sharara with heavy gold zardozi mirror work and floral patterns",
+    "bridal_sharara_005.webp": "deep blue bridal sharara with heavy gold zardozi embroidery and floral patterns",
+    "bridal_sharara_006.jpg": "deep red bridal sharara with heavy gold zardozi embroidery and floral patterns",
+    "bridal_sharara_007.jpg": "deep pink bridal sharara with heavy gold zardozi mirror work and floral patterns",
+    "bridal_sharara_008.jpg": "deep red bridal sharara with heavy gold zardozi embroidery and floral patterns",
+    "bridal_sharara_009.webp": "deep purple bridal sharara with heavy gold zardozi embroidery and floral patterns",
+    "bridal_sharara_010.jpg": "deep white bridal sharara with heavy gold zardozi embroidery and floral patterns"
+  },
+  "bridal_saree": {
+    "bridal_saree_001.jpg": "deep green bridal saree with heavy silver embroidery and floral patterns",
+    "bridal_saree_002.jpg": "deep pink bridal saree with heavy silver embroidery and floral patterns",
+    "bridal_saree_003.jpg": "deep purple bridal saree with heavy silver embroidery and floral patterns",
+    "bridal_saree_004.jpg": "deep white bridal saree with heavy silver embroidery and floral patterns",
+    "bridal_saree_005.JPG": "deep red bridal saree with heavy silver embroidery and floral patterns",
+    "bridal_saree_006.jpg": "deep gray bridal saree with heavy silver embroidery and floral patterns",
+    "bridal_saree_007.jpg": "deep red bridal saree with heavy silver embroidery and floral patterns",
+    "bridal_saree_008.jpg": "deep black bridal saree with heavy silver embroidery and floral patterns",
+    "bridal_saree_009.JPG": "deep yellow bridal saree with heavy silver embroidery and floral patterns",
+    "bridal_saree_010.jpg": "deep red bridal saree with heavy silver embroidery and floral patterns"
+  }
+}

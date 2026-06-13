@@ -1,0 +1,264 @@
+"""
+ShaadiSahulat Visual Recommendation - Configuration
+=====================================================
+Central config for categories, image settings, model paths,
+MongoDB connection, TF-IDF, and hybrid search weights.
+"""
+
+import os
+
+# ── ML Model Category Definitions (used by classifier & embedding search) ──
+# Do NOT change CATEGORIES without retraining the CNN — these map to model output indices.
+CATEGORIES = [
+    {"id": "bridal_lehenga",  "label": "Bridal Lehenga",  "type": "bridal"},
+    {"id": "bridal_sharara",  "label": "Bridal Sharara",  "type": "bridal"},
+    {"id": "bridal_saree",    "label": "Bridal Saree",    "type": "bridal"},
+]
+
+CATEGORY_IDS    = [c["id"]    for c in CATEGORIES]
+CATEGORY_LABELS = {c["id"]: c["label"] for c in CATEGORIES}
+NUM_CLASSES     = len(CATEGORIES)
+
+# ── Full Seller Category Tree (all 6 major categories) ─────────────────────
+# Used by the seller upload form and buyer marketplace.
+# wedding_dress products get EfficientNet embeddings; all others get TF-IDF only.
+SELLER_CATEGORY_TREE = [
+    {
+        "id": "wedding_dress",
+        "label": "Wedding Dress",
+        "icon": "👗",
+        "requires_embedding": True,
+        "subcategories": [
+            {
+                "id": "bridal",
+                "label": "Bridal",
+                "items": [
+                    {"id": "bridal_lehenga", "label": "Lehenga"},
+                    {"id": "bridal_sharara", "label": "Sharara"},
+                    {"id": "bridal_gharara", "label": "Gharara"},
+                    {"id": "bridal_gown",    "label": "Bridal Gown"},
+                ],
+            },
+            {
+                "id": "groom",
+                "label": "Groom",
+                "items": [
+                    {"id": "groom_sherwani",       "label": "Sherwani"},
+                    {"id": "groom_shalwar_kameez",  "label": "Shalwar Kameez"},
+                    {"id": "groom_suit",            "label": "Suit"},
+                ],
+            },
+        ],
+    },
+    {
+        "id": "furniture",
+        "label": "Furniture",
+        "icon": "🛋️",
+        "requires_embedding": False,
+        "subcategories": [
+            {"id": "sofa_set",       "label": "Sofa Set",        "items": None},
+            {"id": "bed_set",        "label": "Bed Set",         "items": None},
+            {"id": "dressing_table", "label": "Dressing Table",  "items": None},
+            {"id": "dining_table",   "label": "Dining Table",    "items": None},
+            {"id": "wardrobe",       "label": "Wardrobe",        "items": None},
+        ],
+    },
+    {
+        "id": "electronics",
+        "label": "Electronics",
+        "icon": "📺",
+        "requires_embedding": False,
+        "subcategories": [
+            {"id": "led_tv",          "label": "LED TV",           "items": None},
+            {"id": "refrigerator",    "label": "Refrigerator",     "items": None},
+            {"id": "washing_machine", "label": "Washing Machine",  "items": None},
+            {"id": "ac",              "label": "Air Conditioner",  "items": None},
+        ],
+    },
+    {
+        "id": "kitchen_items",
+        "label": "Kitchen Items",
+        "icon": "🍳",
+        "requires_embedding": False,
+        "subcategories": [
+            {"id": "large_appliances", "label": "Large Appliances", "items": [
+                {"id": "microwave",      "label": "Microwave"},
+                {"id": "juicer_blender", "label": "Juicer / Blender Set"},
+                {"id": "toaster",        "label": "Toaster"},
+                {"id": "dishwasher",     "label": "Dishwasher"},
+            ]},
+            {"id": "general_kitchen", "label": "General Kitchen Items", "items": [
+                {"id": "crockery_set",    "label": "Crockery Set"},
+                {"id": "cooking_set",     "label": "Cooking Set"},
+                {"id": "pressure_cooker", "label": "Pressure Cooker"},
+                {"id": "kettle_tea_set",  "label": "Kettle + Tea Set"},
+                {"id": "casserole_set",   "label": "Casserole Set"},
+            ]},
+        ],
+    },
+    {
+        "id": "decoration",
+        "label": "Decoration",
+        "icon": "✨",
+        "requires_embedding": False,
+        "subcategories": [
+            {"id": "lights",          "label": "Lights / Fairy Lights",  "items": None},
+            {"id": "artificial_flowers", "label": "Artificial Flowers",  "items": None},
+            {"id": "stage_setup",     "label": "Stage Setup Materials",  "items": None},
+            {"id": "wall_decor",      "label": "Wall Decor",             "items": None},
+            {"id": "table_centerpieces", "label": "Table Centerpieces",  "items": None},
+        ],
+    },
+    {
+        "id": "miscellaneous",
+        "label": "Miscellaneous",
+        "icon": "🎁",
+        "requires_embedding": False,
+        "subcategories": [
+            {"id": "small_appliances", "label": "Small Appliances", "items": [
+                {"id": "iron",          "label": "Iron"},
+                {"id": "vacuum_cleaner","label": "Vacuum Cleaner"},
+                {"id": "pedestal_fan",  "label": "Pedestal Fan"},
+                {"id": "hair_dryer",    "label": "Hair Dryer"},
+            ]},
+            {"id": "wedding_services", "label": "Wedding Services", "items": [
+                {"id": "invitations",           "label": "Wedding Invitations"},
+                {"id": "photography_packages",  "label": "Photography Packages"},
+                {"id": "favour_gift_items",     "label": "Favour / Gift Items"},
+                {"id": "mehendi_supplies",      "label": "Mehendi Supplies"},
+            ]},
+        ],
+    },
+]
+
+# Flat list of valid major category IDs for validation
+SELLER_MAJOR_CATEGORY_IDS = [cat["id"] for cat in SELLER_CATEGORY_TREE]
+
+# All valid wedding-dress subcategory IDs (for embedding category mapping)
+WEDDING_DRESS_SUBCATEGORY_IDS = [
+    item["id"]
+    for cat in SELLER_CATEGORY_TREE if cat["id"] == "wedding_dress"
+    for sub in cat["subcategories"]
+    for item in (sub["items"] or [])
+]
+
+# Map new dress subcategory → nearest ML model class (for embedding extraction when model is limited to 3 classes)
+_DRESS_TO_ML_CLASS = {
+    "bridal_lehenga":      "bridal_lehenga",
+    "bridal_sharara":      "bridal_sharara",
+    "bridal_gharara":      "bridal_sharara",   # closest class
+    "bridal_gown":         "bridal_lehenga",   # closest class
+    "groom_sherwani":      "bridal_lehenga",   # closest class (no groom model yet)
+    "groom_shalwar_kameez":"bridal_sharara",
+    "groom_suit":          "bridal_lehenga",
+}
+DRESS_TO_ML_CLASS = _DRESS_TO_ML_CLASS
+
+# ── Backbone Selection ─────────────────────────────────────────────────────
+# "efficientnet_b0"  → lighter, faster (recommended)
+# "resnet50"         → original, heavier (kept for comparison)
+BACKBONE = "efficientnet_b0"
+
+# ── Image & Training Constants ─────────────────────────────────────────────
+IMAGE_SIZE               = 224
+MIN_IMAGES_PER_CATEGORY  = 10
+RECOMMENDED_IMAGES       = 20
+AUGMENTATION_MULTIPLIER  = 10
+VALIDATION_SPLIT         = 0.2
+EMBEDDING_DIM            = 128
+
+# ── Augmentation Parameters ────────────────────────────────────────────────
+AUGMENTATION_PARAMS = {
+    "horizontal_flip_prob": 0.5,
+    "rotation_limit":       15,
+    "crop_scale":           (0.8, 1.0),
+    "brightness":           0.2,
+    "contrast":             0.2,
+    "saturation":           0.2,
+}
+
+# ── Training Hyperparameters ───────────────────────────────────────────────
+TRAINING_CONFIG = {
+    "backbone":                  BACKBONE,
+    "pretrained":                True,
+    # EfficientNet-B0: unfreeze last 3 feature blocks (6, 7, 8)
+    # ResNet50:        unfreeze layer3 + layer4
+    "unfreeze_layers_efficientnet": ["features.6", "features.7", "features.8"],
+    "unfreeze_layers_resnet":       ["layer3", "layer4"],
+    "learning_rate":             1e-4,
+    "weight_decay":              1e-4,
+    "batch_size":                16,
+    "max_epochs":                30,
+    "early_stopping_patience":   5,
+    "scheduler_factor":          0.5,
+    "scheduler_patience":        3,
+    "classifier_dropout":        0.5,
+}
+
+# ── Triplet Loss Phase (Optional) ──────────────────────────────────────────
+TRIPLET_CONFIG = {
+    "enabled":       True,
+    "margin":        0.2,
+    "learning_rate": 1e-5,
+    "epochs":        10,
+}
+
+# ── Hybrid Search Weights ──────────────────────────────────────────────────
+# When a category IS provided: visual features still dominate but text helps
+# When NO category given:      rely almost entirely on visual similarity
+HYBRID_WEIGHTS = {
+    "with_category": {"image": 0.40, "text": 0.60},
+    "no_category":   {"image": 0.40, "text": 0.60},
+}
+
+# ── Recommendation Count ───────────────────────────────────────────────────
+MAX_RESULTS_DEFAULT = 3     # Return up to 3 recommendations via cascade
+MAX_RESULTS_LIMIT   = 20
+
+# ── Validation Thresholds ──────────────────────────────────────────────────
+CATEGORY_CONFIDENCE_THRESHOLD = 0.50
+SAFETY_SIMILARITY_THRESHOLD   = 0.70
+MAX_UPLOAD_SIZE_MB            = 5
+
+# ── Embedding dimension (backbone output, used for similarity search) ──────
+# EfficientNet-B0 → 1280-dim  |  ResNet50 → 2048-dim
+CATALOG_EMBEDDING_DIM = 1280 if BACKBONE == "efficientnet_b0" else 2048
+
+# ── MongoDB ────────────────────────────────────────────────────────────────
+MONGO_URI                = os.environ.get(
+    "MONGODB_URI",
+    "mongodb+srv://Ahmad:1GhCTKOfd2k9QVvQ@cluster0.p2qcckk.mongodb.net/shaadi-sahulat?appName=Cluster0"
+)
+MONGO_DB                 = "shaadi-sahulat"
+MONGO_CATALOG_COLLECTION = "dress_catalog"
+SELLERS_COLLECTION       = "sellers"
+PRODUCTS_COLLECTION      = "seller_products"
+
+# ── File Paths ─────────────────────────────────────────────────────────────
+BASE_DIR          = os.path.dirname(os.path.abspath(__file__))
+TRAINING_DATA_DIR = os.path.join(BASE_DIR, "training_data")   # CNN training only
+CATALOG_DIR       = os.path.join(BASE_DIR, "catalog")         # legacy seed data
+UPLOADS_DIR       = os.path.join(BASE_DIR, "uploads")         # seller-uploaded product images
+MODEL_DIR         = os.path.join(BASE_DIR, "models")
+DATA_DIR          = os.path.join(BASE_DIR, "data")
+DESCRIPTIONS_FILE = os.path.join(BASE_DIR, "descriptions.json")
+
+# Model file names vary by backbone
+_MODEL_FILENAME = (
+    "fine_tuned_efficientnet_b0.pth"
+    if BACKBONE == "efficientnet_b0"
+    else "fine_tuned_resnet50.pth"
+)
+
+FINE_TUNED_MODEL_PATH      = os.path.join(MODEL_DIR, _MODEL_FILENAME)
+EMBEDDING_EXTRACTOR_PATH   = os.path.join(MODEL_DIR, "embedding_extractor.pth")
+CATEGORY_CLASSIFIER_PATH   = os.path.join(MODEL_DIR, "category_classifier.pth")
+TRAINING_HISTORY_PATH      = os.path.join(MODEL_DIR, "training_history.json")
+CLASS_NAMES_PATH           = os.path.join(MODEL_DIR, "class_names.json")
+
+# TF-IDF vectorizer cache (pkl — small, no DB dependency)
+TFIDF_PKL_PATH = os.path.join(DATA_DIR, "tfidf_vectorizer.pkl")
+
+# ── Flask Service ──────────────────────────────────────────────────────────
+FLASK_HOST = "0.0.0.0"
+FLASK_PORT = 5002

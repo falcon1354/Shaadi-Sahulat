@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #c026d3;
+  border-radius: 3px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(217, 70, 239, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(217, 70, 239, 0.6); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Drag and drop zone */
+.drop-zone-active {
+  border-color: #d946ef !important;
+  background-color: #fdf4ff !important;
+}
+
+/* Range slider — dowry budget sliders (§2.4) */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7c3aed;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+input[type='range']::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7c3aed;
+  border: 2px solid white;
+  cursor: pointer;
+}
+
+/* Pipeline stage indicator */
+.pipeline-stage {
+  transition: all 0.3s ease;
+}
+.pipeline-stage.active {
+  background: linear-gradient(135deg, #d946ef, #a21caf);
+  color: white;
+}
+.pipeline-stage.passed {
+  background: #1B5E20;
+  color: white;
+}
+.pipeline-stage.failed {
+  background: #dc2626;
+  color: white;
+}
+.pipeline-stage.pending {
+  background: #e5e7eb;
+  color: #9ca3af;
+}

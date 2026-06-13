@@ -1,0 +1,396 @@
+"""
+ShaadiSahulat Visual Recommendation - Flask API
+=================================================
+REST API for the hybrid image+text recommendation pipeline.
+
+Buyer Endpoints:
+  GET  /health                  — Service health + model/index status
+  POST /visual/recommend        — Upload image → 2 similar dress recommendations
+  POST /visual/build-index      — Build hybrid index from catalog/ images
+  GET  /visual/categories       — List supported categories
+  GET  /visual/index-stats      — MongoDB index statistics
+  GET  /visual/dataset-status   — Training image counts per category
+  GET  /images/<path>           — Serve catalog images (seller uploads)
+
+Seller Endpoints (mounted at /seller):
+  POST /seller/register
+  GET  /seller/profile/<seller_id>
+  GET  /seller/by-email?email=
+  POST /seller/product
+  GET  /seller/products
+  GET  /seller/product/<id>
+  PUT  /seller/product/<id>
+  DELETE /seller/product/<id>
+
+Run:  python app.py
+Port: 5002
+"""
+
+import os
+import json
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+
+from config import (
+    CATEGORY_IDS, CATEGORY_LABELS, CATEGORIES,
+    MAX_UPLOAD_SIZE_MB, MAX_RESULTS_DEFAULT,
+    FLASK_HOST, FLASK_PORT,
+    MODEL_DIR, BACKBONE, FINE_TUNED_MODEL_PATH,
+    CATALOG_DIR, UPLOADS_DIR, DESCRIPTIONS_FILE,
+)
+from predictor import get_predictor
+from data_loader import validate_dataset, print_dataset_report
+from embedding_index import build_index, add_single_product, get_index_stats
+from seller_routes import seller_bp
+from dowry_routes import dowry_bp
+
+app = Flask(__name__)
+CORS(app)
+
+# Register blueprints
+app.register_blueprint(seller_bp)
+app.register_blueprint(dowry_bp)
+
+
+# ── Catalog image serving ─────────────────────────────────────────────────
+
+@app.route("/images/<path:image_path>")
+def serve_catalog_image(image_path):
+    """Serve product images. Checks uploads/ first, then catalog/ fallback."""
+    # uploads/ is the primary store for seller product images
+    uploads_full = os.path.join(UPLOADS_DIR, image_path)
+    if os.path.exists(uploads_full):
+        return send_from_directory(UPLOADS_DIR, image_path)
+    # catalog/ fallback for legacy seed data
+    return send_from_directory(CATALOG_DIR, image_path)
+
+
+# ── Health ─────────────────────────────────────────────────────────────────
+
+@app.route("/health", methods=["GET"])
+def health():
+    from model import is_model_fine_tuned
+    fine_tuned   = is_model_fine_tuned()
+    stats        = get_index_stats()
+    emb_dim      = 1280 if BACKBONE == "efficientnet_b0" else 2048
+    return jsonify({
+        "status":               "ok",
+        "service":              "shaadi-sahulat-visual-ml",
+        "backbone":             BACKBONE,
+        "model_trained":        fine_tuned,
+        "model_loaded":         True,          # always True — pretrained fallback
+        "model_source":         "fine_tuned" if fine_tuned else "pretrained_imagenet",
+        "embedding_dim":        emb_dim,
+        "index_built":          stats["index_exists"],
+        "total_indexed":        stats["total_products"],
+        "seller_products":      stats.get("seller_products", 0),
+        "tfidf_fitted":         stats["tfidf_fitted"],
+        "categories_supported": len(CATEGORIES),
+    })
+
+
+# ── Categories ─────────────────────────────────────────────────────────────
+
+@app.route("/visual/categories", methods=["GET"])
+def get_categories():
+    return jsonify({"categories": CATEGORIES, "total": len(CATEGORIES)})
+
+
+# ── Main recommendation ────────────────────────────────────────────────────
+
+@app.route("/visual/recommend", methods=["POST"])
+def recommend():
+    """
+    Upload a dress image and get 2 similar dress recommendations.
+
+    Form fields (multipart/form-data):
+      image              — image file (JPG/PNG/WebP, max 5 MB)
+      preferred_category — optional category hint string
+      limit              — integer (ignored — always returns 2)
+    """
+    if "image" not in request.files:
+        return jsonify({
+            "status": "error",
+            "reason": "No image uploaded. Send field 'image' as multipart/form-data.",
+        }), 400
+
+    image_file = request.files["image"]
+
+    allowed_types = {"image/jpeg", "image/png", "image/jpg", "image/webp"}
+    if image_file.content_type not in allowed_types:
+        return jsonify({
+            "status": "error",
+            "reason": f"Unsupported file type: {image_file.content_type}. Use JPG, PNG, or WebP.",
+        }), 400
+
+    image_bytes = image_file.read()
+    if len(image_bytes) > MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+        return jsonify({
+            "status": "error",
+            "reason": (
+                f"Image too large ({len(image_bytes)/1024/1024:.1f} MB). "
+                f"Maximum is {MAX_UPLOAD_SIZE_MB} MB."
+            ),
+        }), 400
+
+    preferred_category = request.form.get("preferred_category") or None
+    user_description   = (request.form.get("description") or "").strip()
+
+    if preferred_category and preferred_category not in CATEGORY_IDS:
+        return jsonify({
+            "status": "error",
+            "reason": f"Unknown category: {preferred_category!r}",
+            "valid_categories": CATEGORY_IDS,
+        }), 400
+
+    predictor = get_predictor()
+    result    = predictor.predict(
+        image_bytes,
+        preferred_category,
+        MAX_RESULTS_DEFAULT,
+        user_description=user_description,
+    )
+
+    status_code = 200 if result.get("status") == "success" else 400
+    return jsonify(result), status_code
+
+
+# ── Build hybrid index ─────────────────────────────────────────────────────
+
+@app.route("/visual/build-index", methods=["POST"])
+def build_embedding_index():
+    """
+    Rebuild the hybrid index from catalog/ images.
+
+    Works with or without a fine-tuned model:
+      - If models/fine_tuned_*.pth exists → uses fine-tuned weights (best quality)
+      - Otherwise → uses pretrained ImageNet EfficientNet-B0 (good visual similarity)
+
+    Manual descriptions from descriptions.json are loaded automatically if the
+    file exists. Otherwise descriptions are auto-generated from image analysis.
+
+    Steps performed:
+      1. Load model (fine-tuned or pretrained fallback)
+      2. Load descriptions.json if present
+      3. Extract embeddings for all catalog/ images
+      4. Fit TF-IDF vectorizer on all descriptions
+      5. Write to MongoDB (dress_catalog collection)
+    """
+    from model import load_model_for_inference
+
+    try:
+        model = load_model_for_inference(MODEL_DIR, BACKBONE)
+
+        # Load manual descriptions if available
+        descriptions_dict = None
+        if os.path.exists(DESCRIPTIONS_FILE):
+            with open(DESCRIPTIONS_FILE, "r", encoding="utf-8") as fh:
+                descriptions_dict = json.load(fh)
+            print(f"[app] Loaded descriptions.json")
+
+        fine_tuned = os.path.exists(FINE_TUNED_MODEL_PATH)
+        total, by_cat = build_index(model, CATALOG_DIR, descriptions_dict=descriptions_dict)
+
+        return jsonify({
+            "success":        True,
+            "total_indexed":  total,
+            "categories":     by_cat,
+            "backbone":       BACKBONE,
+            "model_source":   "fine_tuned" if fine_tuned else "pretrained_imagenet",
+            "descriptions_loaded": descriptions_dict is not None,
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+# ── Seller: add a single product ───────────────────────────────────────────
+
+@app.route("/visual/add-product", methods=["POST"])
+def add_product():
+    """
+    Add one seller product to the catalog without retraining.
+
+    Form fields (multipart/form-data):
+      image       — image file (JPG/PNG/WebP, max 5 MB)
+      category    — category ID (e.g. "bridal_lehenga")
+      description — seller's text description of the dress
+    """
+    if "image" not in request.files:
+        return jsonify({"success": False, "error": "No image uploaded."}), 400
+
+    image_file  = request.files["image"]
+    category    = request.form.get("category", "").strip()
+    description = request.form.get("description", "").strip()
+
+    if not category or category not in CATEGORY_IDS:
+        return jsonify({
+            "success":          False,
+            "error":            f"Invalid or missing category. Valid: {CATEGORY_IDS}",
+        }), 400
+
+    if not description:
+        return jsonify({"success": False, "error": "Description is required."}), 400
+
+    image_bytes = image_file.read()
+    if len(image_bytes) > MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+        return jsonify({
+            "success": False,
+            "error": f"Image too large (max {MAX_UPLOAD_SIZE_MB} MB).",
+        }), 400
+
+    # Save image to catalog/{category}/
+    cat_dir  = os.path.join(CATALOG_DIR, category)
+    os.makedirs(cat_dir, exist_ok=True)
+
+    # Use original filename or generate one
+    fname      = image_file.filename or f"product_{os.urandom(4).hex()}.jpg"
+    img_path   = os.path.join(cat_dir, os.path.basename(fname))
+    with open(img_path, "wb") as fh:
+        fh.write(image_bytes)
+
+    try:
+        from model import load_model_for_inference
+        model  = load_model_for_inference(MODEL_DIR, BACKBONE)
+        result = add_single_product(model, img_path, category, description)
+
+        return jsonify({
+            "success":     True,
+            "product_id":  result["product_id"],
+            "category":    category,
+            "image_saved": img_path,
+        })
+    except Exception as exc:
+        # Clean up saved image on failure
+        if os.path.exists(img_path):
+            os.remove(img_path)
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+# ── Index statistics ───────────────────────────────────────────────────────
+
+@app.route("/visual/index-stats", methods=["GET"])
+def index_stats():
+    stats = get_index_stats()
+    return jsonify({"success": True, **stats})
+
+
+# ── Dataset status ─────────────────────────────────────────────────────────
+
+@app.route("/visual/dataset-status", methods=["GET"])
+def dataset_status():
+    from data_loader import scan_training_data
+    scan = scan_training_data()
+
+    result = {}
+    for cat in CATEGORIES:
+        cid    = cat["id"]
+        count  = scan.get(cid, {}).get("count", 0)
+        result[cid] = {
+            "label":        cat["label"],
+            "count":        count,
+            "min_required": 10,
+            "recommended":  20,
+            "status":       "ready" if count >= 10 else "needs_images",
+        }
+
+    total = sum(r["count"] for r in result.values())
+    ready = sum(1 for r in result.values() if r["status"] == "ready")
+
+    return jsonify({
+        "success":         True,
+        "total_images":    total,
+        "categories_ready": f"{ready}/{len(CATEGORIES)}",
+        "categories":      result,
+    })
+
+
+# ── Train (proxy — prefer Colab) ───────────────────────────────────────────
+
+@app.route("/visual/train", methods=["POST"])
+def train():
+    """
+    Trigger local training.  WARNING: very slow without a GPU.
+    Preferred path: run the Colab notebook with a free T4 GPU.
+    """
+    try:
+        is_valid, scan, warnings = validate_dataset()
+        if not is_valid:
+            return jsonify({
+                "success":  False,
+                "error":    "Dataset validation failed. Add images to training_data/ first.",
+                "warnings": warnings,
+                "scan":     {cat: info["count"] for cat, info in scan.items()},
+            }), 400
+
+        import torch
+        from trainer import train_model
+        device  = "cuda" if torch.cuda.is_available() else "cpu"
+        history = train_model(device)
+
+        if history is None:
+            return jsonify({"success": False, "error": "Training failed."}), 500
+
+        return jsonify({
+            "success":           True,
+            "backbone":          BACKBONE,
+            "best_val_accuracy": max(history.get("val_accuracy", [0])),
+            "epochs_trained":    len(history.get("train_loss", [])),
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+# ── Full init (train + build index) ───────────────────────────────────────
+
+@app.route("/visual/init", methods=["POST"])
+def init_pipeline():
+    """Train model then build index in one call (use Colab for training)."""
+    try:
+        is_valid, scan, warnings = validate_dataset()
+        if not is_valid:
+            return jsonify({
+                "success":  False,
+                "error":    "Dataset validation failed.",
+                "warnings": warnings,
+            }), 400
+
+        import torch
+        from trainer import train_model
+        from model import load_model_for_inference
+        from config import TRAINING_DATA_DIR
+
+        device  = "cuda" if torch.cuda.is_available() else "cpu"
+        history = train_model(device)
+
+        if history is None:
+            return jsonify({"success": False, "error": "Training failed."}), 500
+
+        model           = load_model_for_inference(MODEL_DIR, BACKBONE, device)
+        total, by_cat   = build_index(model, TRAINING_DATA_DIR, device)
+
+        return jsonify({
+            "success":           True,
+            "backbone":          BACKBONE,
+            "model_trained":     True,
+            "index_built":       True,
+            "total_indexed":     total,
+            "best_val_accuracy": max(history.get("val_accuracy", [0])),
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+# ── Main ───────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    print("\n" + "=" * 60)
+    print("  ShaadiSahulat — Visual Recommendation ML Service")
+    print("=" * 60)
+    print(f"  Backbone : {BACKBONE}")
+    print(f"  Port     : {FLASK_PORT}")
+    print(f"  Model dir: {MODEL_DIR}")
+    print("=" * 60 + "\n")
+
+    print_dataset_report()
+    print(f"[server] Starting on port {FLASK_PORT} …")
+    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=True)

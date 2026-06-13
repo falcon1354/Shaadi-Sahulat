@@ -1,0 +1,12 @@
+This folder is for training images.
+
+PUT 10-20 IMAGES HERE (JPG or PNG)
+
+Requirements:
+- Show FULL DRESS (not face/jewelry/fabric only)
+- Minimum resolution: 400x600, preferred: 800x1200
+- Format: JPG or PNG
+- Naming: category_001.jpg, category_002.jpg, etc.
+
+Minimum: 10 images per category
+Recommended: 20 images per category

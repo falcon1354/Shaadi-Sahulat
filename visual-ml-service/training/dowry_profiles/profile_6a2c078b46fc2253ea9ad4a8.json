@@ -1,0 +1,86 @@
+{
+  "profile_id": "6a2c078b46fc2253ea9ad4a8",
+  "user_id": "user-53nb02att",
+  "budget": 737997,
+  "baseline_budget": 737997,
+  "priorities": {
+    "priority_wedding_dress": "Not_Wanted",
+    "priority_furniture": "High",
+    "priority_electronics": "Low",
+    "priority_jewelry": "Low",
+    "priority_kitchen_items": "High",
+    "priority_decoration": "Low",
+    "priority_miscellaneous": "High"
+  },
+  "redistributions": {
+    "priority_wedding_dress": true
+  },
+  "wedding_dress_type": "groom",
+  "category_breakdown": {
+    "wedding_dress": 29698,
+    "furniture": 213976,
+    "electronics": 123094,
+    "jewelry": 195496,
+    "kitchen_items": 112306,
+    "decoration": 34386,
+    "miscellaneous": 29037
+  },
+  "adjusted_estimates": {
+    "wedding_dress": 30000,
+    "furniture": 220000,
+    "electronics": 123094,
+    "jewelry": 195496,
+    "kitchen_items": 112306,
+    "decoration": 34386,
+    "miscellaneous": 29037
+  },
+  "category_budgets": {
+    "wedding_dress": {
+      "estimated": 30000,
+      "spent": 0,
+      "remaining": 30000,
+      "active": false
+    },
+    "furniture": {
+      "estimated": 220000,
+      "spent": 0,
+      "remaining": 220000,
+      "active": true
+    },
+    "electronics": {
+      "estimated": 123094,
+      "spent": 0,
+      "remaining": 123094,
+      "active": true
+    },
+    "jewelry": {
+      "estimated": 195496,
+      "spent": 0,
+      "remaining": 195496,
+      "active": true
+    },
+    "kitchen_items": {
+      "estimated": 112306,
+      "spent": 0,
+      "remaining": 112306,
+      "active": true
+    },
+    "decoration": {
+      "estimated": 34386,
+      "spent": 0,
+      "remaining": 34386,
+      "active": true
+    },
+    "miscellaneous": {
+      "estimated": 29037,
+      "spent": 0,
+      "remaining": 29037,
+      "active": true
+    }
+  },
+  "ml_adjustment": 0,
+  "responsibility_score": 0.9,
+  "income": 800000,
+  "savings": 900000,
+  "saved_at": "2026-06-12T13:20:11.546299+00:00"
+}
