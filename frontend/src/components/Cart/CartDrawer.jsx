@@ -1,36 +1,43 @@
 import React, { useState } from 'react';
 import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
+import { patchDowryBudgets } from '../../api/buyerApi';
 
-function getDowryBudgets() {
+function getDowryBudgets(buyerId) {
   try {
-    const data = JSON.parse(localStorage.getItem('ss_dowry_latest') || 'null');
+    const key  = buyerId ? `ss_dowry_${buyerId}` : 'ss_dowry_latest';
+    const data = JSON.parse(localStorage.getItem(key) || 'null');
     return data?.category_budgets || null;
   } catch { return null; }
 }
 
-function simulateCheckout(items) {
+async function simulateCheckout(items, buyerId) {
   try {
-    const dowry = JSON.parse(localStorage.getItem('ss_dowry_latest') || 'null');
+    const key  = buyerId ? `ss_dowry_${buyerId}` : 'ss_dowry_latest';
+    const dowry = JSON.parse(localStorage.getItem(key) || 'null');
     if (!dowry?.category_budgets) return;
+    const b = { ...dowry.category_budgets };
     items.forEach(item => {
       const cat = item.major_category;
-      if (!cat || !dowry.category_budgets[cat]) return;
+      if (!cat || !b[cat]) return;
       const price = (item.discount_price || item.price || 0) * (item.qty || 1);
-      dowry.category_budgets[cat].spent = (dowry.category_budgets[cat].spent || 0) + price;
-      const est = dowry.category_budgets[cat].estimated || 0;
-      dowry.category_budgets[cat].remaining = est - dowry.category_budgets[cat].spent;
+      b[cat] = { ...b[cat], spent: (b[cat].spent || 0) + price };
+      b[cat].remaining = (b[cat].estimated || 0) - b[cat].spent;
     });
-    localStorage.setItem('ss_dowry_latest', JSON.stringify(dowry));
+    const updated = JSON.stringify({ ...dowry, category_budgets: b });
+    localStorage.setItem('ss_dowry_latest', updated);
+    if (buyerId) localStorage.setItem(`ss_dowry_${buyerId}`, updated);
+    // Persist to MongoDB
+    if (buyerId) patchDowryBudgets(buyerId, b).catch(() => {});
   } catch {}
 }
 
-export default function CartDrawer({ open, onClose }) {
+export default function CartDrawer({ open, onClose, buyerId }) {
   const { items, removeItem, updateQty, totalItems, totalPrice, clearCart } = useCart();
   const [checkoutDone, setCheckoutDone] = useState(false);
 
-  const handleCheckout = () => {
-    simulateCheckout(items);
+  const handleCheckout = async () => {
+    await simulateCheckout(items, buyerId);
     clearCart();
     setCheckoutDone(true);
     setTimeout(() => { setCheckoutDone(false); onClose(); }, 2000);
@@ -39,7 +46,7 @@ export default function CartDrawer({ open, onClose }) {
   if (!open) return null;
 
   // §5.3 — per-category cart totals vs budget remaining
-  const budgets = getDowryBudgets();
+  const budgets = getDowryBudgets(buyerId);
   const catTotals = items.reduce((acc, item) => {
     const cat   = item.major_category;
     const price = (item.discount_price || item.price || 0) * item.qty;

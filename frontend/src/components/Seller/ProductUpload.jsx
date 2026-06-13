@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import sellerApi from '../../api/sellerApi';
+import { useCategories } from '../../hooks/useCategories';
 
 // ── Category tree (mirrors config.py SELLER_CATEGORY_TREE) ────────────────
 const CATEGORY_TREE = [
@@ -167,6 +168,7 @@ const EMPTY = {
 };
 
 export default function ProductUpload({ sellerId, sellerCity = '', onUploaded }) {
+  const { categories: dbCategories } = useCategories();
   const [majorCat,   setMajorCat]   = useState(null);
   const [form,       setForm]       = useState({ ...EMPTY, city: sellerCity });
   const [images,     setImages]     = useState([]);
@@ -178,7 +180,28 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
   const [priceSuggestion, setPriceSuggestion] = useState(null);
   const fileRef = useRef(null);
 
-  const catDef      = CATEGORY_TREE.find(c => c.id === majorCat);
+  // Merge DB categories with static CATEGORY_TREE (keeps nested item types for wedding_dress, etc.)
+  const effectiveCatTree = useMemo(() => {
+    if (!dbCategories.length) return CATEGORY_TREE;
+    return dbCategories.map(dbCat => {
+      const staticDef = CATEGORY_TREE.find(c => c.id === dbCat.category_id);
+      const subs = dbCat.subcategories?.length
+        ? dbCat.subcategories.map(sub => {
+            const staticSub = staticDef?.subcategories?.find(s => s.id === sub.id);
+            return { ...sub, items: staticSub?.items || null };
+          })
+        : (staticDef?.subcategories || []);
+      return {
+        id:             dbCat.category_id,
+        label:          dbCat.label,
+        icon:           dbCat.icon || staticDef?.icon || '📦',
+        multipleImages: dbCat.category_id === 'wedding_dress',
+        subcategories:  subs,
+      };
+    });
+  }, [dbCategories]);
+
+  const catDef      = effectiveCatTree.find(c => c.id === majorCat);
   const maxImages   = catDef?.multipleImages ? 5 : 1;
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
@@ -226,10 +249,14 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
     return () => { cancelled = true; clearTimeout(t); };
   }, [majorCat, form.subcategory, form.item_type, form.color, form.condition]);
 
-  // §4.2 — compute allowed price range for the current selection
+  // §4.2 — compute allowed price range: DB subcategory prices take priority over hardcoded ranges
   const priceRange = majorCat === 'wedding_dress'
     ? getWeddingDressRange(form.subcategory, form.condition)
-    : (form.item_type ? PRICE_RANGES[form.item_type] : PRICE_RANGES[form.subcategory]) || null;
+    : (() => {
+        const dbSub = catDef?.subcategories?.find(s => s.id === form.subcategory);
+        if (dbSub?.price_min && dbSub?.price_max) return { min: dbSub.price_min, max: dbSub.price_max };
+        return (form.item_type ? PRICE_RANGES[form.item_type] : PRICE_RANGES[form.subcategory]) || null;
+      })();
 
   const priceNum   = form.price ? Number(form.price) : null;
   const priceError = priceRange && priceNum !== null && priceNum > 0
@@ -274,25 +301,35 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
 
     setLoading(true);
     try {
+      // Collect custom field values if any
+      const customFieldValues = {};
+      if (selectedSubcat?.custom_fields?.length) {
+        for (const cf of selectedSubcat.custom_fields) {
+          const val = form[`cf_${cf.field_id}`];
+          if (val !== undefined && val !== '') customFieldValues[cf.field_id] = val;
+        }
+      }
+
       const fields = {
-        seller_id:          sellerId,
-        major_category:     majorCat,
-        subcategory:        form.subcategory,
-        item_type:          form.item_type || '',
+        seller_id:            sellerId,
+        major_category:       majorCat,
+        subcategory:          form.subcategory,
+        item_type:            form.item_type || '',
         wedding_dress_type,
-        title:              form.title,
-        description:        form.description,
-        color:              form.color,
-        fabric:             form.fabric,
-        embroidery_type:    form.embroidery_type,
-        size:               form.size,
-        material:           form.material,
-        brand:              form.brand,
-        condition:          form.condition,
-        city:               form.city,
-        price:              form.price,
-        discount_pct:       showDiscount && form.discount_pct ? form.discount_pct : '',
-        stock_quantity:     form.stock_quantity,
+        title:                form.title,
+        description:          form.description,
+        color:                form.color,
+        fabric:               form.fabric,
+        embroidery_type:      form.embroidery_type,
+        size:                 form.size,
+        material:             form.material,
+        brand:                form.brand,
+        condition:            form.condition,
+        city:                 form.city,
+        price:                form.price,
+        discount_pct:         showDiscount && form.discount_pct ? form.discount_pct : '',
+        stock_quantity:       form.stock_quantity,
+        custom_field_values:  Object.keys(customFieldValues).length ? JSON.stringify(customFieldValues) : '',
       };
 
       const data = await sellerApi.uploadProduct(fields, images);
@@ -322,7 +359,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
         <h2 className="text-xl font-bold text-gray-800 mb-2">Upload New Product</h2>
         <p className="text-sm text-gray-500 mb-5">Select a category to continue</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {CATEGORY_TREE.map(cat => (
+          {effectiveCatTree.map(cat => (
             <button
               key={cat.id}
               onClick={() => selectMajorCat(cat.id)}
@@ -535,6 +572,39 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                 {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+          </div>
+        )}
+
+        {/* ── Custom fields from admin ──────────────────────────────────── */}
+        {(selectedSubcat?.custom_fields?.length > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {selectedSubcat.custom_fields.map(cf => (
+                <div key={cf.field_id}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {cf.label}{cf.required ? ' *' : ''}
+                  </label>
+                  {cf.type === 'select' ? (
+                    <select
+                      value={form[`cf_${cf.field_id}`] || ''}
+                      onChange={e => setForm(f => ({ ...f, [`cf_${cf.field_id}`]: e.target.value }))}
+                      required={cf.required}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    >
+                      <option value="">— Select —</option>
+                      {(cf.options || []).map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type={cf.type === 'number' ? 'number' : 'text'}
+                      value={form[`cf_${cf.field_id}`] || ''}
+                      onChange={e => setForm(f => ({ ...f, [`cf_${cf.field_id}`]: e.target.value }))}
+                      required={cf.required}
+                      placeholder={cf.type === 'number' ? '0' : `Enter ${cf.label.toLowerCase()}`}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  )}
+                </div>
+              ))}
           </div>
         )}
 

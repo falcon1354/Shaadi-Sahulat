@@ -1,29 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { patchDowryBudgets } from '../../api/buyerApi';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 
-// §2.1 — wedding_dress replaces bridal_dress + groom_dress
-const CATEGORY_COLORS = {
-  wedding_dress: '#C026D3',
-  furniture:     '#2563EB',
-  electronics:   '#0891B2',
-  jewelry:       '#D97706',
-  kitchen_items: '#059669',
-  decoration:    '#DC2626',
-  miscellaneous: '#6B7280',
-};
-
-const CATEGORY_LABELS = {
-  wedding_dress: 'Wedding Dress',
-  furniture:     'Furniture',
-  electronics:   'Electronics',
-  jewelry:       'Jewelry',
-  kitchen_items: 'Kitchen Items',
-  decoration:    'Decoration',
-  miscellaneous: 'Miscellaneous',
-};
+// 10-colour palette — repeats for more than 10 categories
+const PALETTE = [
+  '#C026D3','#2563EB','#0891B2','#D97706','#059669',
+  '#DC2626','#6B7280','#7C3AED','#EA580C','#0D9488',
+];
 
 const formatPKR = (v) => {
   if (v >= 1000000) return `PKR ${(v / 1000000).toFixed(1)}M`;
@@ -34,7 +20,6 @@ const formatPKR = (v) => {
 const formatPKRFull = (v) =>
   new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 }).format(v);
 
-// §2.4 — slider step based on estimated amount
 function getSliderStep(amount) {
   if (amount > 1500000) return 500;
   if (amount > 1000000) return 1000;
@@ -42,7 +27,6 @@ function getSliderStep(amount) {
   return 5000;
 }
 
-// §2.4 — color indicator for deviation from system estimate
 function getDeviationColor(current, original) {
   if (!original || original === 0) return 'green';
   const pct = Math.abs((current - original) / original) * 100;
@@ -57,7 +41,29 @@ const DEVIATION_STYLES = {
   red:    { bar: 'bg-red-500',    label: 'text-red-700',    badge: 'bg-red-50 text-red-700 border-red-200' },
 };
 
-function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSave, onReset, priorities }) {
+// ── helpers ───────────────────────────────────────────────────────────────────
+function readDowry(buyerId) {
+  try {
+    if (buyerId) return JSON.parse(localStorage.getItem(`ss_dowry_${buyerId}`) || 'null');
+    return JSON.parse(localStorage.getItem('ss_dowry_latest') || 'null');
+  } catch { return null; }
+}
+
+function writeDowry(data, buyerId) {
+  const s = JSON.stringify(data);
+  localStorage.setItem('ss_dowry_latest', s);
+  if (buyerId) localStorage.setItem(`ss_dowry_${buyerId}`, s);
+}
+
+// ── StepResults ───────────────────────────────────────────────────────────────
+function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSave, onReset, priorities, categories = [], buyerId }) {
+  // Build label + color maps from live categories prop
+  const catLabel = (key) => categories.find(c => c.category_id === key)?.label || key.replace(/_/g,' ');
+  const catColor = (key) => {
+    const idx = categories.findIndex(c => c.category_id === key);
+    return PALETTE[(idx >= 0 ? idx : 0) % PALETTE.length];
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
@@ -76,28 +82,25 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
     );
   }
 
-  // Use adjusted estimates if available, otherwise fall back to engine breakdown
   const displayBreakdown = {};
   for (const [key, val] of Object.entries(result.category_breakdown || {})) {
-    displayBreakdown[key] =
-      adjustedEstimates[key] !== undefined ? adjustedEstimates[key] : val;
+    displayBreakdown[key] = adjustedEstimates[key] !== undefined ? adjustedEstimates[key] : val;
   }
 
   const adjustedTotal = Object.values(displayBreakdown).reduce((a, b) => a + b, 0);
 
-  const pieData = Object.entries(displayBreakdown)
+  // Pie/bar: top 10 by highest estimated amount
+  const sortedEntries = Object.entries(displayBreakdown)
     .filter(([, v]) => v > 0)
-    .map(([key, value]) => ({
-      name:  CATEGORY_LABELS[key] || key,
-      value,
-      key,
-      color: CATEGORY_COLORS[key] || '#999',
-    }));
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10);
 
-  const barData = Object.entries(displayBreakdown).map(([key, value]) => ({
-    name:   CATEGORY_LABELS[key] || key,
-    amount: value,
-    color:  CATEGORY_COLORS[key] || '#999',
+  const pieData = sortedEntries.map(([key, value]) => ({
+    name: catLabel(key), value, key, color: catColor(key),
+  }));
+
+  const barData = sortedEntries.map(([key, value]) => ({
+    name: catLabel(key), amount: value, color: catColor(key),
   }));
 
   return (
@@ -115,9 +118,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
           <p className="text-xs opacity-80">Total Budget</p>
           <p className="text-xl font-bold mt-1">{formatPKRFull(adjustedTotal)}</p>
           {adjustedTotal !== result.total_recommended_budget && (
-            <p className="text-xs opacity-70 mt-0.5">
-              System: {formatPKR(result.total_recommended_budget)}
-            </p>
+            <p className="text-xs opacity-70 mt-0.5">System: {formatPKR(result.total_recommended_budget)}</p>
           )}
         </div>
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-4 text-white">
@@ -133,18 +134,14 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
         <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white">
           <p className="text-xs opacity-80">Responsibility Score</p>
           <p className="text-xl font-bold mt-1">{(result.responsibility_score * 100).toFixed(0)}%</p>
-          <p className="text-xs opacity-70 mt-1">
-            ML: {(result.ml_adjustment_factor * 100).toFixed(1)}%
-          </p>
+          <p className="text-xs opacity-70 mt-1">ML: {(result.ml_adjustment_factor * 100).toFixed(1)}%</p>
         </div>
       </div>
 
-      {/* §2.4 — Adjustable Sliders per category */}
+      {/* Adjustable sliders */}
       <div className="border border-gray-100 rounded-xl p-5">
         <h3 className="text-sm font-semibold text-gray-700 mb-1">Adjust Category Budgets</h3>
-        <p className="text-xs text-gray-400 mb-4">
-          Drag sliders to fine-tune each category. Total updates live.
-        </p>
+        <p className="text-xs text-gray-400 mb-4">Drag sliders to fine-tune each category. Total updates live.</p>
         <div className="space-y-5">
           {Object.entries(result.category_breakdown || {}).map(([key, originalAmt]) => {
             const current   = displayBreakdown[key] ?? originalAmt;
@@ -155,6 +152,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
             const devPct    = originalAmt > 0
               ? (((current - originalAmt) / originalAmt) * 100).toFixed(0)
               : 0;
+            const color = catColor(key);
 
             if (priorities && priorities[`priority_${key}`] === 'Not_Wanted') return null;
             if (!priorities && originalAmt === 0) return null;
@@ -163,13 +161,8 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
               <div key={key}>
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: CATEGORY_COLORS[key] }}
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      {CATEGORY_LABELS[key] || key}
-                    </span>
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="text-sm font-medium text-gray-700">{catLabel(key)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${styles.badge}`}>
@@ -180,20 +173,14 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
                     </span>
                   </div>
                 </div>
-                <div className="relative">
-                  <input
-                    type="range"
-                    min={0}
-                    max={maxVal}
-                    step={step}
-                    value={current}
-                    onChange={(e) => onAdjust(key, Number(e.target.value))}
-                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                    style={{
-                      background: `linear-gradient(to right, ${CATEGORY_COLORS[key]} ${(current / maxVal) * 100}%, #e5e7eb ${(current / maxVal) * 100}%)`,
-                    }}
-                  />
-                </div>
+                <input
+                  type="range" min={0} max={maxVal} step={step} value={current}
+                  onChange={(e) => onAdjust(key, Number(e.target.value))}
+                  className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, ${color} ${(current / maxVal) * 100}%, #e5e7eb ${(current / maxVal) * 100}%)`,
+                  }}
+                />
                 <div className="flex justify-between text-xs text-gray-400 mt-0.5">
                   <span>PKR 0</span>
                   <span>System: {formatPKR(originalAmt)}</span>
@@ -203,29 +190,21 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
             );
           })}
         </div>
-
-        {/* Live adjusted total */}
         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
           <span className="text-sm text-gray-600">Adjusted Total:</span>
           <span className="text-lg font-bold text-purple-700">{formatPKRFull(adjustedTotal)}</span>
         </div>
       </div>
 
-      {/* Charts */}
+      {/* Charts — top 10 by highest amount */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="border border-gray-100 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Category Breakdown (Pie)</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-1">Category Breakdown (Pie)</h3>
+          <p className="text-xs text-gray-400 mb-3">Top {pieData.length} categories by estimated amount</p>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={110}
-                innerRadius={45}
-                paddingAngle={2}
+              <Pie data={pieData} dataKey="value" nameKey="name"
+                cx="50%" cy="50%" outerRadius={110} innerRadius={45} paddingAngle={2}
                 label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
               >
                 {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -237,12 +216,13 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
         </div>
 
         <div className="border border-gray-100 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Category Amounts (Bar)</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-1">Category Amounts (Bar)</h3>
+          <p className="text-xs text-gray-400 mb-3">Sorted highest to lowest</p>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={barData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" tickFormatter={formatPKR} />
-              <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
+              <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => formatPKRFull(v)} />
               <Bar dataKey="amount" radius={[0, 6, 6, 0]}>
                 {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -252,12 +232,12 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
         </div>
       </div>
 
-      {/* Community Insights — BUYER 7 */}
+      {/* Community Insights */}
       {result.training_matches?.length > 0 && (
         <CommunityInsights matches={result.training_matches} myBudget={adjustedTotal} />
       )}
 
-      {/* Category Breakdown Table */}
+      {/* Breakdown Table */}
       <div className="border border-gray-100 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
@@ -271,23 +251,17 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
           <tbody>
             {Object.entries(result.category_breakdown || {}).map(([key, sysAmt]) => {
               const adjusted = displayBreakdown[key] ?? sysAmt;
-              const pct      = adjustedTotal > 0
-                ? ((adjusted / adjustedTotal) * 100).toFixed(1)
-                : 0;
-              const dev   = getDeviationColor(adjusted, sysAmt);
-              const styles = DEVIATION_STYLES[dev];
+              const pct      = adjustedTotal > 0 ? ((adjusted / adjustedTotal) * 100).toFixed(1) : 0;
+              const dev      = getDeviationColor(adjusted, sysAmt);
+              const styles   = DEVIATION_STYLES[dev];
               return (
                 <tr key={key} className="border-t border-gray-50 hover:bg-gray-50">
                   <td className="px-4 py-3 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[key] }} />
-                    {CATEGORY_LABELS[key] || key}
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: catColor(key) }} />
+                    {catLabel(key)}
                   </td>
-                  <td className="text-right px-4 py-3 font-mono text-gray-400 text-xs">
-                    {formatPKRFull(sysAmt)}
-                  </td>
-                  <td className={`text-right px-4 py-3 font-mono font-semibold ${styles.label}`}>
-                    {formatPKRFull(adjusted)}
-                  </td>
+                  <td className="text-right px-4 py-3 font-mono text-gray-400 text-xs">{formatPKRFull(sysAmt)}</td>
+                  <td className={`text-right px-4 py-3 font-mono font-semibold ${styles.label}`}>{formatPKRFull(adjusted)}</td>
                   <td className="text-right px-4 py-3 text-gray-500">{pct}%</td>
                 </tr>
               );
@@ -303,8 +277,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
           <ul className="space-y-1">
             {result.notes.map((note, i) => (
               <li key={i} className="text-xs text-gray-600 flex items-start gap-2">
-                <span className="text-purple-500 mt-0.5">•</span>
-                {note}
+                <span className="text-purple-500 mt-0.5">•</span>{note}
               </li>
             ))}
           </ul>
@@ -316,38 +289,21 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-blue-800 mb-2">ML Analysis Details</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div>
-              <span className="text-blue-500">Cluster ID</span>
-              <p className="font-bold text-blue-800">{result.ml_metadata.cluster_id}</p>
-            </div>
-            <div>
-              <span className="text-blue-500">Similar Users</span>
-              <p className="font-bold text-blue-800">{result.ml_metadata.similar_users_count}</p>
-            </div>
-            <div>
-              <span className="text-blue-500">Adjustment</span>
-              <p className="font-bold text-blue-800">
-                {(result.ml_metadata.adjustment_factor * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div>
-              <span className="text-blue-500">Cluster Deviation</span>
-              <p className="font-bold text-blue-800">
-                {(result.ml_metadata.cluster_mean_deviation * 100).toFixed(1)}%
-              </p>
-            </div>
+            <div><span className="text-blue-500">Cluster ID</span><p className="font-bold text-blue-800">{result.ml_metadata.cluster_id}</p></div>
+            <div><span className="text-blue-500">Similar Users</span><p className="font-bold text-blue-800">{result.ml_metadata.similar_users_count}</p></div>
+            <div><span className="text-blue-500">Adjustment</span><p className="font-bold text-blue-800">{(result.ml_metadata.adjustment_factor * 100).toFixed(1)}%</p></div>
+            <div><span className="text-blue-500">Cluster Deviation</span><p className="font-bold text-blue-800">{(result.ml_metadata.cluster_mean_deviation * 100).toFixed(1)}%</p></div>
           </div>
         </div>
       )}
 
-      {/* Saved Confirmation + §11.5 Manage Budget */}
-      {saved && <BudgetManageSection />}
+      {/* Saved + budget management */}
+      {saved && <BudgetManageSection categories={categories} buyerId={buyerId} />}
     </div>
   );
 }
 
-// ── BUYER 7 — Community Insights: 5 similar training profiles ─────────────
-
+// ── Community Insights ────────────────────────────────────────────────────────
 function incomeBucket(income) {
   if (income <  30000) return "< 30K";
   if (income <  50000) return "30K–50K";
@@ -365,7 +321,7 @@ function CommunityInsights({ matches, myBudget }) {
       <div className="bg-purple-50 px-4 py-3 border-b border-purple-100">
         <h3 className="text-sm font-semibold text-purple-800">Community Insights</h3>
         <p className="text-xs text-purple-500 mt-0.5">
-          {matches.length} similar profiles found — showing how others with comparable income estimated their dowry
+          {matches.length} similar profiles found
         </p>
       </div>
       <table className="w-full text-sm">
@@ -379,25 +335,15 @@ function CommunityInsights({ matches, myBudget }) {
         </thead>
         <tbody>
           {matches.map((m, i) => {
-            const dev = m.deviation_pct;
-            const devColor =
-              Math.abs(dev) <= 10 ? "text-green-600" :
-              Math.abs(dev) <= 25 ? "text-amber-600" : "text-red-600";
-            const devLabel =
-              dev > 0 ? `+${dev}%` : dev < 0 ? `${dev}%` : "Same";
+            const dev      = m.deviation_pct;
+            const devColor = Math.abs(dev) <= 10 ? "text-green-600" : Math.abs(dev) <= 25 ? "text-amber-600" : "text-red-600";
             return (
               <tr key={i} className="border-t border-gray-50 hover:bg-gray-50">
-                <td className="px-4 py-2.5 text-gray-700 font-medium">
-                  PKR {incomeBucket(m.income)}/mo
-                </td>
-                <td className="px-4 py-2.5 text-center text-gray-500">
-                  {m.total_family_members} members
-                </td>
-                <td className="px-4 py-2.5 text-right font-mono text-gray-700">
-                  {formatPKR(m.total_recommended_budget)}
-                </td>
+                <td className="px-4 py-2.5 text-gray-700 font-medium">PKR {incomeBucket(m.income)}/mo</td>
+                <td className="px-4 py-2.5 text-center text-gray-500">{m.total_family_members} members</td>
+                <td className="px-4 py-2.5 text-right font-mono text-gray-700">{formatPKR(m.total_recommended_budget)}</td>
                 <td className={`px-4 py-2.5 text-right font-semibold ${devColor}`}>
-                  {devLabel}
+                  {dev > 0 ? `+${dev}%` : dev < 0 ? `${dev}%` : 'Same'}
                 </td>
               </tr>
             );
@@ -408,69 +354,67 @@ function CommunityInsights({ matches, myBudget }) {
   );
 }
 
-// ── §11.5 Budget Shift — accessible from Dowry page ──────────────────────
-
-const MAJOR_CAT_LABELS = {
-  wedding_dress: 'Wedding Dress', furniture: 'Furniture', electronics: 'Electronics',
-  jewelry: 'Jewelry', kitchen_items: 'Kitchen Items', decoration: 'Decoration', miscellaneous: 'Miscellaneous',
-};
-
-function shiftBudget(fromCat, toCat, amount) {
-  try {
-    const dowry = JSON.parse(localStorage.getItem('ss_dowry_latest') || 'null');
-    if (!dowry?.category_budgets) return false;
-    const b   = dowry.category_budgets;
-    const src = b[fromCat]; const dst = b[toCat];
-    if (!src || !dst) return false;
-    const avail = src.remaining ?? src.estimated ?? 0;
-    if (amount > avail) return false;
-    src.estimated = (src.estimated || 0) - amount;
-    src.remaining = (src.remaining ?? src.estimated) - amount;
-    dst.estimated = (dst.estimated || 0) + amount;
-    dst.remaining = (dst.remaining ?? dst.estimated) + amount;
-    localStorage.setItem('ss_dowry_latest', JSON.stringify({ ...dowry, category_budgets: b }));
-    return true;
-  } catch { return false; }
-}
-
-function BudgetManageSection() {
+// ── Budget Shift Section ──────────────────────────────────────────────────────
+function BudgetManageSection({ categories = [], buyerId }) {
   const [open,    setOpen]    = useState(false);
   const [fromCat, setFromCat] = useState('');
   const [toCat,   setToCat]   = useState('');
   const [amount,  setAmount]  = useState('');
   const [msg,     setMsg]     = useState('');
+  const [dowry,   setDowry]   = useState(() => readDowry(buyerId));
 
-  const dowry   = (() => { try { return JSON.parse(localStorage.getItem('ss_dowry_latest') || 'null'); } catch { return null; } })();
-  const budgets = dowry?.category_budgets || {};
-  const cats    = Object.entries(budgets).filter(([, v]) => v.active !== false);
+  // Re-read whenever localStorage changes (e.g. after cart checkout updates it)
+  useEffect(() => {
+    setDowry(readDowry(buyerId));
+  }, [buyerId, open]);
 
+  const budgets   = dowry?.category_budgets || {};
+  const dbCatIds  = categories.map(c => c.category_id);
+  const cats      = Object.entries(budgets).filter(([key, v]) =>
+    v.active !== false && (dbCatIds.length === 0 || dbCatIds.includes(key))
+  );
+
+  const getLabel  = (key) => categories.find(c => c.category_id === key)?.label || key.replace(/_/g, ' ');
   const fromAvail = fromCat ? (budgets[fromCat]?.remaining ?? budgets[fromCat]?.estimated ?? 0) : 0;
 
-  const handleShift = () => {
+  const handleShift = async () => {
     const amt = Number(amount);
-    if (!fromCat || !toCat)     return setMsg('Select both categories.');
-    if (fromCat === toCat)       return setMsg('Cannot shift to the same category.');
-    if (!amt || amt <= 0)        return setMsg('Enter a valid amount.');
-    if (amt > fromAvail)         return setMsg(`Max available: PKR ${fromAvail.toLocaleString()}`);
-    const ok = shiftBudget(fromCat, toCat, amt);
-    setMsg(ok ? `✅ Shifted PKR ${amt.toLocaleString()} from ${MAJOR_CAT_LABELS[fromCat]} to ${MAJOR_CAT_LABELS[toCat]}.` : 'Shift failed.');
-    if (ok) { setAmount(''); setTimeout(() => setMsg(''), 3000); }
+    if (!fromCat || !toCat)  return setMsg('Select both categories.');
+    if (fromCat === toCat)   return setMsg('Cannot shift to the same category.');
+    if (!amt || amt <= 0)    return setMsg('Enter a valid amount.');
+    if (amt > fromAvail)     return setMsg(`Max available: PKR ${fromAvail.toLocaleString()}`);
+
+    try {
+      const d = readDowry(buyerId);
+      if (!d?.category_budgets) return setMsg('No estimation found.');
+      const b = { ...d.category_budgets };
+      if (!b[fromCat] || !b[toCat]) return setMsg('Category not found in budget.');
+      b[fromCat] = { ...b[fromCat], estimated: (b[fromCat].estimated || 0) - amt, remaining: (b[fromCat].remaining ?? b[fromCat].estimated) - amt };
+      b[toCat]   = { ...b[toCat],   estimated: (b[toCat].estimated   || 0) + amt, remaining: (b[toCat].remaining   ?? b[toCat].estimated) + amt };
+      const updated = { ...d, category_budgets: b };
+      writeDowry(updated, buyerId);
+      setDowry(updated);  // update local state so dropdowns refresh
+      // Persist to MongoDB
+      if (buyerId) patchDowryBudgets(buyerId, b).catch(() => {});
+      setMsg(`Shifted PKR ${amt.toLocaleString()} from ${getLabel(fromCat)} to ${getLabel(toCat)}.`);
+      setAmount('');
+      setTimeout(() => setMsg(''), 4000);
+    } catch { setMsg('Shift failed.'); }
   };
 
   return (
     <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-green-700 font-semibold">✅ Estimation saved! Your data has been added to the ML dataset.</p>
-        <button
-          onClick={() => setOpen(v => !v)}
-          className="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors">
+        <p className="text-green-700 font-semibold">Estimation saved! Your data has been added to the ML dataset.</p>
+        <button onClick={() => setOpen(v => !v)}
+          className="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium">
           {open ? 'Close' : 'Manage Budget'}
         </button>
       </div>
 
       {open && (
         <div className="bg-white border border-purple-100 rounded-xl p-4 space-y-3">
-          <h4 className="text-sm font-bold text-gray-800">Budget Shift (§11.5)</h4>
+          <h4 className="text-sm font-bold text-gray-800">Budget Shift</h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">From Category</label>
@@ -479,19 +423,17 @@ function BudgetManageSection() {
                 <option value="">Select…</option>
                 {cats.map(([k, v]) => (
                   <option key={k} value={k}>
-                    {MAJOR_CAT_LABELS[k]} — PKR {(v.remaining ?? v.estimated ?? 0).toLocaleString()} left
+                    {getLabel(k)} — PKR {(v.remaining ?? v.estimated ?? 0).toLocaleString()} left
                   </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Amount (PKR)</label>
-              <input
-                type="number" value={amount} min="1" max={fromAvail}
+              <input type="number" value={amount} min="1" max={fromAvail}
                 onChange={e => { setAmount(e.target.value); setMsg(''); }}
                 className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                placeholder="0"
-              />
+                placeholder="0" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">To Category</label>
@@ -499,16 +441,18 @@ function BudgetManageSection() {
                 className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                 <option value="">Select…</option>
                 {cats.filter(([k]) => k !== fromCat).map(([k]) => (
-                  <option key={k} value={k}>{MAJOR_CAT_LABELS[k]}</option>
+                  <option key={k} value={k}>{getLabel(k)}</option>
                 ))}
               </select>
             </div>
           </div>
           {msg && (
-            <p className={`text-xs px-3 py-2 rounded-lg ${msg.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>{msg}</p>
+            <p className={`text-xs px-3 py-2 rounded-lg ${msg.startsWith('Shifted') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+              {msg}
+            </p>
           )}
           <button onClick={handleShift}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors">
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold">
             Confirm Shift
           </button>
         </div>

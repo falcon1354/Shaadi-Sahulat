@@ -1,16 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
-
-const MAJOR_CATS = [
-  { id: '',              label: 'All',          icon: '🛍️' },
-  { id: 'wedding_dress', label: 'Wedding Dress', icon: '👗' },
-  { id: 'furniture',     label: 'Furniture',    icon: '🛋️' },
-  { id: 'electronics',   label: 'Electronics',  icon: '📺' },
-  { id: 'kitchen_items', label: 'Kitchen',      icon: '🍳' },
-  { id: 'decoration',    label: 'Decoration',   icon: '✨' },
-  { id: 'miscellaneous', label: 'Misc',         icon: '🎁' },
-];
+import { useCategories } from '../../hooks/useCategories';
+import { toggleWishlistItem, recordRecentlyViewed } from '../../api/buyerApi';
 
 const SORT_OPTIONS = [
   { value: 'newest',     label: 'Newest First' },
@@ -24,46 +16,61 @@ const SMALL_CATS = ['miscellaneous', 'decoration', 'kitchen_items'];
 
 // ── localStorage helpers ──────────────────────────────────────────────────
 
-function readDowry() {
-  try { return JSON.parse(localStorage.getItem('ss_dowry_latest') || 'null'); }
-  catch { return null; }
+function readDowry(buyerId) {
+  try {
+    if (buyerId) {
+      // Never show another buyer's dowry — return null if no buyer-specific key
+      return JSON.parse(localStorage.getItem(`ss_dowry_${buyerId}`) || 'null');
+    }
+    return JSON.parse(localStorage.getItem('ss_dowry_latest') || 'null');
+  } catch { return null; }
 }
 
-function getBudgetForCategory(cat) {
+function getBudgetForCategory(cat, buyerId) {
   try {
-    const data = readDowry();
+    const data = readDowry(buyerId);
     if (!data?.category_budgets) return null;
     return data.category_budgets[cat] || null;
   } catch { return null; }
 }
 
-function readWishlist() {
-  try { return JSON.parse(localStorage.getItem('ss_wishlist') || '[]'); }
-  catch { return []; }
-}
-
-function saveWishlist(list) {
-  try { localStorage.setItem('ss_wishlist', JSON.stringify(list)); } catch {}
-}
-
-function saveRecentlyViewed(product) {
+function readWishlist(buyerId) {
   try {
-    const current = JSON.parse(localStorage.getItem('ss_recently_viewed') || '[]');
-    const filtered = current.filter(p => p.product_id !== product.product_id);
-    const entry = {
-      product_id:    product.product_id,
-      title:         product.title,
-      price:         product.price,
-      major_category: product.major_category,
-    };
-    const updated = [entry, ...filtered].slice(0, 10);
-    localStorage.setItem('ss_recently_viewed', JSON.stringify(updated));
+    if (buyerId) {
+      // Never fall back to global — new buyer = empty list
+      return JSON.parse(localStorage.getItem(`ss_wishlist_${buyerId}`) || '[]');
+    }
+    return JSON.parse(localStorage.getItem('ss_wishlist') || '[]');
+  } catch { return []; }
+}
+
+function saveWishlist(list, buyerId) {
+  try {
+    const s = JSON.stringify(list);
+    if (buyerId) localStorage.setItem(`ss_wishlist_${buyerId}`, s);
+    else         localStorage.setItem('ss_wishlist', s);
   } catch {}
 }
 
-function shiftBudget(fromCat, toCat, amount) {
+function saveRecentlyViewed(product, buyerId) {
   try {
-    const dowry = readDowry();
+    const key     = buyerId ? `ss_recently_viewed_${buyerId}` : 'ss_recently_viewed';
+    const current = JSON.parse(localStorage.getItem(key) || '[]');
+    const filtered = current.filter(p => p.product_id !== product.product_id);
+    const entry = {
+      product_id:     product.product_id,
+      title:          product.title,
+      price:          product.price,
+      major_category: product.major_category,
+    };
+    const updated = [entry, ...filtered].slice(0, 10);
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch {}
+}
+
+function shiftBudget(fromCat, toCat, amount, buyerId) {
+  try {
+    const dowry = readDowry(buyerId);
     if (!dowry?.category_budgets) return false;
     const budgets = dowry.category_budgets;
     const src = budgets[fromCat];
@@ -75,7 +82,9 @@ function shiftBudget(fromCat, toCat, amount) {
     src.remaining  = (src.remaining  ?? src.estimated) - amount;
     dst.estimated  = (dst.estimated  || 0) + amount;
     dst.remaining  = (dst.remaining  ?? dst.estimated) + amount;
-    localStorage.setItem('ss_dowry_latest', JSON.stringify({ ...dowry, category_budgets: budgets }));
+    const updated  = JSON.stringify({ ...dowry, category_budgets: budgets });
+    localStorage.setItem('ss_dowry_latest', updated);
+    if (buyerId) localStorage.setItem(`ss_dowry_${buyerId}`, updated);
     return true;
   } catch { return false; }
 }
@@ -93,10 +102,10 @@ function Toast({ message, visible }) {
 
 // ── Budget Overshoot Modal (§11.4) ────────────────────────────────────────
 
-function OvershootModal({ state, onContinue, onShift, onClose }) {
+function OvershootModal({ state, onContinue, onShift, onClose, majorCats }) {
   if (!state) return null;
   const { product, overshoot, scenario, cat } = state;
-  const catLabel = MAJOR_CATS.find(c => c.id === cat)?.label || cat;
+  const catLabel = majorCats?.find(c => c.id === cat)?.label || cat;
   const isBig    = scenario === 'D';
 
   return (
@@ -146,8 +155,8 @@ function OvershootModal({ state, onContinue, onShift, onClose }) {
 
 // ── Budget Shift Modal (§11.5) ────────────────────────────────────────────
 
-function BudgetShiftModal({ targetCat, overshoot, onDone, onClose }) {
-  const dowry   = readDowry();
+function BudgetShiftModal({ targetCat, overshoot, onDone, onClose, buyerId, majorCats }) {
+  const dowry   = readDowry(buyerId);
   const budgets = dowry?.category_budgets || {};
   const cats    = Object.entries(budgets).filter(([k, v]) => k !== targetCat && (v.remaining ?? v.estimated ?? 0) > 0);
   const [fromCat, setFromCat] = useState(cats[0]?.[0] || '');
@@ -157,12 +166,14 @@ function BudgetShiftModal({ targetCat, overshoot, onDone, onClose }) {
   const fromBudget = fromCat ? budgets[fromCat] : null;
   const maxShift   = fromBudget ? (fromBudget.remaining ?? fromBudget.estimated ?? 0) : 0;
 
+  const getCatLabel = (id) => majorCats?.find(c => c.id === id)?.label || id;
+
   const handleConfirm = () => {
     const amt = Number(amount);
     if (!fromCat) return setError('Select a source category.');
     if (!amt || amt <= 0) return setError('Enter a valid amount.');
     if (amt > maxShift) return setError(`Maximum available from this category: PKR ${maxShift.toLocaleString()}`);
-    const ok = shiftBudget(fromCat, targetCat, amt);
+    const ok = shiftBudget(fromCat, targetCat, amt, buyerId);
     if (ok) { onDone(); }
     else setError('Shift failed. Please try again.');
   };
@@ -185,7 +196,7 @@ function BudgetShiftModal({ targetCat, overshoot, onDone, onClose }) {
               <option value="">Select category…</option>
               {cats.map(([k, v]) => (
                 <option key={k} value={k}>
-                  {MAJOR_CATS.find(c => c.id === k)?.label || k} — PKR {(v.remaining ?? v.estimated ?? 0).toLocaleString()} available
+                  {getCatLabel(k)} — PKR {(v.remaining ?? v.estimated ?? 0).toLocaleString()} available
                 </option>
               ))}
             </select>
@@ -210,7 +221,7 @@ function BudgetShiftModal({ targetCat, overshoot, onDone, onClose }) {
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Shift To</label>
             <div className="border border-purple-200 bg-purple-50 rounded-xl px-3 py-2 text-sm text-purple-700 font-medium">
-              {MAJOR_CATS.find(c => c.id === targetCat)?.label || targetCat}
+              {getCatLabel(targetCat)}
             </div>
           </div>
 
@@ -238,7 +249,7 @@ function BudgetShiftModal({ targetCat, overshoot, onDone, onClose }) {
 
 // ── Product Card ──────────────────────────────────────────────────────────
 
-function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, onToggleWishlist }) {
+function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, onToggleWishlist, isAdminView = false }) {
   const [toastVisible, setToast] = useState(false);
   const imageUrl  = sellerApi.resolveImageUrl(product.primary_image_url);
   const hasDiscount = product.discount_price && product.discount_price < product.price;
@@ -269,7 +280,7 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
               onError={e => { e.target.style.display = 'none'; }} />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">
-              {MAJOR_CATS.find(c => c.id === product.major_category)?.icon || '📦'}
+              📦
             </div>
           )}
           {hasDiscount && (
@@ -288,14 +299,16 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
             </span>
           )}
           {/* Wishlist heart */}
-          <button
-            onClick={e => { e.stopPropagation(); onToggleWishlist(product); }}
-            className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all ${
-              isWishlisted ? 'bg-pink-500 text-white' : 'bg-white/80 text-gray-400 hover:text-pink-500'
-            } ${product.condition && product.condition !== 'New' ? 'top-8' : 'top-2'}`}
-            title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}>
-            ❤
-          </button>
+          {!isAdminView && (
+            <button
+              onClick={e => { e.stopPropagation(); onToggleWishlist(product); }}
+              className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all ${
+                isWishlisted ? 'bg-pink-500 text-white' : 'bg-white/80 text-gray-400 hover:text-pink-500'
+              } ${product.condition && product.condition !== 'New' ? 'top-8' : 'top-2'}`}
+              title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}>
+              ❤
+            </button>
+          )}
         </div>
 
         {/* Info */}
@@ -327,10 +340,12 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
               className="flex-1 py-1.5 text-xs font-semibold text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">
               View Details
             </button>
-            <button onClick={handleAddToCart}
-              className="px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors">
-              + Cart
-            </button>
+            {!isAdminView && (
+              <button onClick={handleAddToCart}
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors">
+                + Cart
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -341,7 +356,7 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
 
 // ── Product Detail Modal ──────────────────────────────────────────────────
 
-function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onToggleWishlist }) {
+function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onToggleWishlist, isAdminView = false, buyerId }) {
   const [toastVisible, setToast] = useState(false);
   if (!product) return null;
 
@@ -359,7 +374,7 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
     product.city            && { label: 'City',       value: product.city },
   ].filter(Boolean);
 
-  const budgetInfo = product.major_category ? getBudgetForCategory(product.major_category) : null;
+  const budgetInfo = (!isAdminView && product.major_category) ? getBudgetForCategory(product.major_category, buyerId) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
@@ -368,13 +383,15 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
         {imageUrl && (
           <div className="relative aspect-video w-full overflow-hidden rounded-t-2xl bg-gray-50">
             <img src={imageUrl} alt={product.title} className="w-full h-full object-cover" />
-            <button
-              onClick={() => onToggleWishlist(product)}
-              className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-all ${
-                isWishlisted ? 'bg-pink-500 text-white' : 'bg-white/90 text-gray-400 hover:text-pink-500'
-              }`}>
-              ❤
-            </button>
+            {!isAdminView && (
+              <button
+                onClick={() => onToggleWishlist(product)}
+                className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-all ${
+                  isWishlisted ? 'bg-pink-500 text-white' : 'bg-white/90 text-gray-400 hover:text-pink-500'
+                }`}>
+                ❤
+              </button>
+            )}
           </div>
         )}
         <div className="p-5">
@@ -440,11 +457,13 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
             )}
           </div>
 
-          <button
-            onClick={() => onAddToCart(product, () => { setToast(true); setTimeout(() => setToast(false), 1800); })}
-            className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-colors">
-            Add to Cart
-          </button>
+          {!isAdminView && (
+            <button
+              onClick={() => onAddToCart(product, () => { setToast(true); setTimeout(() => setToast(false), 1800); })}
+              className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-colors">
+              Add to Cart
+            </button>
+          )}
         </div>
       </div>
       <Toast message="Added to cart!" visible={toastVisible} />
@@ -454,8 +473,17 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
 
 // ── Main MarketplacePage ──────────────────────────────────────────────────
 
-export default function MarketplacePage({ highlightProductId, onHighlightCleared, buyer }) {
-  const { addItem } = useCart();
+export default function MarketplacePage({ highlightProductId, onHighlightCleared, buyer, isAdminView = false }) {
+  const cartCtx = useCart();
+  const addItem = cartCtx?.addItem || (() => {});
+  const { categories } = useCategories();
+  const buyerId = buyer?.buyer_id || null;
+
+  // Build dynamic MAJOR_CATS: "All" tab + one per DB category
+  const MAJOR_CATS = [
+    { id: '', label: 'All', icon: '🛍️' },
+    ...categories.map(c => ({ id: c.category_id, label: c.label, icon: c.icon || '📦' })),
+  ];
 
   const [activeCat,   setActiveCat]   = useState('');
   const [products,    setProducts]    = useState([]);
@@ -479,7 +507,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
   const [showFilter, setShowFilter] = useState(false);
 
   // Wishlist
-  const [wishlist, setWishlist] = useState(() => readWishlist());
+  const [wishlist, setWishlist] = useState(() => readWishlist(buyerId));
 
   // §11.4 Overshoot modal
   const [overshootState, setOvershootState] = useState(null);
@@ -489,7 +517,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
 
   const LIMIT = 12;
 
-  const budgetInfo = activeCat ? getBudgetForCategory(activeCat) : null;
+  const budgetInfo = (!isAdminView && activeCat) ? getBudgetForCategory(activeCat, buyerId) : null;
 
   const load = useCallback(async () => {
     if (searchResults !== null) return;
@@ -526,7 +554,13 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
 
   // Save recently viewed when product modal opens
   useEffect(() => {
-    if (viewProduct) saveRecentlyViewed(viewProduct);
+    if (viewProduct) {
+      saveRecentlyViewed(viewProduct, buyerId);
+      if (buyerId) recordRecentlyViewed(buyerId, {
+        product_id: viewProduct.product_id, title: viewProduct.title,
+        price: viewProduct.price, major_category: viewProduct.major_category,
+      });
+    }
   }, [viewProduct]);
 
   // Debounced search
@@ -550,28 +584,31 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
   const applyFilters    = () => { setPage(1); setShowFilter(false); load(); };
   const clearFilters    = () => { setCondition(''); setMinPrice(''); setMaxPrice(''); setCityFilter(''); setSortBy('newest'); setPage(1); };
 
-  // Wishlist toggle
+  // Wishlist toggle — syncs to localStorage + DB
   const toggleWishlist = (product) => {
+    const item = {
+      product_id:     product.product_id,
+      title:          product.title,
+      price:          product.discount_price || product.price,
+      major_category: product.major_category,
+    };
     setWishlist(prev => {
       const exists  = prev.some(p => p.product_id === product.product_id);
       const updated = exists
         ? prev.filter(p => p.product_id !== product.product_id)
-        : [...prev, {
-            product_id:     product.product_id,
-            title:          product.title,
-            price:          product.discount_price || product.price,
-            major_category: product.major_category,
-          }];
-      saveWishlist(updated);
+        : [...prev, item];
+      saveWishlist(updated, buyerId);
       return updated;
     });
+    // Persist to MongoDB (fire and forget)
+    if (buyerId) toggleWishlistItem(buyerId, item).catch(() => {});
   };
 
   // §11.4 Budget check before adding to cart
   const handleAddToCart = (product, onSuccess) => {
     const price     = product.discount_price || product.price || 0;
     const cat       = product.major_category;
-    const budget    = cat ? getBudgetForCategory(cat) : null;
+    const budget    = (!isAdminView && cat) ? getBudgetForCategory(cat, buyerId) : null;
     const remaining = budget ? (budget.remaining ?? budget.estimated ?? 0) : null;
     const overshoot = remaining !== null ? price - remaining : -1;
 
@@ -665,11 +702,11 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
         ))}
       </div>
 
-      {/* Budget banner (§4.4) */}
-      {activeCat && budgetInfo && (
+      {/* Budget banner (§4.4) — hidden for admin */}
+      {!isAdminView && activeCat && budgetInfo && (
         <div className="mb-4 p-3 bg-purple-50 border border-purple-100 rounded-xl flex items-center gap-4 text-sm flex-wrap">
           <span className="font-semibold text-purple-700 capitalize">
-            {MAJOR_CATS.find(c => c.id === activeCat)?.label} Budget
+            {MAJOR_CATS.find(c => c.id === activeCat)?.label || activeCat} Budget
           </span>
           <span className="text-gray-600">
             Estimated: <strong>PKR {budgetInfo.estimated?.toLocaleString()}</strong>
@@ -785,6 +822,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
               onAddToCart={handleAddToCart}
               isWishlisted={wishlist.some(w => w.product_id === p.product_id)}
               onToggleWishlist={toggleWishlist}
+              isAdminView={isAdminView}
             />
           ))}
         </div>
@@ -813,24 +851,31 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
           onAddToCart={handleAddToCart}
           isWishlisted={wishlist.some(w => w.product_id === viewProduct.product_id)}
           onToggleWishlist={toggleWishlist}
+          isAdminView={isAdminView}
+          buyerId={buyerId}
         />
       )}
 
-      {/* §11.4 Overshoot modal */}
-      <OvershootModal
-        state={overshootState}
-        onContinue={handleOvershootContinue}
-        onShift={handleOvershootShift}
-        onClose={() => { setOvershootState(null); setPendingCallback(null); }}
-      />
+      {/* §11.4 Overshoot modal — hidden for admin */}
+      {!isAdminView && (
+        <OvershootModal
+          state={overshootState}
+          onContinue={handleOvershootContinue}
+          onShift={handleOvershootShift}
+          onClose={() => { setOvershootState(null); setPendingCallback(null); }}
+          majorCats={MAJOR_CATS}
+        />
+      )}
 
-      {/* §11.5 Budget shift modal */}
-      {shiftModalOpen && overshootState && (
+      {/* §11.5 Budget shift modal — hidden for admin */}
+      {!isAdminView && shiftModalOpen && overshootState && (
         <BudgetShiftModal
           targetCat={overshootState.cat}
           overshoot={overshootState.overshoot}
           onDone={handleShiftDone}
           onClose={() => setShiftModalOpen(false)}
+          buyerId={buyerId}
+          majorCats={MAJOR_CATS}
         />
       )}
 
