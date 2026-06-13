@@ -5,16 +5,48 @@ import ProductList from './ProductList';
 
 const TABS = ['Register / Login', 'Upload Product', 'My Products'];
 
+const SELLER_TYPES = [
+  {
+    id: 'individual',
+    label: 'Individual Seller',
+    icon: '👤',
+    desc: 'Personal seller · Max 5 active listings',
+    maxListings: 5,
+  },
+  {
+    id: 'company',
+    label: 'Company / Business',
+    icon: '🏢',
+    desc: 'Unlimited listings · Optional category restriction',
+    maxListings: null,
+  },
+];
+
+const MAJOR_CATS_OPTIONS = [
+  { id: '',               label: 'All Categories (no restriction)' },
+  { id: 'wedding_dress',  label: 'Wedding Dress only' },
+  { id: 'furniture',      label: 'Furniture only' },
+  { id: 'electronics',    label: 'Electronics only' },
+  { id: 'kitchen_items',  label: 'Kitchen Items only' },
+  { id: 'decoration',     label: 'Decoration only' },
+  { id: 'miscellaneous',  label: 'Miscellaneous only' },
+];
+
 export default function SellerPage({ onLogin, defaultTab = 0 }) {
   const [tab, setTab]           = useState(defaultTab);
   const [seller, setSeller]     = useState(null);
+
+  // Step 0 — seller type (Individual / Company)
+  const [sellerType,       setSellerType]       = useState(null);  // null = not chosen yet
+  const [categoryRestrict, setCategoryRestrict] = useState('');    // only for company
+
+  // Register fields
   const [form, setForm]         = useState({ name: '', email: '', password: '', phone: '', city: '' });
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
   const [uploadTick, setUploadTick] = useState(0);
 
-  // Persist seller in localStorage so panel survives page reload
   useEffect(() => {
     const stored = localStorage.getItem('ss_seller');
     if (stored) {
@@ -31,15 +63,23 @@ export default function SellerPage({ onLogin, defaultTab = 0 }) {
     setSeller(null);
     localStorage.removeItem('ss_seller');
     setTab(0);
+    setSellerType(null);
+    setCategoryRestrict('');
   };
 
   // ── Register ─────────────────────────────────────────────────────────────
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+    if (!sellerType) { setError('Choose a seller type first.'); return; }
     setLoading(true);
     try {
-      const data = await sellerApi.registerSeller(form);
+      const data = await sellerApi.registerSeller({
+        ...form,
+        seller_type:          sellerType,
+        max_listings:         sellerType === 'individual' ? 5 : null,
+        category_restriction: sellerType === 'company' ? (categoryRestrict || null) : null,
+      });
       if (data.success) {
         saveSeller(data.seller);
         if (onLogin) onLogin(data.seller);
@@ -112,39 +152,88 @@ export default function SellerPage({ onLogin, defaultTab = 0 }) {
 
       {/* Tab 0 — Register / Login */}
       {tab === 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Register */}
+        <div className="space-y-6">
+          {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200">{error}</div>}
+
+          {/* ── Register ──────────────────────────── */}
           <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
             <h2 className="text-lg font-bold text-gray-800 mb-4">New Seller — Register</h2>
-            {error && <div className="mb-3 p-2 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
-            <form onSubmit={handleRegister} className="space-y-3">
-              {[
-                { label: 'Full Name *', key: 'name',     type: 'text',     placeholder: 'Fatima Ahmed' },
-                { label: 'Email *',     key: 'email',    type: 'email',    placeholder: 'fatima@example.com' },
-                { label: 'Password *',  key: 'password', type: 'password', placeholder: 'Min 6 characters' },
-                { label: 'Phone',       key: 'phone',    type: 'tel',      placeholder: '+92 300 0000000' },
-                { label: 'City',        key: 'city',     type: 'text',     placeholder: 'Lahore' },
-              ].map(({ label, key, type, placeholder }) => (
-                <div key={key}>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-                  <input type={type} value={form[key]}
-                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                    placeholder={placeholder}
+
+            {/* Step 1 — Seller type */}
+            <div className="mb-5">
+              <p className="text-sm font-semibold text-gray-700 mb-3">Step 1 — Choose Seller Type</p>
+              <div className="grid grid-cols-2 gap-3">
+                {SELLER_TYPES.map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setSellerType(t.id)}
+                    className={`flex flex-col items-start gap-1 p-4 rounded-xl border-2 text-left transition-all ${
+                      sellerType === t.id
+                        ? 'bg-purple-50 border-purple-400 text-purple-700'
+                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-purple-300'
+                    }`}
+                  >
+                    <span className="text-2xl">{t.icon}</span>
+                    <span className="text-sm font-bold">{t.label}</span>
+                    <span className="text-[10px] text-gray-400">{t.desc}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Company category restriction */}
+              {sellerType === 'company' && (
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Category Restriction <span className="text-gray-400">(optional)</span>
+                  </label>
+                  <select
+                    value={categoryRestrict}
+                    onChange={e => setCategoryRestrict(e.target.value)}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                  />
+                  >
+                    {MAJOR_CATS_OPTIONS.map(o => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                  </select>
                 </div>
-              ))}
-              <button type="submit" disabled={loading}
-                className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-pink-500 text-white font-semibold rounded-xl
-                           hover:from-purple-700 hover:to-pink-600 transition-all disabled:opacity-50 text-sm">
-                {loading ? 'Registering...' : 'Register'}
-              </button>
-            </form>
+              )}
+            </div>
+
+            {/* Step 2 — Profile details */}
+            {sellerType && (
+              <>
+                <p className="text-sm font-semibold text-gray-700 mb-3">Step 2 — Profile Details</p>
+                <form onSubmit={handleRegister} className="space-y-3">
+                  {[
+                    { label: 'Full Name *',  key: 'name',     type: 'text',     placeholder: 'Fatima Ahmed' },
+                    { label: 'Email *',      key: 'email',    type: 'email',    placeholder: 'fatima@example.com' },
+                    { label: 'Password *',   key: 'password', type: 'password', placeholder: 'Min 6 characters' },
+                    { label: 'Phone',        key: 'phone',    type: 'tel',      placeholder: '+92 300 0000000' },
+                    { label: 'City',         key: 'city',     type: 'text',     placeholder: 'Lahore' },
+                  ].map(({ label, key, type, placeholder }) => (
+                    <div key={key}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                      <input type={type} value={form[key]}
+                        onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      />
+                    </div>
+                  ))}
+                  <button type="submit" disabled={loading}
+                    className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-pink-500 text-white font-semibold rounded-xl
+                               hover:from-purple-700 hover:to-pink-600 transition-all disabled:opacity-50 text-sm">
+                    {loading ? 'Registering...' : `Register as ${sellerType === 'company' ? 'Company' : 'Individual'}`}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
 
-          {/* Login */}
+          {/* ── Login ──────────────────────────────────────────────── */}
           <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Existing Seller — Login</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-2">Existing Seller — Login</h2>
             <p className="text-xs text-gray-400 mb-4">
               Demo: <code className="bg-gray-100 px-1 rounded">admin@shaadisahulat.com</code> / <code className="bg-gray-100 px-1 rounded">Admin@1234</code>
             </p>

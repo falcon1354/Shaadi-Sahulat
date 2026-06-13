@@ -1,21 +1,40 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const CartContext = createContext(null);
 
-const STORAGE_KEY = 'ss_cart';
+function storageKey(buyerId) {
+  return buyerId ? `ss_cart_${buyerId}` : 'ss_cart_guest';
+}
 
 export function CartProvider({ children }) {
+  const [buyerId, setBuyerIdState] = useState(null);
+  const key = storageKey(buyerId);
+
   const [items, setItems] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      return JSON.parse(localStorage.getItem(storageKey(null)) || '[]');
     } catch {
       return [];
     }
   });
 
+  // When buyer logs in/out, swap to their cart
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+    try {
+      setItems(JSON.parse(localStorage.getItem(key) || '[]'));
+    } catch {
+      setItems([]);
+    }
+  }, [key]);
+
+  // Persist items whenever they change
+  useEffect(() => {
+    localStorage.setItem(key, JSON.stringify(items));
+  }, [items, key]);
+
+  const setBuyerId = useCallback((id) => {
+    setBuyerIdState(id || null);
+  }, []);
 
   const addItem = (product) => {
     setItems(prev => {
@@ -51,7 +70,7 @@ export function CartProvider({ children }) {
   }, 0);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQty, clearCart, totalItems, totalPrice }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQty, clearCart, totalItems, totalPrice, setBuyerId }}>
       {children}
     </CartContext.Provider>
   );

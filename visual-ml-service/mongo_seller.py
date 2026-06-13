@@ -124,6 +124,9 @@ def create_seller(
     phone: str = "",
     city: str = "",
     password: str = "",
+    seller_type: str = "individual",
+    max_listings: int | None = 5,
+    category_restriction: str | None = None,
 ) -> dict | None:
     db = _get_db()
     if db is None:
@@ -134,14 +137,18 @@ def create_seller(
         return {"error": f"Email {email!r} already registered."}
 
     doc = {
-        "seller_id":     f"sel_{uuid.uuid4().hex[:12]}",
-        "name":          name.strip(),
-        "email":         email.strip().lower(),
-        "phone":         phone.strip(),
-        "city":          city.strip(),
-        "password_hash": generate_password_hash(password) if password else None,
-        "created_at":    datetime.utcnow(),
-        "updated_at":    datetime.utcnow(),
+        "seller_id":            f"sel_{uuid.uuid4().hex[:12]}",
+        "name":                 name.strip(),
+        "email":                email.strip().lower(),
+        "phone":                phone.strip(),
+        "city":                 city.strip(),
+        "password_hash":        generate_password_hash(password) if password else None,
+        "seller_type":          seller_type,           # individual | company
+        "max_listings":         max_listings,           # 5 for individual, None = unlimited
+        "category_restriction": category_restriction,  # major_category ID or None
+        "completed_orders":     0,
+        "created_at":           datetime.utcnow(),
+        "updated_at":           datetime.utcnow(),
     }
     db[SELLERS_COLLECTION].insert_one(doc)
     doc.pop("_id", None)

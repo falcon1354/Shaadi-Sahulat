@@ -1,29 +1,132 @@
-import React from 'react';
+import React, { useState } from 'react';
+import sellerApi from '../../api/sellerApi';
 
-// Level → badge color classes
-const LEVEL_STYLES = {
-  1: { bg: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
-  2: { bg: 'bg-blue-100   text-blue-700',   dot: 'bg-blue-500'   },
-  3: { bg: 'bg-teal-100   text-teal-700',   dot: 'bg-teal-500'   },
-  4: { bg: 'bg-orange-100 text-orange-700', dot: 'bg-orange-400' },
-  5: { bg: 'bg-gray-100   text-gray-600',   dot: 'bg-gray-400'   },
-};
+// Compact similarity breakdown shown in a tooltip on hover
+function SimilarityTooltip({ item }) {
+  const img   = Math.round((item.image_similarity    || 0) * 100);
+  const color = Math.round(Math.max(item.color_exact_sim || 0, item.color_family_sim || 0) * 100);
+  const text  = Math.round((item.text_similarity     || 0) * 100);
 
-function ScoreBar({ label, value, colorClass }) {
-  const pct = Math.round((value || 0) * 100);
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-gray-400 w-10 shrink-0">{label}</span>
-      <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-        <div className={`${colorClass} h-1.5 rounded-full transition-all duration-500`}
-          style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-[10px] text-gray-500 w-7 text-right">{pct}%</span>
+    <div className="absolute bottom-full right-0 mb-2 z-20 w-48 bg-white rounded-xl shadow-xl border border-gray-200 p-3 text-xs pointer-events-none">
+      <p className="font-semibold text-gray-700 mb-2">Similarity Breakdown</p>
+      {[
+        { label: 'Image',  pct: img,   color: 'bg-purple-500' },
+        { label: 'Colour', pct: color, color: 'bg-teal-500' },
+        { label: 'Text',   pct: text,  color: 'bg-orange-400' },
+      ].map(({ label, pct, color: cls }) => (
+        <div key={label} className="flex items-center gap-2 mb-1.5">
+          <span className="w-12 text-gray-500 shrink-0">{label}</span>
+          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+            <div className={`${cls} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
+          </div>
+          <span className="w-8 text-right text-gray-600 font-medium">{pct}%</span>
+        </div>
+      ))}
+      {item.color_name && (
+        <p className="mt-2 pt-2 border-t border-gray-100 text-gray-500">
+          Colour: <strong className="text-gray-700">{item.color_name}</strong>
+          {item.color_hex && (
+            <span
+              className="ml-1.5 inline-block w-3 h-3 rounded-full border border-gray-300 align-middle"
+              style={{ backgroundColor: item.color_hex }}
+            />
+          )}
+        </p>
+      )}
     </div>
   );
 }
 
-export default function ResultsGrid({ result, onNavigateToProduct }) {
+// One result card — matches marketplace ProductCard layout
+function ResultCard({ item }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const imageUrl = item.image_url
+    ? (item.image_url.startsWith('http') ? item.image_url : `http://localhost:5002${item.image_url}`)
+    : null;
+
+  const hasDiscount = item.discount_price && item.discount_price < item.price;
+  const matchPct    = item.match_percentage ?? Math.round((item.hybrid_score || 0) * 100);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all overflow-hidden flex flex-col">
+      {/* Image */}
+      <div className="relative aspect-square bg-gray-50 overflow-hidden">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={item.title}
+            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            onError={e => { e.target.style.display = 'none'; }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">👗</div>
+        )}
+
+        {/* Match % badge — top-left */}
+        <span className="absolute top-2 left-2 bg-purple-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+          {matchPct}% match
+        </span>
+
+        {/* Sale badge */}
+        {hasDiscount && (
+          <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+            SALE
+          </span>
+        )}
+
+        {/* Similarity breakdown icon — bottom-right, hover shows tooltip */}
+        <div
+          className="absolute bottom-2 right-2"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <button
+            className="w-6 h-6 rounded-full bg-white/80 border border-gray-200 flex items-center justify-center text-[10px] text-gray-500 hover:bg-white hover:border-purple-300 transition-all shadow-sm"
+            title="Similarity breakdown"
+          >
+            ℹ
+          </button>
+          {showTooltip && <SimilarityTooltip item={item} />}
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="p-3 flex flex-col flex-1">
+        <p className="text-xs text-purple-500 font-medium mb-0.5 capitalize">
+          {item.category?.replace(/_/g, ' ')}
+        </p>
+        <p className="text-sm font-semibold text-gray-800 line-clamp-2 flex-1">
+          {item.title || item.product_id}
+        </p>
+
+        <div className="mt-2 flex items-center gap-2">
+          {hasDiscount ? (
+            <>
+              <span className="text-sm font-bold text-green-600">
+                PKR {Number(item.discount_price).toLocaleString()}
+              </span>
+              <span className="text-xs text-gray-400 line-through">
+                PKR {Number(item.price).toLocaleString()}
+              </span>
+            </>
+          ) : item.price ? (
+            <span className="text-sm font-bold text-purple-700">
+              PKR {Number(item.price).toLocaleString()}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-1.5 flex items-center justify-between text-[10px] text-gray-400">
+          <span>{item.seller_name || 'Seller'}</span>
+          {item.city && <span>📍 {item.city}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ResultsGrid({ result }) {
   const { results, validation, search_metadata } = result;
 
   if (!results || results.length === 0) {
@@ -32,7 +135,7 @@ export default function ResultsGrid({ result, onNavigateToProduct }) {
         <span className="text-4xl">🔍</span>
         <p className="text-gray-600 mt-2">No similar dresses found.</p>
         <p className="text-xs text-gray-400 mt-1">
-          Run <code className="bg-gray-100 px-1 rounded">python seed_dummy_data.py</code> first.
+          Run <code className="bg-gray-100 px-1 rounded">python seed_all_categories.py</code> first.
         </p>
       </div>
     );
@@ -52,135 +155,26 @@ export default function ResultsGrid({ result, onNavigateToProduct }) {
           </h3>
           <p className="text-xs text-gray-400 mt-0.5">
             {search_metadata?.search_time_ms || 0}ms &nbsp;·&nbsp;
-            {embDim}-dim EfficientNet-B0 &nbsp;·&nbsp;
-            {queryColor && <span>Query colour: <strong>{queryColor}</strong></span>}
+            {embDim}-dim EfficientNet-B0
+            {queryColor && <span> &nbsp;·&nbsp; Query colour: <strong>{queryColor}</strong></span>}
           </p>
         </div>
         {validation?.used_preferred_category && (
           <span className="text-xs text-purple-500 bg-purple-50 px-2 py-0.5 rounded-full">
-            🏷️ Category hint
+            🏷️ Hint used
           </span>
         )}
       </div>
 
-      {/* Level legend */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {[
-          [1, 'Visual Match'],
-          [2, 'Color Match'],
-          [3, 'Color Family'],
-          [4, 'Category Match'],
-          [5, 'Closest'],
-        ].map(([lv, label]) => {
-          const s = LEVEL_STYLES[lv];
-          const used = results.some(r => r.match_level === lv);
-          return used ? (
-            <span key={lv} className={`${s.bg} text-[10px] font-medium px-2 py-0.5 rounded-full`}>
-              L{lv} {label}
-            </span>
-          ) : null;
-        })}
-      </div>
-
-      {/* Results Grid */}
+      {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {results.map((item) => {
-          const style = LEVEL_STYLES[item.match_level] || LEVEL_STYLES[5];
-          return (
-            <div
-              key={item.product_id}
-              className="border border-gray-200 rounded-xl overflow-hidden
-                         hover:shadow-md hover:border-purple-200 transition-all group"
-            >
-              {/* Image */}
-              <div className="relative h-44 bg-gradient-to-br from-purple-50 to-pink-50 overflow-hidden">
-                {item.image_url ? (
-                  <img
-                    src={item.image_url}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => { e.target.style.display = 'none'; }}
-                  />
-                ) : (
-                  <span className="absolute inset-0 flex items-center justify-center text-5xl opacity-30">
-                    👗
-                  </span>
-                )}
-
-                {/* Rank */}
-                <div className="absolute top-2 left-2 bg-black/60 text-white text-xs
-                                px-1.5 py-0.5 rounded-full font-medium">
-                  #{item.rank}
-                </div>
-
-                {/* Match level badge */}
-                <div className={`absolute top-2 right-2 ${style.bg}
-                                 text-[10px] font-bold px-2 py-0.5 rounded-full`}>
-                  L{item.match_level} · {item.match_percentage}%
-                </div>
-              </div>
-
-              {/* Info */}
-              <div className="p-3">
-                {/* Level label */}
-                <div className={`inline-flex items-center gap-1 mb-1.5 text-[10px]
-                                  font-semibold ${style.bg} px-2 py-0.5 rounded-full`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                  {item.match_label}
-                </div>
-
-                <h4 className="text-sm font-semibold text-gray-800 truncate">
-                  {item.title || item.product_id}
-                </h4>
-                <p className="text-[11px] text-gray-500 truncate">
-                  {item.category?.replace(/_/g, ' ')}
-                  {item.seller_name && (
-                    <span className="ml-1 text-purple-400">· {item.seller_name}</span>
-                  )}
-                </p>
-
-                {/* Score breakdown */}
-                <div className="mt-2 space-y-1">
-                  <ScoreBar label="Image"  value={item.image_similarity}
-                    colorClass="bg-gradient-to-r from-purple-400 to-purple-500" />
-                  <ScoreBar label="Color"
-                    value={Math.max(item.color_exact_sim || 0, item.color_family_sim || 0)}
-                    colorClass="bg-gradient-to-r from-teal-400 to-teal-500" />
-                  <ScoreBar label="Text"   value={item.text_similarity}
-                    colorClass="bg-gradient-to-r from-orange-400 to-orange-500" />
-                </div>
-
-                {/* Price */}
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-sm font-bold text-purple-600">
-                    {item.price
-                      ? `PKR ${Number(item.price).toLocaleString()}`
-                      : '—'}
-                  </span>
-                  {item.discount_price && item.discount_price < item.price && (
-                    <span className="text-xs line-through text-gray-400">
-                      PKR {Number(item.discount_price).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-
-                {/* View Details → cross-module navigate (§3.3) */}
-                {item.product_id && onNavigateToProduct && (
-                  <button
-                    onClick={() => onNavigateToProduct(item.product_id)}
-                    className="mt-2 w-full py-1.5 text-xs font-semibold text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">
-                    View in Marketplace →
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {results.map(item => (
+          <ResultCard key={item.product_id} item={item} />
+        ))}
       </div>
 
-      {/* Footer */}
       <p className="text-xs text-gray-400 text-center mt-4">
-        Cascade: L1 visual ≥ 55% · L2 visual+exact color · L3 color family · L4 TF-IDF · L5 fallback
+        Hover the ℹ icon on any card to see image · colour · text similarity scores
       </p>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import StepFinancial from './StepFinancial';
 import StepFamily from './StepFamily';
 import StepPriority from './StepPriority';
@@ -27,11 +27,11 @@ const INITIAL_FORM = {
   monthly_household_income:   '',
   total_savings_available:    '',
   expected_contribution:      '',
-  father_approval:            true,
-  mother_approval:            true,
+  parents_alive:              'both',    // both | only_father | only_mother | neither
   total_siblings:             '',
   unmarried_siblings:         '',
   married_siblings:           '',
+  youngest_sibling_age:       '',
   wedding_dress_type: 'bridal',          // §2.1 — bridal | groom
   priorities: {
     priority_wedding_dress: 'Medium',
@@ -53,6 +53,21 @@ function Wizard({ userId }) {
   const [loading,           setLoading]            = useState(false);
   const [saved,             setSaved]              = useState(false);
   const [error,             setError]              = useState('');
+  const [isLocked,          setIsLocked]           = useState(false); // existing estimation — read-only
+
+  // If buyer already has an estimation, go straight to locked dashboard
+  useEffect(() => {
+    if (!userId) return;
+    api.getByUser(userId).then(res => {
+      if (res.success && res.data) {
+        setResult(res.data);
+        setAdjustedEstimates(res.data.adjusted_estimates || {});
+        setSaved(true);
+        setIsLocked(true);
+        setCurrentStep(4);
+      }
+    }).catch(() => {});
+  }, [userId]);
 
   const updateForm = useCallback((updates) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -125,7 +140,8 @@ function Wizard({ userId }) {
         user_id:             userId,
         adjusted_estimates:  adjustedEstimates,
       };
-      const response = await api.save(payload);
+      // Use upsert so each buyer has exactly one estimation (updated on re-submit)
+      const response = await api.upsert(payload);
       if (response.success) {
         setSaved(true);
         // §4.4 + §2.5 — persist latest estimation for budget banner
@@ -164,6 +180,33 @@ function Wizard({ userId }) {
     setCurrentStep(1);
     setError('');
   };
+
+  // ── Locked mode: estimation already exists — show dashboard only ──
+  if (isLocked && result) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm text-purple-700 flex items-center gap-2">
+          <span>📊</span>
+          <span className="font-semibold">Your Dowry Budget Plan</span>
+          <span className="text-purple-500 ml-1">— Finalized. Use the budget shift tool below to reallocate funds between categories.</span>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+          <StepResults
+            result={result}
+            loading={false}
+            saved={true}
+            adjustedEstimates={adjustedEstimates}
+            onAdjust={(key, val) =>
+              setAdjustedEstimates((prev) => ({ ...prev, [key]: val }))
+            }
+            onSave={null}
+            onReset={null}
+            priorities={result.priorities || {}}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -276,14 +319,6 @@ function Wizard({ userId }) {
               {loading ? 'Saving...' : 'Save Estimate'}
             </button>
           )}
-          {saved && (
-            <button
-              onClick={handleReset}
-              className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 transition-all"
-            >
-              New Estimation
-            </button>
-          )}
         </div>
       </div>
     </div>
@@ -291,9 +326,15 @@ function Wizard({ userId }) {
 }
 
 function buildPayload(formData) {
-  const unmarried = Number(formData.unmarried_siblings || 0);
-  const married   = Number(formData.married_siblings   || 0);
-  const total     = Number(formData.total_siblings     || 0);
+  const unmarried    = Number(formData.unmarried_siblings   || 0);
+  const married      = Number(formData.married_siblings     || 0);
+  const total        = Number(formData.total_siblings       || 0);
+  const parentsAlive = formData.parents_alive || 'both';
+  const youngestAge  = Number(formData.youngest_sibling_age || 0);
+  // Repeat youngest age for each unmarried sibling so count matches (ruleEngine validates this)
+  const ageArray = youngestAge > 0 && unmarried > 0
+    ? Array(unmarried).fill(youngestAge)
+    : [];
   return {
     monthly_household_income:    Number(formData.monthly_household_income),
     total_savings_available:     Number(formData.total_savings_available),
@@ -301,9 +342,9 @@ function buildPayload(formData) {
     total_family_members:        total + 2,  // parents (2) + siblings
     married_children_count:      married,
     unmarried_children_count:    unmarried,
-    age_of_each_unmarried_child: [],
-    father_approval:             formData.father_approval !== false,
-    mother_approval:             formData.mother_approval !== false,
+    age_of_each_unmarried_child: ageArray,
+    father_approval:             parentsAlive === 'both' || parentsAlive === 'only_father',
+    mother_approval:             parentsAlive === 'both' || parentsAlive === 'only_mother',
     priorities:                  formData.priorities,
     redistributions:             formData.redistributions,
     wedding_dress_type:          formData.wedding_dress_type,

@@ -252,6 +252,11 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
         </div>
       </div>
 
+      {/* Community Insights — BUYER 7 */}
+      {result.training_matches?.length > 0 && (
+        <CommunityInsights matches={result.training_matches} myBudget={adjustedTotal} />
+      )}
+
       {/* Category Breakdown Table */}
       <div className="border border-gray-100 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
@@ -337,6 +342,68 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
 
       {/* Saved Confirmation + §11.5 Manage Budget */}
       {saved && <BudgetManageSection />}
+    </div>
+  );
+}
+
+// ── BUYER 7 — Community Insights: 5 similar training profiles ─────────────
+
+function incomeBucket(income) {
+  if (income <  30000) return "< 30K";
+  if (income <  50000) return "30K–50K";
+  if (income <  75000) return "50K–75K";
+  if (income < 100000) return "75K–100K";
+  if (income < 150000) return "100K–150K";
+  if (income < 200000) return "150K–200K";
+  if (income < 300000) return "200K–300K";
+  return "300K+";
+}
+
+function CommunityInsights({ matches, myBudget }) {
+  return (
+    <div className="border border-purple-100 rounded-xl overflow-hidden">
+      <div className="bg-purple-50 px-4 py-3 border-b border-purple-100">
+        <h3 className="text-sm font-semibold text-purple-800">Community Insights</h3>
+        <p className="text-xs text-purple-500 mt-0.5">
+          {matches.length} similar profiles found — showing how others with comparable income estimated their dowry
+        </p>
+      </div>
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Income Range</th>
+            <th className="text-center px-4 py-2.5 text-xs font-medium text-gray-500">Family</th>
+            <th className="text-right px-4 py-2.5 text-xs font-medium text-gray-500">Their Budget</th>
+            <th className="text-right px-4 py-2.5 text-xs font-medium text-gray-500">vs Yours</th>
+          </tr>
+        </thead>
+        <tbody>
+          {matches.map((m, i) => {
+            const dev = m.deviation_pct;
+            const devColor =
+              Math.abs(dev) <= 10 ? "text-green-600" :
+              Math.abs(dev) <= 25 ? "text-amber-600" : "text-red-600";
+            const devLabel =
+              dev > 0 ? `+${dev}%` : dev < 0 ? `${dev}%` : "Same";
+            return (
+              <tr key={i} className="border-t border-gray-50 hover:bg-gray-50">
+                <td className="px-4 py-2.5 text-gray-700 font-medium">
+                  PKR {incomeBucket(m.income)}/mo
+                </td>
+                <td className="px-4 py-2.5 text-center text-gray-500">
+                  {m.total_family_members} members
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-gray-700">
+                  {formatPKR(m.total_recommended_budget)}
+                </td>
+                <td className={`px-4 py-2.5 text-right font-semibold ${devColor}`}>
+                  {devLabel}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

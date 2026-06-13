@@ -452,95 +452,6 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
   );
 }
 
-// ── Package Suggestions (§5.1) ────────────────────────────────────────────
-
-function PackageSuggestions({ allProducts }) {
-  const [openPkg, setOpenPkg] = useState(null);
-
-  const dowry = readDowry();
-  if (!dowry?.category_budgets || allProducts.length === 0) return null;
-
-  const budgets    = dowry.category_budgets;
-  const activeCats = Object.entries(budgets).filter(([, v]) => v.active !== false).map(([k]) => k);
-  if (activeCats.length === 0) return null;
-
-  const cheapestByCat = {};
-  activeCats.forEach(cat => {
-    const catProducts = allProducts.filter(p => p.major_category === cat);
-    if (catProducts.length > 0) {
-      cheapestByCat[cat] = catProducts.reduce((min, p) =>
-        (p.discount_price || p.price) < (min.discount_price || min.price) ? p : min
-      );
-    }
-  });
-
-  const availableCats = Object.keys(cheapestByCat);
-  if (availableCats.length === 0) return null;
-
-  const packages = [
-    {
-      id: 'budget',
-      label: 'Budget Package',
-      icon: '💰',
-      desc: 'Cheapest options across all categories',
-      items: Object.entries(cheapestByCat).slice(0, 5),
-    },
-    {
-      id: 'dress_focus',
-      label: 'Dress Focus',
-      icon: '👗',
-      desc: 'Best dress + budget items for rest',
-      items: Object.entries(cheapestByCat).filter(([cat]) => cat !== 'wedding_dress').slice(0, 4)
-        .concat(Object.entries(cheapestByCat).filter(([cat]) => cat === 'wedding_dress')),
-    },
-    {
-      id: 'furniture_focus',
-      label: 'Furniture Focus',
-      icon: '🛋️',
-      desc: 'Best furniture + essentials',
-      items: Object.entries(cheapestByCat).filter(([cat]) => ['furniture', 'electronics', 'kitchen_items'].includes(cat)),
-    },
-  ].filter(pkg => pkg.items.length > 0);
-
-  return (
-    <div className="mb-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 border border-purple-100">
-      <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
-        <span>🎁</span> Suggested Packages
-        <span className="text-xs text-gray-400 font-normal ml-1">based on your budget estimate</span>
-      </h3>
-      <div className="flex gap-3 overflow-x-auto pb-1">
-        {packages.map(pkg => {
-          const total = pkg.items.reduce((s, [, p]) => s + (p.discount_price || p.price || 0), 0);
-          return (
-            <div
-              key={pkg.id}
-              onClick={() => setOpenPkg(openPkg === pkg.id ? null : pkg.id)}
-              className="flex-shrink-0 w-44 bg-white rounded-xl p-3 shadow-sm border border-purple-100 cursor-pointer hover:border-purple-300 transition-all">
-              <div className="text-2xl mb-1">{pkg.icon}</div>
-              <p className="text-xs font-bold text-gray-800">{pkg.label}</p>
-              <p className="text-[10px] text-gray-400 mb-2">{pkg.desc}</p>
-              <p className="text-sm font-bold text-purple-600">PKR {total.toLocaleString()}</p>
-              <p className="text-[10px] text-gray-400">{pkg.items.length} items</p>
-            </div>
-          );
-        })}
-      </div>
-
-      {openPkg && (
-        <div className="mt-3 p-3 bg-white rounded-xl border border-purple-100">
-          {packages.find(p => p.id === openPkg)?.items.map(([cat, prod]) => (
-            <div key={cat} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0 text-xs">
-              <span className="text-gray-600 capitalize w-28 truncate">{cat.replace(/_/g, ' ')}</span>
-              <span className="text-gray-800 flex-1 truncate mx-2">{prod.title}</span>
-              <span className="text-purple-600 font-semibold">PKR {(prod.discount_price || prod.price || 0).toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main MarketplacePage ──────────────────────────────────────────────────
 
 export default function MarketplacePage({ highlightProductId, onHighlightCleared, buyer }) {
@@ -717,9 +628,6 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
         <h2 className="text-2xl font-bold text-gray-800">Marketplace</h2>
         <p className="text-sm text-gray-500 mt-1">Browse wedding products from our verified sellers</p>
       </div>
-
-      {/* §5.1 Package Suggestions */}
-      {activeCat === '' && <PackageSuggestions allProducts={products} />}
 
       {/* Search bar */}
       <div className="relative mb-5">

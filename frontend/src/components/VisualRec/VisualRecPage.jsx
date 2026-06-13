@@ -1,52 +1,44 @@
 import React, { useState, useCallback } from 'react';
 import ImageUpload from './ImageUpload';
-import PipelineStatus from './PipelineStatus';
 import ResultsGrid from './ResultsGrid';
 import ServiceStatus from './ServiceStatus';
 import visualApi from '../../api/visualApi';
 
-// All wedding-dress subcategories — match seller upload CATEGORY_TREE
-const CATEGORIES = [
-  // Bridal
-  { id: 'bridal_lehenga', label: 'Bridal Lehenga',    icon: '👗', group: 'Bridal' },
-  { id: 'bridal_sharara', label: 'Bridal Sharara',    icon: '💃', group: 'Bridal' },
-  { id: 'bridal_gharara', label: 'Bridal Gharara',    icon: '👗', group: 'Bridal' },
-  { id: 'bridal_gown',    label: 'Bridal Gown',       icon: '🤍', group: 'Bridal' },
-  // Groom
-  { id: 'groom_sherwani',       label: 'Sherwani',       icon: '🎩', group: 'Groom' },
-  { id: 'groom_shalwar_kameez', label: 'Shalwar Kameez', icon: '👔', group: 'Groom' },
-  { id: 'groom_suit',           label: 'Suit',           icon: '🕴️', group: 'Groom' },
+// Only Bridal / Groom — map to a valid ML category for the backend
+const HINT_OPTIONS = [
+  { id: 'bridal', label: 'Bridal', icon: '👰', backendCat: 'bridal_lehenga' },
+  { id: 'groom',  label: 'Groom',  icon: '🤵', backendCat: null },          // no dedicated model class; TF-IDF handles it
 ];
 
 // Error stage → display config
 const STAGE_DISPLAY = {
-  content_safety:    { icon: '🚫', title: 'Content Safety Check Failed',    color: 'bg-red-50 border-red-200' },
-  category_validation: { icon: '⚠️', title: 'Dress Category Not Recognised', color: 'bg-yellow-50 border-yellow-200' },
-  similarity_gate:   { icon: '🔍', title: 'No Matching Dress Found',         color: 'bg-orange-50 border-orange-200' },
+  content_safety:      { icon: '🚫', title: 'Content Safety Check Failed',    color: 'bg-red-50 border-red-200' },
+  category_validation: { icon: '⚠️', title: 'Dress Category Not Recognised',  color: 'bg-yellow-50 border-yellow-200' },
+  similarity_gate:     { icon: '🔍', title: 'No Matching Dress Found',         color: 'bg-orange-50 border-orange-200' },
 };
 
+function wordCount(text) {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export default function VisualRecPage({ userId, onNavigateToProduct }) {
-  const [selectedFile,       setSelectedFile]       = useState(null);
-  const [preview,            setPreview]            = useState(null);
-  const [preferredCategory,  setPreferredCategory]  = useState(null);
-  const [userDescription,    setUserDescription]    = useState('');
-  const [loading,            setLoading]            = useState(false);
-  const [result,             setResult]             = useState(null);
-  const [error,              setError]              = useState(null);
-  const [pipelineStages,     setPipelineStages]     = useState({
-    stage1: 'pending', stage2: 'pending', stage3: 'pending',
-  });
+  const [selectedFile,      setSelectedFile]      = useState(null);
+  const [preview,           setPreview]           = useState(null);
+  const [hintId,            setHintId]            = useState(null);
+  const [userDescription,   setUserDescription]   = useState('');
+  const [loading,           setLoading]           = useState(false);
+  const [result,            setResult]            = useState(null);
+  const [error,             setError]             = useState(null);
 
   const handleFileSelect = useCallback((file) => {
     setSelectedFile(file);
     setPreview(URL.createObjectURL(file));
     setResult(null);
     setError(null);
-    setPipelineStages({ stage1: 'pending', stage2: 'pending', stage3: 'pending' });
   }, []);
 
-  // Both image AND description required before search
-  const canSearch = selectedFile && userDescription.trim().length >= 5 && !loading;
+  const words = wordCount(userDescription);
+  const canSearch = selectedFile && words >= 4 && !loading;
 
   const handleRecommend = async () => {
     if (!canSearch) return;
@@ -54,11 +46,10 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
     setLoading(true);
     setError(null);
     setResult(null);
-    setPipelineStages({ stage1: 'active', stage2: 'pending', stage3: 'pending' });
 
     try {
-      setTimeout(() => setPipelineStages(p => ({ ...p, stage1: 'active' })), 300);
-      setTimeout(() => setPipelineStages(p => ({ ...p, stage2: 'active' })), 800);
+      const hint = HINT_OPTIONS.find(h => h.id === hintId);
+      const preferredCategory = hint?.backendCat || null;
 
       const response = await visualApi.recommend(
         selectedFile,
@@ -69,23 +60,11 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
       );
 
       if (response.status === 'success') {
-        setPipelineStages({ stage1: 'passed', stage2: 'passed', stage3: 'passed' });
         setResult(response);
-      } else if (response.stage === 'content_safety') {
-        setPipelineStages({ stage1: 'failed', stage2: 'pending', stage3: 'pending' });
-        setError(response);
-      } else if (response.stage === 'category_validation') {
-        setPipelineStages({ stage1: 'passed', stage2: 'failed', stage3: 'pending' });
-        setError(response);
-      } else if (response.stage === 'similarity_gate') {
-        setPipelineStages({ stage1: 'passed', stage2: 'passed', stage3: 'failed' });
-        setError(response);
       } else {
-        setPipelineStages({ stage1: 'failed', stage2: 'failed', stage3: 'failed' });
         setError(response);
       }
     } catch (err) {
-      setPipelineStages({ stage1: 'failed', stage2: 'failed', stage3: 'failed' });
       setError({
         status: 'error',
         reason: err.response?.data?.reason || err.message || 'Could not connect. Make sure both services are running.',
@@ -100,9 +79,8 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
     setPreview(null);
     setResult(null);
     setError(null);
-    setPreferredCategory(null);
+    setHintId(null);
     setUserDescription('');
-    setPipelineStages({ stage1: 'pending', stage2: 'pending', stage3: 'pending' });
   };
 
   const stageDisplay = error ? (STAGE_DISPLAY[error.stage] || STAGE_DISPLAY.content_safety) : null;
@@ -115,7 +93,7 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
           👗 Visual Dress Recommendation
         </h2>
         <p className="text-gray-500 max-w-xl mx-auto text-sm">
-          Upload a bridal dress photo, describe it, and our AI finds the most similar
+          Upload a wedding dress photo, describe it in a few words, and our AI finds the most similar
           options using EfficientNet-B0 visual + colour + TF-IDF text matching.
         </p>
       </div>
@@ -127,72 +105,65 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
           {/* Image Upload */}
           <ImageUpload onFileSelect={handleFileSelect} preview={preview} loading={loading} />
 
+          {/* Dress Type Hint — Bridal / Groom only */}
+          <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              Dress Type
+              <span className="ml-2 text-[10px] font-normal text-purple-500">(optional — helps AI)</span>
+            </h3>
+            <div className="flex gap-3">
+              {HINT_OPTIONS.map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setHintId(hintId === opt.id ? null : opt.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${
+                    hintId === opt.id
+                      ? 'bg-purple-100 border-purple-400 text-purple-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-purple-300'
+                  }`}
+                >
+                  <span className="text-lg">{opt.icon}</span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {hintId && (
+              <button onClick={() => setHintId(null)}
+                className="mt-2 text-[10px] text-gray-400 hover:text-gray-600">
+                Clear hint
+              </button>
+            )}
+          </div>
+
           {/* Mandatory Description */}
           <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
               📝 Describe the Dress
               <span className="text-red-500 text-xs font-bold">*</span>
-              <span className="ml-auto text-[10px] text-gray-400 font-normal">Required</span>
+              <span className="ml-auto text-[10px] text-gray-400 font-normal">Min 4 words</span>
             </h3>
             <p className="text-[10px] text-gray-400 mb-2">
-              Colour, fabric, embroidery — even rough spelling is OK (e.g. "redd lehnga zardozy")
+              Colour, fabric, embroidery — rough spelling is OK (e.g. "redd lehnga zardozy heavy")
             </p>
             <textarea
               value={userDescription}
               onChange={(e) => setUserDescription(e.target.value)}
-              placeholder="e.g. deep red bridal lehenga with heavy zardozi embroidery on silk fabric"
+              placeholder="e.g. deep red bridal lehenga heavy zardozi embroidery silk"
               rows={3}
               className={`w-full border rounded-lg px-3 py-2 text-sm resize-none
                          focus:outline-none focus:ring-2 focus:ring-purple-400 transition-colors
-                         ${userDescription.trim().length >= 5
+                         ${words >= 4
                            ? 'border-green-300 bg-green-50/40'
                            : 'border-gray-200'}`}
             />
             <div className="flex items-center justify-between mt-1">
               <p className="text-[10px] text-gray-400">
-                {userDescription.trim().length < 5
-                  ? `${5 - userDescription.trim().length} more chars needed`
+                {words < 4
+                  ? `${4 - words} more word${4 - words !== 1 ? 's' : ''} needed`
                   : '✓ Description looks good'}
               </p>
-              <span className="text-[10px] text-gray-300">{userDescription.length}/300</span>
+              <span className="text-[10px] text-gray-300">{words} words</span>
             </div>
-          </div>
-
-          {/* Category Hint */}
-          <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              🏷️ Dress Type Hint
-              <span className="ml-2 text-[10px] font-normal text-purple-500">
-                (overrides AI prediction)
-              </span>
-            </h3>
-            {['Bridal', 'Groom'].map(group => (
-              <div key={group} className="mb-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{group}</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {CATEGORIES.filter(c => c.group === group).map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setPreferredCategory(preferredCategory === cat.id ? null : cat.id)}
-                      className={`text-xs px-2 py-1.5 rounded-lg border transition-all text-left flex items-center gap-1 ${
-                        preferredCategory === cat.id
-                          ? 'bg-purple-100 border-purple-400 text-purple-700 font-semibold'
-                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-purple-300'
-                      }`}
-                    >
-                      <span>{cat.icon}</span>
-                      <span className="truncate">{cat.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {preferredCategory && (
-              <button onClick={() => setPreferredCategory(null)}
-                className="mt-1 text-[10px] text-gray-400 hover:text-gray-600">
-                Clear selection
-              </button>
-            )}
           </div>
 
           {/* Action Buttons */}
@@ -212,10 +183,10 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Analyzing...
+                  Analyzing…
                 </span>
               ) : !selectedFile ? '📸 Upload an image first'
-                : userDescription.trim().length < 5 ? '📝 Add a description first'
+                : words < 4 ? '📝 Add at least 4 words'
                 : '🔍 Find Similar Dresses'}
             </button>
 
@@ -228,10 +199,11 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
 
         {/* ── Right Column ────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-4">
-          <PipelineStatus stages={pipelineStages} result={result} error={error} />
 
           {/* Success results */}
-          {result?.status === 'success' && <ResultsGrid result={result} onNavigateToProduct={onNavigateToProduct} />}
+          {result?.status === 'success' && (
+            <ResultsGrid result={result} onNavigateToProduct={onNavigateToProduct} />
+          )}
 
           {/* Error / rejection display */}
           {error && stageDisplay && (
@@ -248,7 +220,6 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
                     </p>
                   )}
 
-                  {/* Similarity gate: show best score */}
                   {error.stage === 'similarity_gate' && error.best_score !== undefined && (
                     <div className="mt-2 flex items-center gap-2">
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
@@ -267,17 +238,16 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
                       {' '}({(error.detected_confidence * 100).toFixed(1)}% confidence)
                     </p>
                   )}
-                  {error.supported_categories && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {error.supported_categories.map(cat => (
-                        <span key={cat} className="px-2 py-0.5 bg-white rounded text-xs text-gray-500 border">
-                          {cat.replace(/_/g, ' ')}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Idle state hint */}
+          {!result && !error && !loading && (
+            <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-8 text-center text-gray-400">
+              <p className="text-4xl mb-3">👗</p>
+              <p className="text-sm">Upload a dress photo and describe it to find similar styles.</p>
             </div>
           )}
 

@@ -13,6 +13,16 @@ const dowryApi = {
     return r.data;
   },
 
+  upsert: async (data) => {
+    const r = await axios.post(`${API_BASE}/dowry/upsert`, data);
+    return r.data;
+  },
+
+  getByUser: async (userId) => {
+    const r = await axios.get(`${API_BASE}/dowry/by-user/${userId}`);
+    return r.data;
+  },
+
   getHistory: async (userId) => {
     const r = await axios.get(`${API_BASE}/dowry/history/${userId}`);
     return r.data;
