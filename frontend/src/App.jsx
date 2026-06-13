@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import VisualRecPage       from './components/VisualRec/VisualRecPage';
 import SellerPage          from './components/Seller/SellerPage';
 import SellerDashboard     from './components/Seller/SellerDashboard';
@@ -12,6 +12,199 @@ import CartDrawer          from './components/Cart/CartDrawer';
 import LandingPage         from './components/LandingPage';
 import { CartProvider, useCart } from './context/CartContext';
 import { getBuyerFromStorage, clearBuyerFromStorage } from './api/buyerApi';
+
+// ── Level helpers ─────────────────────────────────────────────────────────
+
+function getBuyerLevel(orders = 0) {
+  if (orders >= 7)  return { level: 3, label: 'Loyal Buyer',  color: 'from-teal-500 to-green-500',   next: null,  nextAt: null };
+  if (orders >= 3)  return { level: 2, label: 'Active Buyer', color: 'from-blue-500 to-purple-500',  next: 3,     nextAt: 7,   progress: (orders - 3) / 4 };
+  return             { level: 1, label: 'New Buyer',    color: 'from-purple-500 to-pink-500',  next: 2,     nextAt: 3,   progress: orders / 3 };
+}
+
+function getSellerLevel(orders = 0) {
+  if (orders >= 50) return { level: 3, label: 'Elite Seller',   color: 'from-amber-500 to-orange-500', next: null, nextAt: null };
+  if (orders >= 10) return { level: 2, label: 'Trusted Seller', color: 'from-blue-500 to-teal-500',   next: 3,    nextAt: 50,  progress: (orders - 10) / 40 };
+  return             { level: 1, label: 'Starter Seller', color: 'from-purple-500 to-pink-500',  next: 2,    nextAt: 10,  progress: orders / 10 };
+}
+
+function LevelBadge({ level, label, colorClass }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold text-white bg-gradient-to-r ${colorClass}`}>
+      L{level} · {label}
+    </span>
+  );
+}
+
+function LevelProgress({ info, ordersLabel }) {
+  if (!info.next) {
+    return <p className="text-xs text-gray-400 mt-1">Max level achieved</p>;
+  }
+  const pct = Math.round((info.progress || 0) * 100);
+  return (
+    <div className="mt-3">
+      <div className="flex justify-between text-xs text-gray-500 mb-1">
+        <span>{ordersLabel} · progress to L{info.next}</span>
+        <span>{pct}% ({info.nextAt} needed)</span>
+      </div>
+      <div className="w-full bg-gray-100 rounded-full h-2">
+        <div
+          className={`h-2 rounded-full bg-gradient-to-r ${info.color}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function BuyerAccountView({ buyer }) {
+  const orders    = buyer?.orders_count || 0;
+  const levelInfo = getBuyerLevel(orders);
+  const joined    = buyer?.created_at
+    ? new Date(buyer.created_at).toLocaleDateString('en-PK', { year: 'numeric', month: 'short' })
+    : 'Recently';
+
+  return (
+    <div className="animate-fade-in max-w-lg mx-auto space-y-4">
+      {/* Profile card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+        <div className="flex items-center gap-4 mb-5">
+          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
+            {buyer?.name?.[0]?.toUpperCase() || '?'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold text-gray-800 truncate">{buyer?.name}</h2>
+            <p className="text-sm text-gray-400 truncate">{buyer?.email}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          {buyer?.phone && (
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Phone</p>
+              <p className="font-semibold text-gray-700">{buyer.phone}</p>
+            </div>
+          )}
+          {buyer?.city && (
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">City</p>
+              <p className="font-semibold text-gray-700">📍 {buyer.city}</p>
+            </div>
+          )}
+          <div className="bg-gray-50 rounded-xl p-3">
+            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Member Since</p>
+            <p className="font-semibold text-gray-700">{joined}</p>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-3">
+            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Orders</p>
+            <p className="font-semibold text-gray-700">{orders}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Level card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+        <h3 className="text-sm font-semibold text-gray-600 mb-3">Buyer Level</h3>
+        <LevelBadge level={levelInfo.level} label={levelInfo.label} colorClass={levelInfo.color} />
+        <LevelProgress info={levelInfo} ordersLabel={`${orders} order${orders !== 1 ? 's' : ''}`} />
+        <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-center">
+          {[
+            { l: 1, label: 'New Buyer',    at: 'On registration' },
+            { l: 2, label: 'Active Buyer', at: '3+ orders' },
+            { l: 3, label: 'Loyal Buyer',  at: '7+ orders' },
+          ].map(({ l, label, at }) => (
+            <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+              <p className="font-bold">L{l}</p>
+              <p className="font-medium text-[10px]">{label}</p>
+              <p className="text-[9px] mt-0.5">{at}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SellerAccountView({ seller }) {
+  const orders    = seller?.completed_orders || seller?.orders_count || 0;
+  const levelInfo = getSellerLevel(orders);
+  const joined    = seller?.created_at
+    ? new Date(seller.created_at).toLocaleDateString('en-PK', { year: 'numeric', month: 'short' })
+    : 'Recently';
+  const maxListings = seller?.max_listings ?? (seller?.seller_type === 'company' ? '∞' : 5);
+
+  return (
+    <div className="animate-fade-in max-w-lg mx-auto space-y-4">
+      {/* Profile card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-pink-100 p-6">
+        <div className="flex items-center gap-4 mb-5">
+          <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-red-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
+            {seller?.name?.[0]?.toUpperCase() || '?'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold text-gray-800 truncate">{seller?.name}</h2>
+            <p className="text-sm text-gray-400 truncate">{seller?.email}</p>
+            {seller?.seller_id && (
+              <p className="text-[10px] text-gray-400 font-mono mt-0.5">{seller.seller_id}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          {seller?.phone && (
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Phone</p>
+              <p className="font-semibold text-gray-700">{seller.phone}</p>
+            </div>
+          )}
+          {seller?.city && (
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">City</p>
+              <p className="font-semibold text-gray-700">📍 {seller.city}</p>
+            </div>
+          )}
+          <div className="bg-gray-50 rounded-xl p-3">
+            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Member Since</p>
+            <p className="font-semibold text-gray-700">{joined}</p>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-3">
+            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Orders Done</p>
+            <p className="font-semibold text-gray-700">{orders}</p>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-3">
+            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Seller Type</p>
+            <p className="font-semibold text-gray-700 capitalize">{seller?.seller_type || 'Individual'}</p>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-3">
+            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Max Listings</p>
+            <p className="font-semibold text-gray-700">{maxListings}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Level card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-pink-100 p-6">
+        <h3 className="text-sm font-semibold text-gray-600 mb-3">Seller Level</h3>
+        <LevelBadge level={levelInfo.level} label={levelInfo.label} colorClass={levelInfo.color} />
+        <LevelProgress info={levelInfo} ordersLabel={`${orders} completed order${orders !== 1 ? 's' : ''}`} />
+        <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-center">
+          {[
+            { l: 1, label: 'Starter Seller',  at: 'On registration' },
+            { l: 2, label: 'Trusted Seller',  at: '10+ orders' },
+            { l: 3, label: 'Elite Seller',    at: '50+ orders' },
+          ].map(({ l, label, at }) => (
+            <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+              <p className="font-bold">L{l}</p>
+              <p className="font-medium text-[10px]">{label}</p>
+              <p className="text-[9px] mt-0.5">{at}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── App Views ──────────────────────────────────────────────────────────────
 
 const BUYER_VIEWS = [
   { id: 'buyer-dashboard', label: 'Dashboard',       icon: '📊' },
@@ -31,7 +224,6 @@ const SELLER_VIEWS = [
 ];
 
 function AppContent() {
-  const [userId]              = useState(() => 'user-' + Math.random().toString(36).substr(2, 9));
   const [showLanding, setShowLanding] = useState(true);
   const [userRole, setUserRole] = useState(null); // 'buyer' or 'seller'
   const [view, setView]       = useState(null);
@@ -45,7 +237,12 @@ function AppContent() {
   // cross-module navigation
   const [highlightProductId, setHighlightProductId] = useState(null);
 
-  const { totalItems } = useCart();
+  const { totalItems, setBuyerId } = useCart();
+
+  // Isolate cart per buyer — switch storage key on login/logout
+  useEffect(() => {
+    setBuyerId(buyer?.buyer_id || null);
+  }, [buyer?.buyer_id]);
 
   const handleSelectBuyer = () => {
     setUserRole('buyer');
@@ -137,12 +334,6 @@ function AppContent() {
               <p className="text-xs text-gray-400">{userRole === 'buyer' ? 'Buyer' : 'Seller'}</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowLanding(true)}
-            className="w-full px-3 py-1.5 text-xs bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            Switch Role
-          </button>
         </div>
 
         {/* Navigation */}
@@ -246,28 +437,18 @@ function AppContent() {
             )}
             {userRole === 'buyer' && isLoggedIn && view === 'visual' && (
               <VisualRecPage
-                userId={userId}
+                userId={buyer?.buyer_id}
                 onNavigateToProduct={navigateToProduct}
               />
             )}
             {userRole === 'buyer' && isLoggedIn && view === 'dowry' && (
-              <DowryPage userId={userId} />
+              <DowryPage userId={buyer?.buyer_id} />
             )}
             {userRole === 'buyer' && isLoggedIn && view === 'projection' && (
               <FinalProjection buyer={buyer} />
             )}
             {userRole === 'buyer' && isLoggedIn && view === 'account' && (
-              <div className="animate-fade-in max-w-md mx-auto">
-                <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6 text-center">
-                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
-                    👤
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-800">{buyer.name}</h2>
-                  <p className="text-sm text-gray-400 mt-1">{buyer.email}</p>
-                  {buyer.city && <p className="text-xs text-gray-400 mt-0.5">📍 {buyer.city}</p>}
-                  <p className="text-xs text-gray-400 mt-2">📱 {buyer.phone}</p>
-                </div>
-              </div>
+              <BuyerAccountView buyer={buyer} />
             )}
 
             {/* SELLER VIEWS */}
@@ -287,17 +468,7 @@ function AppContent() {
               <SellerFinancialProj seller={seller} />
             )}
             {userRole === 'seller' && isLoggedIn && view === 'seller-account' && (
-              <div className="animate-fade-in max-w-md mx-auto">
-                <div className="bg-white rounded-2xl shadow-sm border border-pink-100 p-6 text-center">
-                  <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
-                    🏪
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-800">{seller.name}</h2>
-                  <p className="text-sm text-gray-400 mt-1">{seller.email}</p>
-                  {seller.city && <p className="text-xs text-gray-400 mt-0.5">📍 {seller.city}</p>}
-                  <p className="text-xs text-gray-400 mt-2">📱 {seller.phone}</p>
-                </div>
-              </div>
+              <SellerAccountView seller={seller} />
             )}
           </div>
         </div>

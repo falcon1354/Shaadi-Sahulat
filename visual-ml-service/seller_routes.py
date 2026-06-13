@@ -77,12 +77,22 @@ def register_seller():
     if not password or len(password) < 6:
         return jsonify({"success": False, "error": "password must be at least 6 characters"}), 400
 
+    seller_type = data.get("seller_type", "individual")
+    if seller_type not in ("individual", "company"):
+        seller_type = "individual"
+
+    max_listings = None if seller_type == "company" else 5
+    category_restriction = (data.get("category_restriction") or None) if seller_type == "company" else None
+
     result = create_seller(
         name=name,
         email=email,
         phone=data.get("phone", ""),
         city=data.get("city", ""),
         password=password,
+        seller_type=seller_type,
+        max_listings=max_listings,
+        category_restriction=category_restriction,
     )
     if result is None:
         return jsonify({"success": False, "error": "Database unavailable"}), 503

@@ -554,38 +554,6 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
 
         {/* ── Price + Discount ─────────────────────────────────────────────── */}
         <div className="p-4 bg-gray-50 rounded-xl space-y-3">
-
-          {/* §11.3 — Price Suggestion Box */}
-          {priceSuggestion && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-xs">
-              <p className="font-semibold text-blue-800 mb-1">
-                Suggested price range (similar listings, Level {priceSuggestion.lookup_level}):
-              </p>
-              <p className="text-blue-700 text-sm font-bold">
-                PKR {priceSuggestion.range_low?.toLocaleString()} – PKR {priceSuggestion.range_high?.toLocaleString()}
-              </p>
-              {priceNum > 0 && (
-                <p className={`mt-1 font-medium ${
-                  priceNum > (priceSuggestion.range_high || 0) * 2
-                    ? 'text-red-600'
-                    : priceNum > priceSuggestion.range_high
-                    ? 'text-amber-600'
-                    : priceNum < priceSuggestion.range_low
-                    ? 'text-amber-600'
-                    : 'text-green-600'
-                }`}>
-                  {priceNum > (priceSuggestion.range_high || 0) * 2
-                    ? `Price too high — exceeds 2× average. Max allowed: PKR ${Math.round((priceSuggestion.range_high || 0) * 2).toLocaleString()}`
-                    : priceNum > priceSuggestion.range_high
-                    ? `Your price is above similar listings (${priceSuggestion.band_pct}% band). Are you sure?`
-                    : priceNum < priceSuggestion.range_low
-                    ? 'Your price is below similar listings — verify this is intentional.'
-                    : 'Your price is within the recommended range ✓'}
-                </p>
-              )}
-            </div>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -609,6 +577,41 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
               {priceError && (
                 <p className="mt-1 text-xs text-red-600 font-medium">{priceError}</p>
               )}
+
+              {/* §11.3 Inline price suggestion — shown below price field */}
+              {priceSuggestion && (() => {
+                const lo  = priceSuggestion.range_low  || 0;
+                const hi  = priceSuggestion.range_high || 0;
+                const avg = Math.round((lo + hi) / 2);
+                const pct = priceSuggestion.band_pct || 30;
+                const belowPct = priceNum > 0 && priceNum < lo
+                  ? Math.round((lo - priceNum) / lo * 100)
+                  : 0;
+                const abovePct = priceNum > 0 && priceNum > hi
+                  ? Math.round((priceNum - hi) / hi * 100)
+                  : 0;
+                return (
+                  <div className="mt-1.5">
+                    <p className="text-[11px] text-blue-600 font-medium">
+                      Suggested: PKR {lo.toLocaleString()} – {hi.toLocaleString()}
+                      {' '}(avg PKR {avg.toLocaleString()}, ±{pct}%)
+                    </p>
+                    {priceNum > 0 && belowPct > 0 && (
+                      <p className="text-[11px] text-amber-600 font-semibold mt-0.5">
+                        ⚠ Below suggested range by {belowPct}%. Are you sure?
+                      </p>
+                    )}
+                    {priceNum > 0 && abovePct > 0 && (
+                      <p className="text-[11px] text-amber-600 font-semibold mt-0.5">
+                        ⚠ Above suggested range by {abovePct}%. Are you sure?
+                      </p>
+                    )}
+                    {priceNum > 0 && !belowPct && !abovePct && (
+                      <p className="text-[11px] text-green-600 mt-0.5">✓ Within suggested range</p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div>
