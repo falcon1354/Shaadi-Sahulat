@@ -4,6 +4,7 @@ import StepFamily from './StepFamily';
 import StepPriority from './StepPriority';
 import StepResults from './StepResults';
 import api from '../../api/dowryApi';
+import { useCategories } from '../../hooks/useCategories';
 
 const STEPS = [
   { id: 1, title: 'Financial Profile', icon: '💰' },
@@ -46,6 +47,26 @@ const INITIAL_FORM = {
 };
 
 function Wizard({ userId }) {
+  const { categories: dbCats } = useCategories();
+
+  // Dynamic categories from MongoDB; fall back to static list while loading
+  const CATEGORIES = dbCats.length
+    ? dbCats.map(c => ({
+        key:             `priority_${c.category_id}`,
+        label:           c.label,
+        icon:            c.icon || '📦',
+        hasTypeSelector: c.category_id === 'wedding_dress',
+      }))
+    : [
+        { key: 'priority_wedding_dress', label: 'Wedding Dress', icon: '👗', hasTypeSelector: true },
+        { key: 'priority_furniture',     label: 'Furniture',     icon: '🛋️' },
+        { key: 'priority_electronics',   label: 'Electronics',   icon: '📺' },
+        { key: 'priority_jewelry',       label: 'Jewelry',       icon: '💍' },
+        { key: 'priority_kitchen_items', label: 'Kitchen Items', icon: '🍳' },
+        { key: 'priority_decoration',    label: 'Decoration',    icon: '🎀' },
+        { key: 'priority_miscellaneous', label: 'Miscellaneous', icon: '📦' },
+      ];
+
   const [currentStep,       setCurrentStep]       = useState(1);
   const [formData,          setFormData]           = useState(INITIAL_FORM);
   const [result,            setResult]             = useState(null);
@@ -55,16 +76,43 @@ function Wizard({ userId }) {
   const [error,             setError]              = useState('');
   const [isLocked,          setIsLocked]           = useState(false); // existing estimation — read-only
 
-  // If buyer already has an estimation, go straight to locked dashboard
+  // When DB categories load, merge any new category keys into priorities with 'Medium' default
+  useEffect(() => {
+    if (!dbCats.length) return;
+    setFormData(prev => {
+      const merged = { ...prev.priorities };
+      let changed = false;
+      for (const cat of dbCats) {
+        const key = `priority_${cat.category_id}`;
+        if (!(key in merged)) { merged[key] = 'Medium'; changed = true; }
+      }
+      return changed ? { ...prev, priorities: merged } : prev;
+    });
+  }, [dbCats]);
+
+  // If buyer already has an estimation, load from DB and populate localStorage
   useEffect(() => {
     if (!userId) return;
     api.getByUser(userId).then(res => {
       if (res.success && res.data) {
-        setResult(res.data);
-        setAdjustedEstimates(res.data.adjusted_estimates || {});
+        const est = res.data;
+        setResult(est);
+        setAdjustedEstimates(est.adjusted_estimates || {});
         setSaved(true);
         setIsLocked(true);
         setCurrentStep(4);
+
+        // Populate localStorage from DB so Dashboard/FinalProjection can read it
+        if (est.category_budgets && Object.keys(est.category_budgets).length > 0) {
+          const dowryPayload = JSON.stringify({
+            estimation_id:    est._id,
+            total_budget:     est.total_recommended_budget,
+            category_budgets: est.category_budgets,
+            saved_at:         est.created_at || new Date().toISOString(),
+          });
+          localStorage.setItem('ss_dowry_latest', dowryPayload);
+          localStorage.setItem(`ss_dowry_${userId}`, dowryPayload);
+        }
       }
     }).catch(() => {});
   }, [userId]);
@@ -155,12 +203,15 @@ function Wizard({ userId }) {
               active:     (payload.priorities?.[`priority_${cat}`] || 'Medium') !== 'Not_Wanted',
             };
           }
-          localStorage.setItem('ss_dowry_latest', JSON.stringify({
-            estimation_id:   response.estimation_id,
-            total_budget:    response.data.total_recommended_budget,
+          const dowryPayload = JSON.stringify({
+            estimation_id:    response.estimation_id,
+            total_budget:     response.data.total_recommended_budget,
             category_budgets: catBudgets,
-            saved_at:        new Date().toISOString(),
-          }));
+            saved_at:         new Date().toISOString(),
+          });
+          localStorage.setItem('ss_dowry_latest', dowryPayload);
+          // buyer-isolated key so admin seeing marketplace doesn't read buyer data
+          if (userId) localStorage.setItem(`ss_dowry_${userId}`, dowryPayload);
         }
       } else {
         setError(response.error || 'Save failed');
@@ -202,6 +253,8 @@ function Wizard({ userId }) {
             onSave={null}
             onReset={null}
             priorities={result.priorities || {}}
+            categories={dbCats}
+            buyerId={userId}
           />
         </div>
       </div>
@@ -287,6 +340,8 @@ function Wizard({ userId }) {
             onSave={handleSave}
             onReset={handleReset}
             priorities={formData.priorities}
+            categories={dbCats}
+            buyerId={userId}
           />
         )}
       </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import sellerApi from '../../api/sellerApi';
 import ProductUpload from './ProductUpload';
 import ProductList from './ProductList';
+import { useCategories } from '../../hooks/useCategories';
 
 const TABS = ['Register / Login', 'Upload Product', 'My Products'];
 
@@ -22,17 +23,14 @@ const SELLER_TYPES = [
   },
 ];
 
-const MAJOR_CATS_OPTIONS = [
-  { id: '',               label: 'All Categories (no restriction)' },
-  { id: 'wedding_dress',  label: 'Wedding Dress only' },
-  { id: 'furniture',      label: 'Furniture only' },
-  { id: 'electronics',    label: 'Electronics only' },
-  { id: 'kitchen_items',  label: 'Kitchen Items only' },
-  { id: 'decoration',     label: 'Decoration only' },
-  { id: 'miscellaneous',  label: 'Miscellaneous only' },
-];
-
 export default function SellerPage({ onLogin, defaultTab = 0 }) {
+  const { categories } = useCategories();
+
+  // Build options dynamically; prepend "All" then one entry per DB category
+  const MAJOR_CATS_OPTIONS = [
+    { id: '', label: 'All Categories (no restriction)' },
+    ...categories.map(c => ({ id: c.category_id, label: `${c.label} only` })),
+  ];
   const [tab, setTab]           = useState(defaultTab);
   const [seller, setSeller]     = useState(null);
 

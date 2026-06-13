@@ -10,8 +10,10 @@ import BuyerDashboard      from './components/Buyer/BuyerDashboard';
 import FinalProjection     from './components/Buyer/FinalProjection';
 import CartDrawer          from './components/Cart/CartDrawer';
 import LandingPage         from './components/LandingPage';
+import AdminLogin          from './components/Admin/AdminLogin';
+import AdminLayout         from './components/Admin/AdminLayout';
 import { CartProvider, useCart } from './context/CartContext';
-import { getBuyerFromStorage, clearBuyerFromStorage } from './api/buyerApi';
+import { getBuyerFromStorage, saveBuyerToStorage, clearBuyerFromStorage } from './api/buyerApi';
 
 // ── Level helpers ─────────────────────────────────────────────────────────
 
@@ -233,6 +235,11 @@ function AppContent() {
     const stored = localStorage.getItem('ss_seller');
     return stored ? JSON.parse(stored) : null;
   });
+  const [admin, setAdmin]           = useState(() => {
+    const s = localStorage.getItem('ss_admin');
+    return s ? JSON.parse(s) : null;
+  });
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   // cross-module navigation
   const [highlightProductId, setHighlightProductId] = useState(null);
@@ -258,9 +265,22 @@ function AppContent() {
 
   const handleBuyerLogin = (b) => {
     setBuyer(b);
+    saveBuyerToStorage(b);
     setUserRole('buyer');
     setView('buyer-dashboard');
     setShowLanding(false);
+
+    // Seed buyer-isolated localStorage from DB so all components read correct data
+    if (b?.buyer_id) {
+      // Wishlist — use rich items from DB
+      if (Array.isArray(b.wishlist_items)) {
+        localStorage.setItem(`ss_wishlist_${b.buyer_id}`, JSON.stringify(b.wishlist_items));
+      }
+      // Recently viewed from DB
+      if (Array.isArray(b.recently_viewed_items)) {
+        localStorage.setItem(`ss_recently_viewed_${b.buyer_id}`, JSON.stringify(b.recently_viewed_items));
+      }
+    }
   };
 
   const handleSellerLogin = (s) => {
@@ -289,10 +309,29 @@ function AppContent() {
     setView('marketplace');
   };
 
+  const handleAdminLogin = (a) => {
+    setAdmin(a);
+    setShowAdminLogin(false);
+  };
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem('ss_admin');
+    setAdmin(null);
+  };
+
+  // Admin portal
+  if (admin) {
+    return <AdminLayout admin={admin} onLogout={handleAdminLogout} />;
+  }
+
+  if (showAdminLogin) {
+    return <AdminLogin onLogin={handleAdminLogin} onBack={() => setShowAdminLogin(false)} />;
+  }
+
   // If landing page should be shown
   if (showLanding) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 relative">
         {buyer ? (
           <LandingPage
             onSelectBuyer={() => handleBuyerLogin(buyer)}
@@ -309,6 +348,12 @@ function AppContent() {
             onSelectSeller={handleSelectSeller}
           />
         )}
+        <button
+          onClick={() => setShowAdminLogin(true)}
+          className="fixed bottom-4 right-4 text-xs text-gray-400 hover:text-gray-600 bg-white/80 border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm transition-colors"
+        >
+          Admin Portal
+        </button>
       </div>
     );
   }
@@ -480,7 +525,7 @@ function AppContent() {
       </main>
 
       {/* ── CART DRAWER ──────────────────────────────────────────────────── */}
-      <CartDrawer open={cartOpen} onClose={() => setCart(false)} />
+      <CartDrawer open={cartOpen} onClose={() => setCart(false)} buyerId={buyer?.buyer_id} />
     </div>
   );
 }

@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { useCategories } from '../../hooks/useCategories';
 
-const CAT_LABELS = {
-  wedding_dress: 'Wedding Dress',
-  furniture:     'Furniture',
-  electronics:   'Electronics',
-  jewelry:       'Jewelry',
-  kitchen_items: 'Kitchen Items',
-  decoration:    'Decoration',
-  miscellaneous: 'Miscellaneous',
-};
-
-function readDowry() {
-  try { return JSON.parse(localStorage.getItem('ss_dowry_latest') || 'null'); }
-  catch { return null; }
+function readDowry(buyerId) {
+  try {
+    if (buyerId) return JSON.parse(localStorage.getItem(`ss_dowry_${buyerId}`) || 'null');
+    return JSON.parse(localStorage.getItem('ss_dowry_latest') || 'null');
+  } catch { return null; }
 }
 
 export default function FinalProjection({ buyer }) {
+  const buyerId = buyer?.buyer_id;
+  const { categories } = useCategories();
+  const catLabel = (key) =>
+    categories.find(c => c.category_id === key)?.label || key.replace(/_/g, ' ');
+
   const [activeTab, setActiveTab] = useState('overview');
   const [dowry, setDowry]         = useState(null);
 
-  useEffect(() => { setDowry(readDowry()); }, []);
+  useEffect(() => { setDowry(readDowry(buyerId)); }, [buyerId]);
 
   if (!dowry?.category_budgets) {
     return (
@@ -47,7 +45,7 @@ export default function FinalProjection({ buyer }) {
   const activeCatCount = activeCats.filter(([, v]) => (v.spent || 0) > 0).length;
 
   const categoryComparison = activeCats.map(([cat, info]) => ({
-    category:  CAT_LABELS[cat] || cat,
+    category:  catLabel(cat),
     cat,
     estimated: info.estimated || 0,
     actual:    info.spent     || 0,
