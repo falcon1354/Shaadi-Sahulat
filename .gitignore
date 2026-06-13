@@ -4,8 +4,5 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
-uploads/
 *.log
-dist/
-build/
 .venv/
