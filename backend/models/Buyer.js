@@ -9,8 +9,31 @@ const buyerSchema = new mongoose.Schema(
     password_hash: { type: String, required: true },
     phone:         { type: String, default: "" },
     city:          { type: String, default: "" },
-    wishlist:      { type: [String], default: [] },
-    cart:          { type: Array,   default: [] },
+    cart:                 { type: Array,   default: [] },
+    dowry_done:           { type: Boolean, default: false },
+    dowry_estimation_id:  { type: String,  default: "" },
+    // Rich wishlist — stored in DB so new devices/browsers get real data
+    wishlist_items: {
+      type: [{
+        product_id:     { type: String, required: true },
+        title:          { type: String, default: "" },
+        price:          { type: Number, default: 0 },
+        major_category: { type: String, default: "" },
+        added_at:       { type: Date,   default: Date.now },
+      }],
+      default: [],
+    },
+    // Recently viewed — last 10, stored in DB
+    recently_viewed_items: {
+      type: [{
+        product_id:     { type: String, required: true },
+        title:          { type: String, default: "" },
+        price:          { type: Number, default: 0 },
+        major_category: { type: String, default: "" },
+        viewed_at:      { type: Date,   default: Date.now },
+      }],
+      default: [],
+    },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );

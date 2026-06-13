@@ -30,6 +30,8 @@ const visualRoutes = require("./routes/visual");
 const sellerRoutes = require("./routes/seller");
 const dowryRoutes  = require("./routes/dowry");
 const buyerRoutes  = require("./routes/buyer");
+const adminRoutes      = require("./routes/admin");
+const categoriesRoutes = require("./routes/categories");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -50,6 +52,8 @@ app.use("/api/visual",  visualRoutes);
 app.use("/api/seller",  sellerRoutes);
 app.use("/api/dowry",   dowryRoutes);
 app.use("/api/buyer",   buyerRoutes);
+app.use("/api/admin",      adminRoutes);
+app.use("/api/categories", categoriesRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

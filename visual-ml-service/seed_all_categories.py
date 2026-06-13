@@ -293,18 +293,13 @@ def main():
     print(f"    email     : {SELLER['email']}  password: Test@1234")
     print(f"    level     : 3  (completed_orders: {SELLER['completed_orders']})")
 
-    # ── 2. Remove all old seeded products ────────────────────────────
+    # ── 2. Full wipe — removes ALL products from every previous seed run ─
     print("\n[2] Cleaning old seeded data…")
-    d1 = db[PRODUCTS_COLLECTION].delete_many({"seller_id": SELLER["seller_id"]})
-    old = db[SELLERS_COLLECTION].find_one({"email": "admin@shaadisahulat.com"})
-    d2  = 0
-    if old:
-        res = db[PRODUCTS_COLLECTION].delete_many({"seller_id": old.get("seller_id", "__none__")})
-        d2  = res.deleted_count
+    d_all = db[PRODUCTS_COLLECTION].delete_many({})
     if "dress_catalog" in db.list_collection_names():
         db.drop_collection("dress_catalog")
         print("    Dropped legacy dress_catalog collection.")
-    print(f"    Removed {d1.deleted_count + d2} old products.")
+    print(f"    Removed {d_all.deleted_count} old products (full clean wipe).")
 
     # ── 3. Load descriptions.json ─────────────────────────────────────
     desc_file = os.path.join(os.path.dirname(__file__), "descriptions.json")
