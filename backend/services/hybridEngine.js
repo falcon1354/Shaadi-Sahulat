@@ -11,10 +11,22 @@
  */
 
 const axios            = require("axios");
-const { ruleEngine, ensureMinimums } = require("./ruleEngine");
+const { ruleEngine, ensureMinimums, KNOWN_ALLOCATION } = require("./ruleEngine");
 const mlClient         = require("./mlClient");
+const AdminCategory    = require("../models/AdminCategory");
 
 const VISUAL_ML_URL = process.env.VISUAL_ML_URL || "http://localhost:5002";
+
+/** Fetch active category IDs from MongoDB. Falls back to KNOWN_ALLOCATION keys. */
+async function fetchActiveCategoryIds() {
+  try {
+    const cats = await AdminCategory.find({ is_active: { $ne: false } })
+      .select("category_id")
+      .lean();
+    if (cats.length > 0) return cats.map(c => c.category_id);
+  } catch { /* ignore */ }
+  return Object.keys(KNOWN_ALLOCATION);
+}
 
 /**
  * Fetch avg price of top-5 cheapest products per category from Flask.
@@ -42,8 +54,9 @@ async function fetchCategoryPrices() {
  * @returns {Promise<Object>}
  */
 async function hybridEstimate(inputs, useML = true) {
-  // Step 1 — Rule engine baseline
-  const ruleResult = ruleEngine(inputs);
+  // Step 1 — Fetch live categories from DB, then run rule engine
+  const activeCats = await fetchActiveCategoryIds();
+  const ruleResult = ruleEngine(inputs, activeCats);
 
   // Step 2 — Fetch DB avg prices per category (§2.3)
   const categoryPrices = await fetchCategoryPrices();

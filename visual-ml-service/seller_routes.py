@@ -187,10 +187,19 @@ def upload_product():
         return jsonify({"success": False, "error": "title is required"}), 400
     if not description:
         return jsonify({"success": False, "error": "description is required"}), 400
-    if not major_category or major_category not in SELLER_MAJOR_CATEGORY_IDS:
+    # Validate against live DB categories (admin may have added new ones)
+    try:
+        from mongo_seller import _get_db as _mg
+        _valid_cats = [c["category_id"] for c in _mg()["admin_categories"].find(
+            {"is_active": {"$ne": False}}, {"category_id": 1, "_id": 0})]
+        if not _valid_cats:
+            _valid_cats = list(SELLER_MAJOR_CATEGORY_IDS)
+    except Exception:
+        _valid_cats = list(SELLER_MAJOR_CATEGORY_IDS)  # static fallback
+    if not major_category or major_category not in _valid_cats:
         return jsonify({
             "success": False,
-            "error": f"major_category must be one of: {SELLER_MAJOR_CATEGORY_IDS}",
+            "error": f"major_category must be one of: {_valid_cats}",
         }), 400
     if not subcategory:
         return jsonify({"success": False, "error": "subcategory is required"}), 400
@@ -523,6 +532,58 @@ def _extract_embedding(image_path: str, model) -> list[float] | None:
     except Exception as exc:
         print(f"[SellerRoutes] Embedding failed for {image_path}: {exc}")
         return None
+
+
+# ── Admin helper endpoints ─────────────────────────────────────────────────────
+
+@seller_bp.route("/all", methods=["GET"])
+def get_all_sellers():
+    """Admin: all sellers with product counts and level."""
+    from mongo_seller import _get_db, SELLERS_COLLECTION, PRODUCTS_COLLECTION
+    db = _get_db()
+    if db is None:
+        return jsonify({"success": False, "sellers": []}), 503
+    sellers = list(db[SELLERS_COLLECTION].find({}, {"password_hash": 0}))
+    for s in sellers:
+        s["_id"] = str(s["_id"])
+        s["product_count"] = db[PRODUCTS_COLLECTION].count_documents({"seller_id": s.get("seller_id")})
+        orders = s.get("completed_orders", 0)
+        s["level"] = 3 if orders > 50 else (2 if orders >= 10 else 1)
+        _iso_doc_inline(s)
+    return jsonify({"success": True, "sellers": sellers})
+
+
+@seller_bp.route("/stats", methods=["GET"])
+def get_stats():
+    """Admin: financial stats — counts and category breakdown."""
+    from mongo_seller import _get_db, SELLERS_COLLECTION, PRODUCTS_COLLECTION
+    db = _get_db()
+    if db is None:
+        return jsonify({"success": False}), 503
+    seller_count  = db[SELLERS_COLLECTION].count_documents({})
+    product_count = db[PRODUCTS_COLLECTION].count_documents({"availability_status": "available"})
+    pipeline = [
+        {"$match": {"availability_status": "available"}},
+        {"$group": {"_id": "$major_category", "count": {"$sum": 1}, "total_price": {"$sum": "$price"}}},
+    ]
+    cat_stats = list(db[PRODUCTS_COLLECTION].aggregate(pipeline))
+    for c in cat_stats:
+        c["category"] = c.pop("_id")
+    revenue = sum(c.get("total_price", 0) for c in cat_stats)
+    return jsonify({
+        "success": True,
+        "seller_count": seller_count,
+        "product_count": product_count,
+        "category_stats": cat_stats,
+        "revenue_simulated": revenue,
+    })
+
+
+def _iso_doc_inline(doc: dict):
+    for key in ("created_at", "updated_at"):
+        val = doc.get(key)
+        if val and hasattr(val, "isoformat"):
+            doc[key] = val.isoformat()
 
 
 def _iso_doc(doc: dict):

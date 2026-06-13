@@ -21,7 +21,7 @@ os.makedirs(PROFILES_DIR, exist_ok=True)
 
 dowry_bp = Blueprint("dowry", __name__, url_prefix="/dowry")
 
-DOWRY_CATEGORIES = [
+DOWRY_CATEGORIES_FALLBACK = [
     "wedding_dress",
     "furniture",
     "electronics",
@@ -29,6 +29,16 @@ DOWRY_CATEGORIES = [
     "decoration",
     "miscellaneous",
 ]
+
+
+def _get_active_categories(db):
+    """Fetch active category IDs from admin_categories. Falls back to static list."""
+    try:
+        cats = [c["category_id"] for c in db["admin_categories"].find(
+            {"is_active": {"$ne": False}}, {"category_id": 1, "_id": 0})]
+        return cats if cats else DOWRY_CATEGORIES_FALLBACK
+    except Exception:
+        return DOWRY_CATEGORIES_FALLBACK
 
 
 @dowry_bp.route("/category-prices", methods=["GET"])
@@ -41,8 +51,9 @@ def get_category_prices():
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         db = client[MONGO_DB]
 
+        active_cats = _get_active_categories(db)
         result = {}
-        for cat in DOWRY_CATEGORIES:
+        for cat in active_cats:
             products = list(
                 db[PRODUCTS_COLLECTION]
                 .find(

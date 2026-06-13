@@ -8,6 +8,7 @@
 const axios           = require("axios");
 const DowryEstimation = require("../models/DowryEstimation");
 const DowryTraining   = require("../models/DowryTraining");
+const Buyer           = require("../models/Buyer");
 const { hybridEstimate } = require("../services/hybridEngine");
 const { ruleEngine }     = require("../services/ruleEngine");
 const mlClient           = require("../services/mlClient");
@@ -170,12 +171,29 @@ async function saveEstimation(req, res) {
 // ── GET /api/dowry/by-user/:user_id ──────────────────────────────────────
 async function getEstimationByUser(req, res) {
   try {
-    const estimation = await DowryEstimation.findOne({ user_id: req.params.user_id })
-      .sort({ created_at: -1 })
-      .lean();
+    const { user_id } = req.params;
+
+    // Primary lookup by user_id stored on the estimation
+    let estimation = await DowryEstimation.findOne({ user_id }).sort({ created_at: -1 }).lean();
+
+    // Fallback: old estimations were saved with a random user_id (before the userId bug fix).
+    // Look up the Buyer document — if it has dowry_estimation_id, fetch by _id directly.
     if (!estimation) {
-      return res.json({ success: true, data: null });
+      const buyer = await Buyer.findOne({ buyer_id: user_id }).lean();
+      if (buyer?.dowry_estimation_id) {
+        estimation = await DowryEstimation.findById(buyer.dowry_estimation_id).lean();
+        // Fix the stale user_id on the old estimation so future lookups work
+        if (estimation) {
+          await DowryEstimation.updateOne(
+            { _id: estimation._id },
+            { $set: { user_id } }
+          );
+          estimation.user_id = user_id;
+        }
+      }
     }
+
+    if (!estimation) return res.json({ success: true, data: null });
     return res.json({ success: true, data: estimation });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
@@ -235,6 +253,12 @@ async function upsertEstimation(req, res) {
       { $set: update, $setOnInsert: { user_id, created_at: new Date() } },
       { upsert: true, new: true, lean: true }
     );
+
+    // Stamp buyer so locked-mode check works even if old estimation had wrong user_id
+    Buyer.findOneAndUpdate(
+      { buyer_id: user_id },
+      { $set: { dowry_done: true, dowry_estimation_id: saved._id.toString() } }
+    ).catch((e) => console.warn("[dowryController] Buyer stamp failed:", e.message));
 
     // Async: save anonymized record to training collection (BUYER 7)
     DowryTraining.create({
@@ -463,6 +487,85 @@ function validateAndNormalizeInputs(body) {
   };
 }
 
+// ── GET /api/dowry/migrate-buyer-status ───────────────────────────────────
+// One-time endpoint: stamps dowry_done + dowry_estimation_id on every Buyer
+// that already has a saved DowryEstimation. Open in browser once, then forget.
+async function migrateBuyerDowryStatus(req, res) {
+  try {
+    const estimations = await DowryEstimation.find({}).lean();
+    let linked = 0, orphaned = 0;
+    const report = [];
+
+    for (const est of estimations) {
+      const userId = est.user_id;
+
+      // Already correct buyer_id format
+      if (userId && userId.startsWith("buyer_")) {
+        const result = await Buyer.findOneAndUpdate(
+          { buyer_id: userId },
+          { $set: { dowry_done: true, dowry_estimation_id: est._id.toString() } },
+          { new: true }
+        );
+        if (result) {
+          linked++;
+          report.push({ estimation_id: est._id, buyer_id: userId, status: "linked" });
+        } else {
+          report.push({ estimation_id: est._id, buyer_id: userId, status: "no_buyer_found" });
+        }
+        continue;
+      }
+
+      // Old random user_id — try auto-link if only 1 unlinked buyer exists
+      orphaned++;
+      const unlinked = await Buyer.find({ dowry_done: { $ne: true } }).lean();
+      const orphanEsts = estimations.filter(e => !e.user_id?.startsWith("buyer_"));
+
+      if (unlinked.length === 1 && orphanEsts.length === 1) {
+        const buyer = unlinked[0];
+        await Buyer.updateOne(
+          { buyer_id: buyer.buyer_id },
+          { $set: { dowry_done: true, dowry_estimation_id: est._id.toString() } }
+        );
+        await DowryEstimation.updateOne(
+          { _id: est._id },
+          { $set: { user_id: buyer.buyer_id } }
+        );
+        linked++; orphaned--;
+        report.push({ estimation_id: est._id, buyer_id: buyer.buyer_id, status: "auto_linked" });
+      } else {
+        report.push({ estimation_id: est._id, user_id: userId, status: "orphaned_cannot_link" });
+      }
+    }
+
+    return res.json({ success: true, linked, orphaned, report });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+// ── PATCH /api/dowry/budgets/:user_id ─────────────────────────────────────
+// Persist updated category_budgets (after shift or checkout) to MongoDB.
+async function patchCategoryBudgets(req, res) {
+  try {
+    const { user_id } = req.params;
+    const { category_budgets } = req.body;
+    if (!category_budgets || typeof category_budgets !== "object") {
+      return res.status(400).json({ success: false, error: "category_budgets object required" });
+    }
+
+    const updated = await DowryEstimation.findOneAndUpdate(
+      { user_id },
+      { $set: { category_budgets } },
+      { sort: { created_at: -1 }, new: true }
+    );
+    if (!updated) return res.status(404).json({ success: false, error: "No estimation found for this user" });
+
+    return res.json({ success: true, category_budgets: updated.category_budgets });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 module.exports = {
   estimateDowry,
   saveEstimation,
@@ -475,4 +578,6 @@ module.exports = {
   getMLStats,
   initML,
   seedTrainingData,
+  migrateBuyerDowryStatus,
+  patchCategoryBudgets,
 };

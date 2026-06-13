@@ -13,15 +13,34 @@
  *   7. miscellaneous  —  3%
  */
 
-const BASE_ALLOCATION = {
-  wedding_dress: 0.25,   // merged bridal + groom
+// Default allocation percentages for known categories.
+// Any DB category NOT listed here gets equal share of remaining weight.
+const KNOWN_ALLOCATION = {
+  wedding_dress: 0.25,
   furniture:     0.20,
   electronics:   0.15,
-  jewelry:       0.20,
   kitchen_items: 0.12,
   decoration:    0.05,
   miscellaneous: 0.03,
 };
+
+/**
+ * Build BASE_ALLOCATION from a live list of active category IDs.
+ * Known cats keep their defined weight; unknown cats split the remainder equally.
+ */
+function buildAllocation(activeCats) {
+  const known   = activeCats.filter(c => KNOWN_ALLOCATION[c] !== undefined);
+  const unknown = activeCats.filter(c => KNOWN_ALLOCATION[c] === undefined);
+  const knownSum = known.reduce((s, c) => s + KNOWN_ALLOCATION[c], 0);
+  const unknownPct = unknown.length > 0 ? (1 - knownSum) / unknown.length : 0;
+  const alloc = {};
+  for (const c of known)    alloc[c] = KNOWN_ALLOCATION[c];
+  for (const c of unknown)  alloc[c] = Math.max(unknownPct, 0.03);
+  // Normalize so all weights sum to 1.0
+  const total = Object.values(alloc).reduce((a, b) => a + b, 0);
+  for (const c of Object.keys(alloc)) alloc[c] = alloc[c] / total;
+  return alloc;
+}
 
 // Per spec §2.2 — 4 priority options
 const PRIORITY_MULTIPLIERS = {
@@ -51,7 +70,7 @@ const MIN_CATEGORY_AMOUNT = 5000;
  * @param {Object} [inputs.redistributions={}]      e.g. { priority_furniture: false } — false = don't add back to pool
  * @returns {Object}
  */
-function ruleEngine(inputs) {
+function ruleEngine(inputs, activeCats = null) {
   const {
     monthly_household_income,
     total_savings_available,
@@ -63,6 +82,12 @@ function ruleEngine(inputs) {
     priorities              = {},
     redistributions         = {},
   } = inputs;
+
+  // Build dynamic allocation from live DB categories (or fall back to known defaults)
+  const cats = activeCats && activeCats.length > 0
+    ? activeCats
+    : Object.keys(KNOWN_ALLOCATION);
+  const BASE_ALLOCATION = buildAllocation(cats);
 
   const notes = [];
 
@@ -224,7 +249,8 @@ function ensureMinimums(breakdown, priorities = {}) {
 module.exports = {
   ruleEngine,
   ensureMinimums,
-  BASE_ALLOCATION,
+  buildAllocation,
+  KNOWN_ALLOCATION,
   PRIORITY_MULTIPLIERS,
   MIN_BUDGET,
   MAX_INCOME_RATIO,
