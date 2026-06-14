@@ -198,19 +198,20 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
 
       {/* Charts — top 10 by highest amount */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="border border-gray-100 rounded-xl p-4">
+        <div className="border border-gray-100 rounded-xl p-4 pb-8">
           <h3 className="text-sm font-semibold text-gray-700 mb-1">Category Breakdown (Pie)</h3>
           <p className="text-xs text-gray-400 mb-3">Top {pieData.length} categories by estimated amount</p>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={360}>
+            <PieChart margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
               <Pie data={pieData} dataKey="value" nameKey="name"
-                cx="50%" cy="50%" outerRadius={110} innerRadius={45} paddingAngle={2}
+                cx="50%" cy="45%" outerRadius={95} innerRadius={38} paddingAngle={2}
                 label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                labelLine={true}
               >
                 {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
               </Pie>
               <Tooltip formatter={(v) => formatPKRFull(v)} />
-              <Legend />
+              <Legend wrapperStyle={{ paddingTop: '12px' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
