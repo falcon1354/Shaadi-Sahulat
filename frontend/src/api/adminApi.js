@@ -113,10 +113,15 @@ export async function updateSubcategoryPrices(category_id, subcategory_id, { pri
   return res.json();
 }
 
+export async function getSellerWithCounts() {
+  const res = await fetch(`${BASE}/sellers`);
+  return res.json();
+}
+
 export default {
   loginAdmin, getAllSellers, getSellerProducts,
   removeProduct, freezeProduct, unfreezeProduct,
-  getAllBuyers, getStats, getAllProducts,
+  getAllBuyers, getStats, getAllProducts, getSellerWithCounts,
   getAdminCategories, addCategory, addSubcategory,
   updateCategoryPrices, addCustomField, removeCustomField, updateSubcategoryPrices,
 };

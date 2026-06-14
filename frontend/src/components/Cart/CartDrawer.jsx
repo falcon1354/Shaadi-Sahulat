@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
 import { patchDowryBudgets } from '../../api/buyerApi';
+import { useCategories } from '../../hooks/useCategories';
 
 function getDowryBudgets(buyerId) {
   try {
@@ -27,13 +28,17 @@ async function simulateCheckout(items, buyerId) {
     const updated = JSON.stringify({ ...dowry, category_budgets: b });
     localStorage.setItem('ss_dowry_latest', updated);
     if (buyerId) localStorage.setItem(`ss_dowry_${buyerId}`, updated);
-    // Persist to MongoDB
-    if (buyerId) patchDowryBudgets(buyerId, b).catch(() => {});
+    if (buyerId) {
+      patchDowryBudgets(buyerId, b).catch(() => {});
+      window.dispatchEvent(new CustomEvent('dowry-updated', { detail: { buyerId } }));
+    }
   } catch {}
 }
 
 export default function CartDrawer({ open, onClose, buyerId }) {
   const { items, removeItem, updateQty, totalItems, totalPrice, clearCart } = useCart();
+  const { categories } = useCategories();
+  const catLabel = (id) => categories.find(c => c.category_id === id)?.label || id?.replace(/_/g, ' ') || id;
   const [checkoutDone, setCheckoutDone] = useState(false);
 
   const handleCheckout = async () => {
@@ -158,7 +163,7 @@ export default function CartDrawer({ open, onClose, buyerId }) {
                   const overAmount = remaining !== null ? total - remaining : 0;
                   return (
                     <div key={cat} className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600 capitalize">{cat.replace(/_/g, ' ')}</span>
+                      <span className="text-gray-600 capitalize">{catLabel(cat)}</span>
                       <span className={isOver ? 'text-red-500 font-semibold' : 'text-green-600 font-semibold'}>
                         {remaining === null
                           ? `PKR ${total.toLocaleString()}`

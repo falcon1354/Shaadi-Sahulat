@@ -82,7 +82,6 @@ def register_seller():
         seller_type = "individual"
 
     max_listings = None if seller_type == "company" else 5
-    category_restriction = (data.get("category_restriction") or None) if seller_type == "company" else None
 
     result = create_seller(
         name=name,
@@ -92,7 +91,7 @@ def register_seller():
         password=password,
         seller_type=seller_type,
         max_listings=max_listings,
-        category_restriction=category_restriction,
+        category_restriction=None,  # all sellers can upload in any category
     )
     if result is None:
         return jsonify({"success": False, "error": "Database unavailable"}), 503
@@ -190,7 +189,7 @@ def upload_product():
     # Validate against live DB categories (admin may have added new ones)
     try:
         from mongo_seller import _get_db as _mg
-        _valid_cats = [c["category_id"] for c in _mg()["admin_categories"].find(
+        _valid_cats = [c["category_id"] for c in _mg()["admincategories"].find(
             {"is_active": {"$ne": False}}, {"category_id": 1, "_id": 0})]
         if not _valid_cats:
             _valid_cats = list(SELLER_MAJOR_CATEGORY_IDS)

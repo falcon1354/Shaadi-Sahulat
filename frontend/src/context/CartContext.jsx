@@ -27,6 +27,18 @@ export function CartProvider({ children }) {
     }
   }, [key]);
 
+  // Remove cart items whose products no longer exist (cascade delete guard)
+  const removeDeletedItems = (productIds) => {
+    const ids = new Set(productIds);
+    setItems(prev => {
+      const filtered = prev.filter(i => !ids.has(i.product_id));
+      if (filtered.length !== prev.length) {
+        localStorage.setItem(key, JSON.stringify(filtered));
+      }
+      return filtered;
+    });
+  };
+
   // Persist items whenever they change
   useEffect(() => {
     localStorage.setItem(key, JSON.stringify(items));
@@ -70,7 +82,7 @@ export function CartProvider({ children }) {
   }, 0);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQty, clearCart, totalItems, totalPrice, setBuyerId }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQty, clearCart, totalItems, totalPrice, setBuyerId, removeDeletedItems }}>
       {children}
     </CartContext.Provider>
   );

@@ -4,6 +4,7 @@ import StepFamily from './StepFamily';
 import StepPriority from './StepPriority';
 import StepResults from './StepResults';
 import api from '../../api/dowryApi';
+import { patchDowryBudgets } from '../../api/buyerApi';
 import { useCategories } from '../../hooks/useCategories';
 
 const STEPS = [
@@ -11,16 +12,6 @@ const STEPS = [
   { id: 2, title: 'Family Context',    icon: '👨‍👩‍👧‍👦' },
   { id: 3, title: 'Priority Settings', icon: '🎯' },
   { id: 4, title: 'Results Dashboard', icon: '📊' },
-];
-
-// §2.1 — Wedding Dress merged; 6 categories total
-const CATEGORIES = [
-  { key: 'priority_wedding_dress', label: 'Wedding Dress', icon: '👗', hasTypeSelector: true },
-  { key: 'priority_furniture',     label: 'Furniture',     icon: '🛋️' },
-  { key: 'priority_electronics',   label: 'Electronics',   icon: '📺' },
-  { key: 'priority_kitchen_items', label: 'Kitchen Items', icon: '🍳' },
-  { key: 'priority_decoration',    label: 'Decoration',    icon: '🎀' },
-  { key: 'priority_miscellaneous', label: 'Miscellaneous', icon: '📦' },
 ];
 
 const INITIAL_FORM = {
@@ -92,20 +83,47 @@ function Wizard({ userId }) {
     if (!userId) return;
     api.getByUser(userId).then(res => {
       if (res.success && res.data) {
-        const est = res.data;
+        let est = { ...res.data };
+
+        // Reconstruct budget_sources for old buyers who don't have it stored
+        if (!est.budget_sources?.from_income && est.income && est.total_recommended_budget) {
+          const total = est.total_recommended_budget;
+          const incomePortion  = Math.min(est.income * 12 * 0.4, total);
+          const savingsPortion = total - incomePortion;
+          est.budget_sources = {
+            from_income:        Math.floor(incomePortion),
+            from_savings:       Math.floor(savingsPortion),
+            from_contribution:  est.expected_contribution || 0,
+            income_percentage:  total > 0 ? parseFloat(((incomePortion / total) * 100).toFixed(1)) : 0,
+            savings_percentage: total > 0 ? parseFloat(((savingsPortion / total) * 100).toFixed(1)) : 0,
+          };
+        }
+
+        // Use category_budgets.estimated as adjustedEstimates — reflects all shifts done after save
+        if (est.category_budgets && Object.keys(est.category_budgets).length > 0) {
+          const adjFromBudgets = {};
+          for (const [cat, info] of Object.entries(est.category_budgets)) {
+            adjFromBudgets[cat] = info?.estimated || 0;
+          }
+          setAdjustedEstimates(adjFromBudgets);
+        } else {
+          setAdjustedEstimates(est.adjusted_estimates || {});
+        }
+
         setResult(est);
-        setAdjustedEstimates(est.adjusted_estimates || {});
         setSaved(true);
         setIsLocked(true);
         setCurrentStep(4);
 
         // Populate localStorage from DB so Dashboard/FinalProjection can read it
         if (est.category_budgets && Object.keys(est.category_budgets).length > 0) {
+          const totalFromBudgets = Object.values(est.category_budgets)
+            .reduce((s, v) => s + (v?.estimated || 0), 0);
           const dowryPayload = JSON.stringify({
             estimation_id:    est._id,
-            total_budget:     est.total_recommended_budget,
+            total_budget:     totalFromBudgets || est.total_recommended_budget,
             category_budgets: est.category_budgets,
-            saved_at:         est.created_at || new Date().toISOString(),
+            saved_at:         est.updated_at || est.created_at || new Date().toISOString(),
           });
           localStorage.setItem('ss_dowry_latest', dowryPayload);
           localStorage.setItem(`ss_dowry_${userId}`, dowryPayload);
@@ -113,6 +131,25 @@ function Wizard({ userId }) {
       }
     }).catch(() => {});
   }, [userId]);
+
+  // In locked mode, re-sync adjustedEstimates when budget is shifted from any component
+  useEffect(() => {
+    if (!isLocked || !userId) return;
+    const handler = (e) => {
+      if (!e.detail?.buyerId || e.detail.buyerId === userId) {
+        const local = JSON.parse(localStorage.getItem(`ss_dowry_${userId}`) || 'null');
+        if (local?.category_budgets) {
+          const adj = {};
+          for (const [cat, info] of Object.entries(local.category_budgets)) {
+            adj[cat] = info?.estimated || 0;
+          }
+          setAdjustedEstimates(adj);
+        }
+      }
+    };
+    window.addEventListener('dowry-updated', handler);
+    return () => window.removeEventListener('dowry-updated', handler);
+  }, [isLocked, userId]);
 
   const updateForm = useCallback((updates) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -207,8 +244,12 @@ function Wizard({ userId }) {
             saved_at:         new Date().toISOString(),
           });
           localStorage.setItem('ss_dowry_latest', dowryPayload);
-          // buyer-isolated key so admin seeing marketplace doesn't read buyer data
-          if (userId) localStorage.setItem(`ss_dowry_${userId}`, dowryPayload);
+          if (userId) {
+            localStorage.setItem(`ss_dowry_${userId}`, dowryPayload);
+            // Persist adjusted budgets to MongoDB so Admin/Dashboard see correct values
+            patchDowryBudgets(userId, catBudgets).catch(() => {});
+            window.dispatchEvent(new CustomEvent('dowry-updated', { detail: { buyerId: userId } }));
+          }
         }
       } else {
         setError(response.error || 'Save failed');
@@ -402,4 +443,3 @@ function buildPayload(formData) {
 }
 
 export default Wizard;
-export { CATEGORIES };

@@ -16,7 +16,7 @@ import LandingPage         from './components/LandingPage';
 import AdminLogin          from './components/Admin/AdminLogin';
 import AdminLayout         from './components/Admin/AdminLayout';
 import { CartProvider, useCart } from './context/CartContext';
-import { getBuyerFromStorage, saveBuyerToStorage, clearBuyerFromStorage } from './api/buyerApi';
+import { getBuyerFromStorage, saveBuyerToStorage, clearBuyerFromStorage, getFullBuyerData } from './api/buyerApi';
 import { 
   LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User, 
   ShoppingCart, PlusCircle, Package, LineChart, Lock, Store 
@@ -297,6 +297,31 @@ function AppContent() {
       if (Array.isArray(b.recently_viewed_items)) {
         localStorage.setItem(`ss_recently_viewed_${b.buyer_id}`, JSON.stringify(b.recently_viewed_items));
       }
+      // Cart — seed from DB cart_items before CartContext reads the key
+      if (Array.isArray(b.cart_items) && b.cart_items.length > 0) {
+        const existing = localStorage.getItem(`ss_cart_${b.buyer_id}`);
+        if (!existing || existing === '[]') {
+          localStorage.setItem(`ss_cart_${b.buyer_id}`, JSON.stringify(b.cart_items));
+        }
+      }
+      // Dowry — seed from MongoDB if not already in localStorage
+      if (!localStorage.getItem(`ss_dowry_${b.buyer_id}`)) {
+        getFullBuyerData(b.buyer_id).then(res => {
+          if (!res?.success || !res.dowry_estimation) return;
+          const est     = res.dowry_estimation;
+          const budgets = est.category_budgets;
+          if (!budgets || !Object.keys(budgets).length) return;
+          const total   = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
+          const payload = JSON.stringify({
+            estimation_id:    est._id,
+            total_budget:     total || est.total_recommended_budget,
+            category_budgets: budgets,
+            saved_at:         est.updated_at || est.created_at || new Date().toISOString(),
+          });
+          localStorage.setItem(`ss_dowry_${b.buyer_id}`, payload);
+          localStorage.setItem('ss_dowry_latest', payload);
+        }).catch(() => {});
+      }
     }
   };
 
@@ -536,7 +561,7 @@ function AppContent() {
               <SellerAuthPage onLogin={handleSellerLogin} />
             )}
             {userRole === 'seller' && isLoggedIn && view === 'seller-dashboard' && (
-              <SellerDashboard seller={seller} />
+              <SellerDashboard seller={seller} onNavigate={setView} />
             )}
             {userRole === 'seller' && isLoggedIn && view === 'upload' && (
               <SellerPage />

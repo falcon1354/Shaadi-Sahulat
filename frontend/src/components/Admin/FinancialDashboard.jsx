@@ -10,6 +10,7 @@ export default function FinancialDashboard() {
   const { categories } = useCategories();
   const [stats, setStats]       = useState(null);
   const [products, setProducts] = useState([]);
+  const [sellers, setSellers]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [catFilter, setCatFilter] = useState('');
   const [page, setPage]         = useState(1);
@@ -19,9 +20,14 @@ export default function FinancialDashboard() {
   const catLabels = Object.fromEntries(categories.map(c => [c.category_id, c.label]));
 
   useEffect(() => {
-    Promise.all([adminApi.getStats(), adminApi.getAllProducts({ limit: 200 })]).then(([s, p]) => {
+    Promise.all([
+      adminApi.getStats(),
+      adminApi.getAllProducts({ limit: 200 }),
+      adminApi.getAllSellers(),
+    ]).then(([s, p, sv]) => {
       setStats(s);
       setProducts(p.products || []);
+      setSellers(sv.sellers || []);
       setLoading(false);
     });
   }, []);
@@ -142,6 +148,47 @@ export default function FinancialDashboard() {
           </div>
         )}
       </div>
+
+      {/* Per-Seller Product Breakdown */}
+      {sellers.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="font-semibold text-gray-800 mb-4">Products per Seller (Live)</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-100">
+                  <th className="pb-2 font-medium">Seller Name</th>
+                  <th className="pb-2 font-medium">Seller ID</th>
+                  <th className="pb-2 font-medium">Type</th>
+                  <th className="pb-2 font-medium">City</th>
+                  <th className="pb-2 font-medium text-right">Products</th>
+                  <th className="pb-2 font-medium text-right">Level</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...sellers]
+                  .sort((a, b) => (b.product_count || 0) - (a.product_count || 0))
+                  .map(s => (
+                    <tr key={s.seller_id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="py-2.5 font-medium text-gray-800">{s.name}</td>
+                      <td className="py-2.5 text-gray-400 font-mono text-xs">{s.seller_id}</td>
+                      <td className="py-2.5 text-gray-500 capitalize">{s.seller_type || 'individual'}</td>
+                      <td className="py-2.5 text-gray-500">{s.city || '—'}</td>
+                      <td className="py-2.5 text-right font-bold text-purple-700">{s.product_count ?? 0}</td>
+                      <td className="py-2.5 text-right">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          s.level === 3 ? 'bg-amber-100 text-amber-700' :
+                          s.level === 2 ? 'bg-blue-100 text-blue-700' :
+                                          'bg-gray-100 text-gray-600'
+                        }`}>L{s.level || 1}</span>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

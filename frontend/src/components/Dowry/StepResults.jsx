@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { patchDowryBudgets } from '../../api/buyerApi';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -88,11 +89,10 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
 
   const adjustedTotal = Object.values(displayBreakdown).reduce((a, b) => a + b, 0);
 
-  // Pie/bar: top 10 by highest estimated amount
+  // Pie/bar: all buyer-selected categories with positive amounts, excluding Not_Wanted
   const sortedEntries = Object.entries(displayBreakdown)
-    .filter(([, v]) => v > 0)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 10);
+    .filter(([key, v]) => v > 0 && (priorities ? priorities[`priority_${key}`] !== 'Not_Wanted' : true))
+    .sort(([, a], [, b]) => b - a);
 
   const pieData = sortedEntries.map(([key, value]) => ({
     name: catLabel(key), value, key, color: catColor(key),
@@ -199,7 +199,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="border border-gray-100 rounded-xl p-4 pb-8">
           <h3 className="text-sm font-semibold text-gray-700 mb-1">Category Breakdown (Pie)</h3>
-          <p className="text-xs text-gray-400 mb-3">Top {pieData.length} categories by estimated amount</p>
+          <p className="text-xs text-gray-400 mb-3">{pieData.length} active categor{pieData.length !== 1 ? 'ies' : 'y'} by budget</p>
           <ResponsiveContainer width="100%" height={360}>
             <PieChart margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
               <Pie data={pieData} dataKey="value" nameKey="name"
@@ -249,26 +249,33 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
             </tr>
           </thead>
           <tbody>
-            {Object.entries(result.category_breakdown || {}).map(([key, sysAmt]) => {
-              const adjusted = displayBreakdown[key] ?? sysAmt;
-              const pct      = adjustedTotal > 0 ? ((adjusted / adjustedTotal) * 100).toFixed(1) : 0;
-              const dev      = getDeviationColor(adjusted, sysAmt);
-              const styles   = DEVIATION_STYLES[dev];
-              return (
-                <tr key={key} className="border-t border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: catColor(key) }} />
-                    {catLabel(key)}
-                  </td>
-                  <td className="text-right px-4 py-3 font-mono text-gray-400 text-xs">{formatPKRFull(sysAmt)}</td>
-                  <td className={`text-right px-4 py-3 font-mono font-semibold ${styles.label}`}>{formatPKRFull(adjusted)}</td>
-                  <td className="text-right px-4 py-3 text-gray-500">{pct}%</td>
-                </tr>
-              );
-            })}
+            {Object.entries(result.category_breakdown || {})
+              .filter(([key]) => priorities ? priorities[`priority_${key}`] !== 'Not_Wanted' : true)
+              .map(([key, sysAmt]) => {
+                const adjusted = displayBreakdown[key] ?? sysAmt;
+                const pct      = adjustedTotal > 0 ? ((adjusted / adjustedTotal) * 100).toFixed(1) : 0;
+                const dev      = getDeviationColor(adjusted, sysAmt);
+                const styles   = DEVIATION_STYLES[dev];
+                return (
+                  <tr key={key} className="border-t border-gray-50 hover:bg-gray-50">
+                    <td className="px-4 py-3 flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: catColor(key) }} />
+                      {catLabel(key)}
+                    </td>
+                    <td className="text-right px-4 py-3 font-mono text-gray-400 text-xs">{formatPKRFull(sysAmt)}</td>
+                    <td className={`text-right px-4 py-3 font-mono font-semibold ${styles.label}`}>{formatPKRFull(adjusted)}</td>
+                    <td className="text-right px-4 py-3 text-gray-500">{pct}%</td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>
+
+      {/* Budget Reallocate Section — shown when buyerId provided (locked estimation mode) */}
+      {buyerId && (
+        <BudgetManageSection buyerId={buyerId} categories={categories} />
+      )}
 
       {/* Notes */}
       {result.notes?.length > 0 && (
@@ -283,9 +290,6 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
           </ul>
         </div>
       )}
-
-
-
     </div>
   );
 }
@@ -341,5 +345,117 @@ function CommunityInsights({ matches, myBudget }) {
   );
 }
 
-// ── Budget Shift Section ──────────────────────────────────────────────────────
+// ── Budget Manage Section ────────────────────────────────────────────────────
+function BudgetManageSection({ buyerId, categories }) {
+  const catLabel = (id) => categories.find(c => c.category_id === id)?.label || id.replace(/_/g, ' ');
+
+  const [dowry, setDowry] = useState(() => readDowry(buyerId));
+  const [fromCat, setFromCat] = useState('');
+  const [toCat, setToCat]   = useState('');
+  const [amount, setAmount] = useState('');
+  const [msg, setMsg]       = useState({ text: '', error: false });
+
+  const budgets = dowry?.category_budgets || {};
+  // Only show categories that are active (not Not_Wanted) and have a budget
+  const cats = Object.entries(budgets).filter(([, v]) => v.active !== false);
+
+  const fromBudget = fromCat ? budgets[fromCat] : null;
+  const maxShift   = fromBudget ? (fromBudget.remaining ?? fromBudget.estimated ?? 0) : 0;
+
+  const handleShift = () => {
+    const amt = Number(amount);
+    if (!fromCat || !toCat) return setMsg({ text: 'Select both source and destination categories.', error: true });
+    if (fromCat === toCat)  return setMsg({ text: 'Source and destination must be different.', error: true });
+    if (!amt || amt <= 0)   return setMsg({ text: 'Enter a valid amount greater than 0.', error: true });
+    if (amt > maxShift)     return setMsg({ text: `Max available from ${catLabel(fromCat)}: PKR ${maxShift.toLocaleString()}`, error: true });
+
+    const b = { ...budgets };
+    const srcEst  = b[fromCat].estimated || 0;
+    const srcLeft = b[fromCat].remaining ?? srcEst;
+    const dstEst  = b[toCat].estimated  || 0;
+    const dstLeft = b[toCat].remaining  ?? dstEst;
+    b[fromCat] = { ...b[fromCat], estimated: srcEst - amt, remaining: srcLeft - amt };
+    b[toCat]   = { ...b[toCat],  estimated: dstEst + amt, remaining: dstLeft + amt };
+
+    const updated = { ...dowry, category_budgets: b };
+    writeDowry(updated, buyerId);
+    setDowry(updated);
+    // Persist to MongoDB and signal all other components
+    patchDowryBudgets(buyerId, b).catch(() => {});
+    window.dispatchEvent(new CustomEvent('dowry-updated', { detail: { buyerId } }));
+    setMsg({ text: `✓ Shifted PKR ${amt.toLocaleString()} from ${catLabel(fromCat)} → ${catLabel(toCat)}.`, error: false });
+    setAmount('');
+  };
+
+  if (!dowry || cats.length < 2) return null;
+
+  return (
+    <div className="border border-purple-100 rounded-xl p-5 space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-700">Reallocate Budget Between Categories</h3>
+        <p className="text-xs text-gray-400 mt-0.5">Shift funds from one category to another to fine-tune your plan.</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
+          <select
+            value={fromCat}
+            onChange={e => { setFromCat(e.target.value); setMsg({ text: '', error: false }); }}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <option value="">Select category…</option>
+            {cats.filter(([k]) => k !== toCat).map(([k, v]) => (
+              <option key={k} value={k}>
+                {catLabel(k)} — PKR {(v.remaining ?? v.estimated ?? 0).toLocaleString()} left
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
+          <select
+            value={toCat}
+            onChange={e => { setToCat(e.target.value); setMsg({ text: '', error: false }); }}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <option value="">Select category…</option>
+            {cats.filter(([k]) => k !== fromCat).map(([k]) => (
+              <option key={k} value={k}>{catLabel(k)}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Amount (PKR)</label>
+          <div className="flex gap-2">
+            <input
+              type="number" value={amount} min="1" max={maxShift || undefined}
+              onChange={e => { setAmount(e.target.value); setMsg({ text: '', error: false }); }}
+              placeholder="0"
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            />
+            <button
+              onClick={handleShift}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">
+              Shift →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {fromCat && (
+        <p className="text-xs text-gray-400">
+          Available from <strong>{catLabel(fromCat)}</strong>: PKR {maxShift.toLocaleString()}
+        </p>
+      )}
+
+      {msg.text && (
+        <p className={`text-xs px-3 py-2 rounded-lg ${msg.error ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+          {msg.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default StepResults;

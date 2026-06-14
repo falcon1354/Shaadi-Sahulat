@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import adminApi from '../../api/adminApi';
+import { getFullBuyerData } from '../../api/buyerApi';
+import { useCategories } from '../../hooks/useCategories';
 
 const TABS = ['Profile', 'Family & Finance', 'Dowry Estimation', 'Cart'];
-
-const CAT_LABELS = { wedding_dress:'Wedding Dress', furniture:'Furniture', electronics:'Electronics', kitchen_items:'Kitchen', decoration:'Decoration', miscellaneous:'Misc' };
 
 function getBuyerLevel(orders = 0) {
   if (orders >= 7) return { level: 3, label: 'Loyal Buyer',  color: 'from-teal-500 to-green-500' };
@@ -12,11 +12,17 @@ function getBuyerLevel(orders = 0) {
 }
 
 export default function BuyerManagement() {
-  const [buyers, setBuyers]   = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [tab, setTab]         = useState('Profile');
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState('');
+  const { categories } = useCategories();
+  const catLabel = (id) =>
+    categories.find(c => c.category_id === id)?.label
+    || (id ? id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '—');
+
+  const [buyers,   setBuyers]   = useState([]);
+  const [selected, setSelected] = useState(null); // full buyer+dowry from /full-data
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [tab,      setTab]      = useState('Profile');
+  const [loading,  setLoading]  = useState(true);
+  const [search,   setSearch]   = useState('');
 
   useEffect(() => {
     adminApi.getAllBuyers().then(r => {
@@ -25,12 +31,35 @@ export default function BuyerManagement() {
     });
   }, []);
 
+  const handleSelectBuyer = useCallback(async (b) => {
+    setTab('Profile');
+    setDetailLoading(true);
+    try {
+      const res = await getFullBuyerData(b.buyer_id);
+      if (res.success) {
+        setSelected({ ...res.buyer, _dowry: res.dowry_estimation });
+      } else {
+        setSelected({ ...b, _dowry: null });
+      }
+    } catch {
+      setSelected({ ...b, _dowry: null });
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
   const filtered = buyers.filter(b =>
     b.name?.toLowerCase().includes(search.toLowerCase()) ||
     b.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const est = selected?.dowry_estimation;
+  const est = selected?._dowry;
+  // category_budgets = buyer's actual slider-adjusted + shift-updated values
+  const estBudgets      = est?.category_budgets || {};
+  const estBudgetEntries = Object.entries(estBudgets)
+    .filter(([, v]) => v?.active !== false && (v?.estimated || 0) > 0)
+    .sort(([, a], [, b]) => (b.estimated || 0) - (a.estimated || 0));
+  const adjustedTotal   = estBudgetEntries.reduce((s, [, v]) => s + (v.estimated || 0), 0);
 
   if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading buyers…</div>;
 
@@ -56,7 +85,7 @@ export default function BuyerManagement() {
               return (
                 <button
                   key={b.buyer_id}
-                  onClick={() => { setSelected(b); setTab('Profile'); }}
+                  onClick={() => handleSelectBuyer(b)}
                   className={`w-full text-left p-3 rounded-xl border transition-all ${
                     selected?.buyer_id === b.buyer_id
                       ? 'border-orange-400 bg-orange-50'
@@ -83,6 +112,10 @@ export default function BuyerManagement() {
           {!selected ? (
             <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400">
               Select a buyer to view details
+            </div>
+          ) : detailLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -112,14 +145,16 @@ export default function BuyerManagement() {
                 {tab === 'Profile' && (
                   <dl className="grid grid-cols-2 gap-4">
                     {[
-                      ['Buyer ID',    selected.buyer_id],
-                      ['Name',        selected.name],
-                      ['Email',       selected.email],
-                      ['Phone',       selected.phone || '—'],
-                      ['City',        selected.city  || '—'],
-                      ['Registered',  selected.created_at?.slice(0,10) || '—'],
-                      ['Dowry Done',  selected.dowry_done ? 'Yes' : 'No'],
-                      ['Wishlist',    `${selected.wishlist?.length || 0} items`],
+                      ['Buyer ID',      selected.buyer_id],
+                      ['Name',          selected.name],
+                      ['Email',         selected.email],
+                      ['Phone',         selected.phone || '—'],
+                      ['City',          selected.city  || '—'],
+                      ['Registered',    selected.created_at?.slice(0,10) || '—'],
+                      ['Dowry Done',    selected.dowry_done ? 'Yes' : 'No'],
+                      ['Wishlist Items',`${(selected.wishlist_items || selected.wishlist || []).length}`],
+                      ['Cart Items',    `${(selected.cart_items || []).length}`],
+                      ['Recently Viewed',`${(selected.recently_viewed_items || []).length}`],
                     ].map(([k, v]) => (
                       <div key={k} className="bg-gray-50 rounded-xl p-3">
                         <dt className="text-xs text-gray-400 font-medium">{k}</dt>
@@ -133,19 +168,16 @@ export default function BuyerManagement() {
                   est ? (
                     <dl className="grid grid-cols-2 gap-4">
                       {[
-                        ['Monthly Income',   `PKR ${est.income?.toLocaleString() || '—'}`],
-                        ['Total Savings',    `PKR ${est.savings?.toLocaleString() || '—'}`],
-                        ['Family Members',   est.total_family_members || '—'],
-                        ['Total Siblings',   (est.married_children || 0) + (est.unmarried_children || 0)],
-                        ['Married Siblings', est.married_children   || 0],
-                        ['Unmarried Siblings',est.unmarried_children || 0],
-                        ['Parents Alive',    est.priorities?.father_approval !== undefined
-                          ? `Father: ${est.priorities.father_approval ? 'Yes':'No'}`
-                          : '—'],
-                        ['Youngest Sibling Age', est.ages_of_unmarried?.length > 0
-                          ? Math.min(...est.ages_of_unmarried) : '—'],
-                        ['Responsibility Score', est.responsibility_score
+                        ['Monthly Income',      `PKR ${est.income?.toLocaleString() || '—'}`],
+                        ['Total Savings',       `PKR ${est.savings?.toLocaleString() || '—'}`],
+                        ['Family Members',      est.total_family_members || '—'],
+                        ['Married Siblings',    est.married_children   || 0],
+                        ['Unmarried Siblings',  est.unmarried_children || 0],
+                        ['Responsibility Score',est.responsibility_score
                           ? (est.responsibility_score * 100).toFixed(0) + '%' : '—'],
+                        ['Youngest Sibling Age',est.ages_of_unmarried?.length > 0
+                          ? Math.min(...est.ages_of_unmarried) : '—'],
+                        ['Estimation Date',     est.created_at?.slice(0,10) || '—'],
                       ].map(([k, v]) => (
                         <div key={k} className="bg-gray-50 rounded-xl p-3">
                           <dt className="text-xs text-gray-400 font-medium">{k}</dt>
@@ -161,29 +193,89 @@ export default function BuyerManagement() {
                 {tab === 'Dowry Estimation' && (
                   est ? (
                     <div className="space-y-4">
+                      {/* Total — shows buyer's actual adjusted budget (from category_budgets), not the original ML total */}
                       <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
-                        <p className="text-xs text-purple-500 font-medium">Total Recommended Budget</p>
-                        <p className="text-2xl font-bold text-purple-700 mt-1">
-                          PKR {est.total_recommended_budget?.toLocaleString() || '—'}
+                        <p className="text-xs text-purple-500 font-medium">
+                          {adjustedTotal > 0 ? "Buyer's Actual Budget" : "System Recommended Budget"}
                         </p>
+                        <p className="text-2xl font-bold text-purple-700 mt-1">
+                          PKR {(adjustedTotal > 0 ? adjustedTotal : est.total_recommended_budget)?.toLocaleString() || '—'}
+                        </p>
+                        {adjustedTotal > 0 && adjustedTotal !== est.total_recommended_budget && (
+                          <p className="text-xs text-purple-400 mt-1">
+                            System estimate: PKR {est.total_recommended_budget?.toLocaleString()}
+                          </p>
+                        )}
                       </div>
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-xs text-gray-500 font-medium mb-3">Category Breakdown</p>
-                        <div className="space-y-2">
-                          {Object.entries(est.category_breakdown || {}).map(([cat, amt]) => (
-                            <div key={cat} className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">{CAT_LABELS[cat] || cat}</span>
-                              <span className="font-semibold text-gray-800">PKR {Number(amt).toLocaleString()}</span>
-                            </div>
-                          ))}
+
+                      {/* Budget by category — actual adjusted values (slider + shifts) */}
+                      {estBudgetEntries.length > 0 ? (
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-xs text-gray-500 font-medium mb-3">Budget by Category (Buyer's Adjusted Plan)</p>
+                          <div className="space-y-3">
+                            {estBudgetEntries.map(([cat, info]) => (
+                              <div key={cat}>
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-700 font-medium capitalize">{catLabel(cat)}</span>
+                                  <span className="font-bold text-gray-800">PKR {(info.estimated || 0).toLocaleString()}</span>
+                                </div>
+                                <div className="flex gap-3 text-xs text-gray-400 mt-0.5">
+                                  <span>Spent: PKR {(info.spent || 0).toLocaleString()}</span>
+                                  <span className={(info.remaining ?? 0) < 0 ? 'text-red-500 font-medium' : 'text-green-600 font-medium'}>
+                                    Remaining: PKR {(info.remaining ?? info.estimated ?? 0).toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        /* Fallback: no adjusted budgets yet — show raw ML breakdown */
+                        Object.keys(est.category_breakdown || {}).length > 0 && (
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-xs text-gray-500 font-medium mb-3">System Estimate (not yet personalised)</p>
+                            <div className="space-y-2">
+                              {Object.entries(est.category_breakdown || {}).map(([cat, amt]) => (
+                                <div key={cat} className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-600 capitalize">{catLabel(cat)}</span>
+                                  <span className="font-semibold text-gray-800">PKR {Number(amt).toLocaleString()}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      )}
+
+                      {/* Budget source split — from income vs savings */}
+                      {(est.budget_sources?.from_income > 0 || est.income > 0) && (() => {
+                        const bs = est.budget_sources || {};
+                        const total = adjustedTotal || est.total_recommended_budget || 0;
+                        const inc  = bs.from_income  || Math.floor(Math.min((est.income || 0) * 12 * 0.4, total));
+                        const sav  = bs.from_savings || Math.max(0, total - inc);
+                        return (
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { label: 'From Income',  value: `PKR ${inc.toLocaleString()}`,  sub: `${bs.income_percentage  || (total > 0 ? Math.round(inc/total*100) : 0)}% of budget` },
+                              { label: 'From Savings', value: `PKR ${sav.toLocaleString()}`,  sub: `${bs.savings_percentage || (total > 0 ? Math.round(sav/total*100) : 0)}% of budget` },
+                            ].map(c => (
+                              <div key={c.label} className="bg-blue-50 rounded-xl p-3">
+                                <dt className="text-xs text-blue-400 font-medium">{c.label}</dt>
+                                <dd className="text-sm font-bold text-blue-700 mt-0.5">{c.value}</dd>
+                                <dd className="text-xs text-blue-400 mt-0.5">{c.sub}</dd>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
                       <dl className="grid grid-cols-2 gap-3">
                         {[
-                          ['Baseline Budget', `PKR ${est.baseline_budget?.toLocaleString() || '—'}`],
+                          ['Monthly Income',  est.income   ? `PKR ${est.income.toLocaleString()}` : '—'],
+                          ['Total Savings',   est.savings  ? `PKR ${est.savings.toLocaleString()}` : '—'],
+                          ['Baseline Budget', est.baseline_budget ? `PKR ${est.baseline_budget.toLocaleString()}` : '—'],
                           ['ML Adjustment',   est.ml_adjustment_factor ? `×${est.ml_adjustment_factor.toFixed(3)}` : '—'],
-                          ['Estimation Date', est.created_at?.slice(0,10) || '—'],
                           ['Source',          est.source || '—'],
+                          ['Last Updated',    est.updated_at?.slice(0,10) || est.created_at?.slice(0,10) || '—'],
                         ].map(([k, v]) => (
                           <div key={k} className="bg-gray-50 rounded-xl p-3">
                             <dt className="text-xs text-gray-400">{k}</dt>
@@ -199,23 +291,34 @@ export default function BuyerManagement() {
 
                 {tab === 'Cart' && (
                   <div>
-                    {(selected.cart || []).length === 0 ? (
-                      <p className="text-center text-gray-400 py-10">
-                        Cart is stored in the buyer's browser (localStorage) and not synced to MongoDB.
-                      </p>
+                    {(selected.cart_items || []).length === 0 ? (
+                      <div className="text-center py-10">
+                        <p className="text-4xl mb-3">🛒</p>
+                        <p className="text-gray-400 text-sm">No items in this buyer's cart.</p>
+                      </div>
                     ) : (
                       <div className="space-y-3">
-                        {selected.cart.map((item, i) => (
+                        {(selected.cart_items || []).map((item, i) => (
                           <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                             <div className="flex-1">
-                              <p className="text-sm font-semibold text-gray-800">{item.title}</p>
-                              <p className="text-xs text-gray-500">Qty: {item.qty}</p>
+                              <p className="text-sm font-semibold text-gray-800">{item.title || item.product_id}</p>
+                              <p className="text-xs text-gray-500 capitalize">
+                                {catLabel(item.major_category)} · Qty: {item.qty}
+                              </p>
                             </div>
                             <p className="text-sm font-bold text-purple-600">
-                              PKR {((item.discount_price || item.price) * item.qty).toLocaleString()}
+                              PKR {((item.discount_price || item.price || 0) * (item.qty || 1)).toLocaleString()}
                             </p>
                           </div>
                         ))}
+                        <div className="pt-2 border-t border-gray-100 text-right">
+                          <span className="text-sm text-gray-500">Cart Total: </span>
+                          <span className="font-bold text-purple-700">
+                            PKR {(selected.cart_items || [])
+                              .reduce((s, i) => s + (i.discount_price || i.price || 0) * (i.qty || 1), 0)
+                              .toLocaleString()}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>

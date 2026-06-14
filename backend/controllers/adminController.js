@@ -59,9 +59,19 @@ async function removeProduct(req, res) {
   try {
     const { product_id } = req.params;
     const data = await mlFetch(`/seller/product/${product_id}`, { method: "DELETE" });
-    // Also delete local image folder
+    // Delete local image folders
     const dirs = _findProductDirs(product_id);
     dirs.forEach(d => fs.rmSync(d, { recursive: true, force: true }));
+    // Cascade: remove from all buyer wishlist_items and cart_items
+    await Buyer.updateMany(
+      {},
+      {
+        $pull: {
+          wishlist_items: { product_id },
+          cart_items:     { product_id },
+        },
+      }
+    );
     return res.json({ success: true, deleted: data });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
