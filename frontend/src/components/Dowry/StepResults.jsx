@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { patchDowryBudgets } from '../../api/buyerApi';
+import React, { useState } from 'react';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
