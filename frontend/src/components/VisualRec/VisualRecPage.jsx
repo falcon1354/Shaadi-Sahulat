@@ -7,7 +7,7 @@ import visualApi from '../../api/visualApi';
 
 // Only Bridal / Groom — map to a valid ML category for the backend
 const HINT_OPTIONS = [
-  { id: 'bridal', label: 'Bridal', icon: <User size={20} className="text-pink-500" />, backendCat: 'bridal_lehenga' },
+  { id: 'bridal', label: 'Bridal', icon: <User size={20} className="text-[#a37b3d]" />, backendCat: 'bridal_lehenga' },
   { id: 'groom',  label: 'Groom',  icon: <Users size={20} className="text-blue-500" />, backendCat: null },          // no dedicated model class; TF-IDF handles it
 ];
 
@@ -90,7 +90,7 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
     <div className="animate-fade-in">
       {/* Title */}
       <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-fuchsia-100 text-fuchsia-600 rounded-full mb-4 shadow-sm">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 text-primary-900 rounded-full mb-4 shadow-sm">
           <Camera size={32} />
         </div>
         <h2 className="text-3xl font-bold text-gray-800 mb-2">
@@ -110,10 +110,10 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
           <ImageUpload onFileSelect={handleFileSelect} preview={preview} loading={loading} />
 
           {/* Dress Type Hint — Bridal / Groom only */}
-          <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-primary-200 p-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">
               Dress Type
-              <span className="ml-2 text-[10px] font-normal text-purple-500">(optional — helps AI)</span>
+              <span className="ml-2 text-[10px] font-normal text-primary-800">(optional — helps AI)</span>
             </h3>
             <div className="flex gap-3">
               {HINT_OPTIONS.map(opt => (
@@ -122,8 +122,8 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
                   onClick={() => setHintId(hintId === opt.id ? null : opt.id)}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${
                     hintId === opt.id
-                      ? 'bg-purple-100 border-purple-400 text-purple-700'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-purple-300'
+                      ? 'bg-primary-50 border-primary-500 text-primary-900'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-primary-400'
                   }`}
                 >
                   <span className="text-lg">{opt.icon}</span>
@@ -140,7 +140,7 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
           </div>
 
           {/* Mandatory Description */}
-          <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-primary-200 p-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
               📝 Describe the Dress
               <span className="text-red-500 text-xs font-bold">*</span>
@@ -155,7 +155,7 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
               placeholder="e.g. deep red bridal lehenga heavy zardozi embroidery silk"
               rows={3}
               className={`w-full border rounded-lg px-3 py-2 text-sm resize-none
-                         focus:outline-none focus:ring-2 focus:ring-purple-400 transition-colors
+                         focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors
                          ${words >= 4
                            ? 'border-green-300 bg-green-50/40'
                            : 'border-gray-200'}`}
@@ -177,7 +177,7 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
               disabled={!canSearch}
               className={`w-full py-3 rounded-xl font-semibold text-white transition-all ${
                 canSearch
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 shadow-lg hover:shadow-xl'
+                  ? 'bg-gradient-to-r from-primary-500 to-primary-800 hover:from-primary-600 hover:to-primary-900 shadow-lg hover:shadow-xl'
                   : 'bg-gray-300 cursor-not-allowed'
               }`}
             >
@@ -249,7 +249,7 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
 
           {/* Idle state hint */}
           {!result && !error && !loading && (
-            <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-8 text-center text-gray-400">
+            <div className="bg-white rounded-xl shadow-sm border border-primary-200 p-8 text-center text-gray-400">
               <p className="text-4xl mb-3">👗</p>
               <p className="text-sm">Upload a dress photo and describe it to find similar styles.</p>
             </div>

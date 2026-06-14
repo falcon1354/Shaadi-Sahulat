@@ -5,7 +5,7 @@ import { resolveImageUrl } from '../../api/sellerApi';
 const LEVEL_BADGE = {
   1: 'bg-gray-100 text-gray-600',
   2: 'bg-blue-100 text-blue-700',
-  3: 'bg-purple-100 text-purple-700',
+  3: 'bg-[#FFF5F8] text-[#a37b3d]',
 };
 
 export default function SellerManagement() {
@@ -127,7 +127,7 @@ export default function SellerManagement() {
                         </div>
                         <div className="p-3">
                           <p className="text-xs font-semibold text-gray-700 line-clamp-1">{prod.title}</p>
-                          <p className="text-xs text-purple-600 font-bold mt-0.5">PKR {prod.price?.toLocaleString()}</p>
+                          <p className="text-xs text-[#a37b3d] font-bold mt-0.5">PKR {prod.price?.toLocaleString()}</p>
                           <div className="flex gap-2 mt-2">
                             {!frozen ? (
                               <button

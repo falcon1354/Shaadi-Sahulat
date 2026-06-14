@@ -38,7 +38,7 @@ export default function PipelineStatus({ stages, result, error }) {
 
   if (allPending) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-5">
+      <div className="bg-white rounded-xl shadow-sm border border-primary-200 p-5">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">🔄 3-Stage Pipeline</h3>
         <div className="flex items-center justify-between gap-2">
           {Object.entries(STAGE_INFO).map(([key, info]) => (
@@ -63,7 +63,7 @@ export default function PipelineStatus({ stages, result, error }) {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-5">
+    <div className="bg-white rounded-xl shadow-sm border border-primary-200 p-5">
       <h3 className="text-sm font-semibold text-gray-700 mb-4">🔄 3-Stage Validation Pipeline</h3>
 
       <div className="flex items-center gap-2 mb-4">
@@ -88,7 +88,7 @@ export default function PipelineStatus({ stages, result, error }) {
                 <span className="text-[10px] text-red-500 mt-0.5">{info.failText}</span>
               )}
               {stages[key] === 'active' && (
-                <span className="text-[10px] text-purple-500 mt-0.5">{info.description}</span>
+                <span className="text-[10px] text-primary-900 mt-0.5">{info.description}</span>
               )}
             </div>
             {key !== 'stage3' && (
@@ -104,18 +104,18 @@ export default function PipelineStatus({ stages, result, error }) {
 
       {/* Confidence Bar */}
       {result?.validation && (
-        <div className="bg-purple-50 rounded-lg p-3">
+        <div className="bg-primary-50 rounded-lg p-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-purple-700">
+            <span className="text-xs font-medium text-primary-950">
               Predicted: {result.validation.predicted_category?.replace(/_/g, ' ')}
             </span>
-            <span className="text-xs font-bold text-purple-700">
+            <span className="text-xs font-bold text-primary-950">
               {(result.validation.confidence * 100).toFixed(1)}%
             </span>
           </div>
-          <div className="w-full bg-purple-200 rounded-full h-2">
+          <div className="w-full bg-primary-200 rounded-full h-2">
             <div
-              className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-1000"
+              className="bg-gradient-to-r from-primary-500 to-primary-800 h-2 rounded-full transition-all duration-1000"
               style={{ width: `${Math.min(result.validation.confidence * 100, 100)}%` }}
             />
           </div>

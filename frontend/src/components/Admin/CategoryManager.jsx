@@ -34,7 +34,7 @@ function FieldPreviewModal({ category, subcategory, onClose }) {
         </div>
 
         <div className="p-5 space-y-4">
-          <p className="text-xs text-purple-600 font-semibold uppercase tracking-wide bg-purple-50 px-3 py-2 rounded-lg">
+          <p className="text-xs text-[#a37b3d] font-semibold uppercase tracking-wide bg-[#FFF5F8] px-3 py-2 rounded-lg">
             This is how the seller sees the upload form for this subcategory
           </p>
 
@@ -56,8 +56,8 @@ function FieldPreviewModal({ category, subcategory, onClose }) {
 
           {/* Custom fields from admin */}
           {fields.length > 0 && (
-            <div className="border-t border-dashed border-purple-200 pt-4">
-              <p className="text-xs font-semibold text-purple-600 mb-3">Custom Fields (added by admin)</p>
+            <div className="border-t border-dashed border-[#FBEFF1] pt-4">
+              <p className="text-xs font-semibold text-[#a37b3d] mb-3">Custom Fields (added by admin)</p>
               <div className="grid grid-cols-2 gap-3">
                 {fields.map(f => (
                   <div key={f.field_id}>
@@ -65,7 +65,7 @@ function FieldPreviewModal({ category, subcategory, onClose }) {
                       {f.label}{f.required ? ' *' : ''}
                     </label>
                     {f.type === 'select' ? (
-                      <select disabled className="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm bg-purple-50">
+                      <select disabled className="w-full border border-[#FBEFF1] rounded-lg px-3 py-2 text-sm bg-[#FFF5F8]">
                         <option>— Select —</option>
                         {(f.options || []).map(o => <option key={o}>{o}</option>)}
                       </select>
@@ -74,7 +74,7 @@ function FieldPreviewModal({ category, subcategory, onClose }) {
                         type={f.type === 'number' ? 'number' : 'text'}
                         placeholder={f.type === 'number' ? '0' : `Enter ${f.label.toLowerCase()}`}
                         disabled
-                        className="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm bg-purple-50 text-gray-400"
+                        className="w-full border border-[#FBEFF1] rounded-lg px-3 py-2 text-sm bg-[#FFF5F8] text-gray-400"
                       />
                     )}
                   </div>
@@ -113,13 +113,13 @@ function FieldPreviewModal({ category, subcategory, onClose }) {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400" />
           </div>
 
-          <div className="border border-purple-200 rounded-xl p-3 bg-purple-50 text-center text-xs text-purple-600">
+          <div className="border border-[#FBEFF1] rounded-xl p-3 bg-[#FFF5F8] text-center text-xs text-[#a37b3d]">
             Upload Product Image (JPG/PNG, max 5 MB)
           </div>
 
           <button
             onClick={onClose}
-            className="w-full py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors"
+            className="w-full py-2.5 bg-[#a37b3d] text-white rounded-xl text-sm font-semibold hover:bg-[#8a6633] transition-colors"
           >
             OK — Close Preview
           </button>
@@ -370,7 +370,7 @@ export default function CategoryManager() {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
                   />
                   <button onClick={addSub}
-                    className="w-full py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">
+                    className="w-full py-2 bg-[#a37b3d] text-white rounded-lg text-sm font-medium hover:bg-[#8a6633]">
                     + Add Subcategory
                   </button>
                   {subMsg && (
@@ -477,7 +477,7 @@ export default function CategoryManager() {
                     Required field
                   </label>
                   <button onClick={addField}
-                    className="w-full py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">
+                    className="w-full py-2 bg-[#a37b3d] text-white rounded-lg text-sm font-medium hover:bg-[#8a6633]">
                     + Add Field
                   </button>
                   {fieldMsg && (
@@ -491,7 +491,7 @@ export default function CategoryManager() {
               {/* Preview button */}
               <button
                 onClick={() => setPreview({ category: selected, subcategory: selectedSub })}
-                className="w-full mt-3 py-2 border border-purple-300 text-purple-600 rounded-lg text-sm font-medium hover:bg-purple-50 transition-colors"
+                className="w-full mt-3 py-2 border border-[#FBEFF1] text-[#a37b3d] rounded-lg text-sm font-medium hover:bg-[#FFF5F8] transition-colors"
               >
                 👁 Preview Seller Form
               </button>

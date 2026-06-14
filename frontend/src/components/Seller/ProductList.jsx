@@ -115,7 +115,7 @@ function EditModal({ product, onSave, onClose }) {
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Title</label>
             <input type="text" value={form.title} onChange={e => update('title', e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
           </div>
 
           {/* Description */}
@@ -123,7 +123,7 @@ function EditModal({ product, onSave, onClose }) {
             <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
             <textarea value={form.description} onChange={e => update('description', e.target.value)}
               rows={3}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8] resize-none" />
           </div>
 
           {/* Price + §11.3 suggestion */}
@@ -140,8 +140,8 @@ function EditModal({ product, onSave, onClose }) {
               const isSoftWarn  = price > 0 && avg > 0 && devPct > band && !isHardBlock;
               const isOK        = price > 0 && avg > 0 && devPct <= band;
               return (
-                <div className="mb-1.5 text-[10px] bg-purple-50 rounded-lg px-2 py-1.5 space-y-0.5">
-                  <div className="text-purple-600">
+                  <div className="mb-1.5 text-[10px] bg-[#FFF5F8] rounded-lg px-2 py-1.5 space-y-0.5">
+                    <div className="text-[#a37b3d]">
                     Suggested: PKR {lo.toLocaleString()} – {hi.toLocaleString()}
                     <span className="text-gray-400 ml-1">(avg PKR {avg.toLocaleString()}, ±{band}%)</span>
                   </div>
@@ -161,14 +161,14 @@ function EditModal({ product, onSave, onClose }) {
             })()}
             <input type="number" value={form.price} onChange={e => update('price', e.target.value)}
               min="0"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
           </div>
 
           {/* Discount toggle */}
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
               <div onClick={() => setDiscountEnabled(v => !v)}
-                className={`relative w-10 h-5 rounded-full transition-colors ${discountEnabled ? 'bg-purple-500' : 'bg-gray-300'}`}>
+                className={`relative w-10 h-5 rounded-full transition-colors ${discountEnabled ? 'bg-[#a37b3d]' : 'bg-gray-300'}`}>
                 <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${discountEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
               <span className="text-xs font-medium text-gray-600">Discount / Sale price</span>
@@ -180,7 +180,7 @@ function EditModal({ product, onSave, onClose }) {
                 <input type="number" value={form.discount_price}
                   onChange={e => update('discount_price', e.target.value)}
                   min="0" placeholder="Must be less than original price"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
                 {form.price && form.discount_price && Number(form.discount_price) < Number(form.price) && (
                   <p className="text-[10px] text-green-600 mt-1">
                     Discount: {Math.round((1 - Number(form.discount_price) / Number(form.price)) * 100)}% off
@@ -196,12 +196,12 @@ function EditModal({ product, onSave, onClose }) {
               <label className="block text-xs font-medium text-gray-600 mb-1">Stock Quantity</label>
               <input type="number" value={form.stock_quantity} onChange={e => update('stock_quantity', e.target.value)}
                 min="0"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
               <select value={form.availability_status} onChange={e => update('availability_status', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]">
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -214,22 +214,22 @@ function EditModal({ product, onSave, onClose }) {
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Color</label>
                   <input type="text" value={form.color} onChange={e => update('color', e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Fabric</label>
                   <input type="text" value={form.fabric} onChange={e => update('fabric', e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Embroidery</label>
                   <input type="text" value={form.embroidery_type} onChange={e => update('embroidery_type', e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Size</label>
                   <input type="text" value={form.size} onChange={e => update('size', e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
                 </div>
               </>
             )}
@@ -237,20 +237,20 @@ function EditModal({ product, onSave, onClose }) {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Material</label>
                 <input type="text" value={form.material} onChange={e => update('material', e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
               </div>
             )}
             {['electronics', 'kitchen_items', 'miscellaneous'].includes(product.major_category) && (
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
                 <input type="text" value={form.brand} onChange={e => update('brand', e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
               </div>
             )}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Condition</label>
               <select value={form.condition} onChange={e => update('condition', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]">
                 {['New', 'Like New', 'Used', 'Thrift'].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -263,7 +263,7 @@ function EditModal({ product, onSave, onClose }) {
               Cancel
             </button>
             <button onClick={handleSave} disabled={saving}
-              className="flex-1 py-2.5 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-xl font-semibold disabled:opacity-60 transition-colors">
+              className="flex-1 py-2.5 text-sm text-white bg-[#a37b3d] hover:bg-[#8a6633] rounded-xl font-semibold disabled:opacity-60 transition-colors">
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
@@ -330,7 +330,7 @@ export default function ProductList({ sellerId, refreshTrigger }) {
 
   if (!sellerId) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-8 text-center text-gray-400">
+      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-8 text-center text-gray-400">
         Register or log in as a seller to see your products.
       </div>
     );
@@ -338,7 +338,7 @@ export default function ProductList({ sellerId, refreshTrigger }) {
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-xl font-bold text-gray-800">My Products</h2>
           <span className="text-sm text-gray-400">{total} total</span>
@@ -350,7 +350,7 @@ export default function ProductList({ sellerId, refreshTrigger }) {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-[#ECD4A8] border-t-[#a37b3d] rounded-full animate-spin" />
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-12 text-gray-400 text-sm">No products yet. Upload your first product above.</div>
@@ -358,7 +358,7 @@ export default function ProductList({ sellerId, refreshTrigger }) {
           <div className="space-y-3">
             {products.map(prod => (
               <div key={prod.product_id}
-                className="flex items-center gap-4 p-3 border border-gray-100 rounded-xl hover:border-purple-200 transition-colors">
+                className="flex items-center gap-4 p-3 border border-gray-100 rounded-xl hover:border-[#ECD4A8] transition-colors">
 
                 {/* Thumbnail */}
                 <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
@@ -376,7 +376,7 @@ export default function ProductList({ sellerId, refreshTrigger }) {
                   <p className="text-xs text-gray-400 mt-0.5">
                     {prod.major_category?.replace('_', ' ')} &bull; {prod.images?.length || 0} img(s)
                   </p>
-                  <p className="text-xs text-purple-600 font-semibold mt-0.5">
+                  <p className="text-xs text-[#a37b3d] font-semibold mt-0.5">
                     PKR {prod.price?.toLocaleString()}
                     {prod.discount_price && prod.discount_price < prod.price && (
                       <span className="ml-2 text-green-600">Sale: PKR {prod.discount_price?.toLocaleString()}</span>
@@ -414,10 +414,10 @@ export default function ProductList({ sellerId, refreshTrigger }) {
         {total > 10 && (
           <div className="flex justify-center gap-3 mt-5">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-              className="px-3 py-1 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:border-purple-400">Prev</button>
+              className="px-3 py-1 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:border-[#ECD4A8]">Prev</button>
             <span className="px-3 py-1 text-sm text-gray-500">Page {page} / {Math.ceil(total / 10)}</span>
             <button onClick={() => setPage(p => p + 1)} disabled={page * 10 >= total}
-              className="px-3 py-1 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:border-purple-400">Next</button>
+              className="px-3 py-1 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:border-[#ECD4A8]">Next</button>
           </div>
         )}
       </div>

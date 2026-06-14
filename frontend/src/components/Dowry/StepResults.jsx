@@ -8,8 +8,8 @@ import { Sparkles, ArrowRight, TrendingUp, Info, HelpCircle, Save, CheckCircle2 
 
 // 10-colour palette — repeats for more than 10 categories
 const PALETTE = [
-  '#C026D3','#2563EB','#0891B2','#D97706','#059669',
-  '#DC2626','#6B7280','#7C3AED','#EA580C','#0D9488',
+  '#a37b3d','#ECD4A8','#dfc08d','#d0ac72','#c09858',
+  '#8a6633','#FDF2F3','#FBEFF1','#FEF4F7','#FFF5F8',
 ];
 
 const formatPKR = (v) => {
@@ -67,7 +67,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4" />
+        <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin mb-4" />
         <p className="text-sm font-medium text-gray-500">Running Hybrid Engine (Rule + Market Prices + ML)...</p>
       </div>
     );
@@ -112,28 +112,28 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl p-5 text-white shadow-md shadow-purple-500/10">
+        <div className="bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-2xl p-5 text-white shadow-md shadow-[#ECD4A8]/20">
           <p className="text-[10px] uppercase font-bold tracking-wider opacity-85">Total Budget</p>
           <p className="text-xl font-black mt-1.5">{formatPKRFull(adjustedTotal)}</p>
           {adjustedTotal !== result.total_recommended_budget && (
             <p className="text-[10px] opacity-75 mt-1">System: {formatPKR(result.total_recommended_budget)}</p>
           )}
         </div>
-        <div className="bg-white rounded-2xl p-5 border border-purple-50 shadow-sm">
+        <div className="bg-white rounded-2xl p-5 border border-primary-200 shadow-sm">
           <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">From Income</p>
           <p className="text-xl font-bold text-gray-900 mt-1.5">{formatPKR(result.budget_sources?.from_income || 0)}</p>
-          <p className="text-[10px] text-purple-600 font-bold mt-1 bg-purple-50 px-2 py-0.5 rounded-md inline-block">
+          <p className="text-[10px] text-primary-900 font-bold mt-1 bg-primary-50 px-2 py-0.5 rounded-md inline-block">
             {result.budget_sources?.income_percentage || 0}% of budget
           </p>
         </div>
-        <div className="bg-white rounded-2xl p-5 border border-purple-50 shadow-sm">
+        <div className="bg-white rounded-2xl p-5 border border-primary-200 shadow-sm">
           <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">From Savings</p>
           <p className="text-xl font-bold text-gray-900 mt-1.5">{formatPKR(result.budget_sources?.from_savings || 0)}</p>
-          <p className="text-[10px] text-purple-600 font-bold mt-1 bg-purple-50 px-2 py-0.5 rounded-md inline-block">
+          <p className="text-[10px] text-primary-900 font-bold mt-1 bg-primary-50 px-2 py-0.5 rounded-md inline-block">
             {result.budget_sources?.savings_percentage || 0}% of budget
           </p>
         </div>
-        <div className="bg-white rounded-2xl p-5 border border-purple-50 shadow-sm">
+        <div className="bg-white rounded-2xl p-5 border border-primary-200 shadow-sm">
           <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Safety Index</p>
           <p className="text-xl font-bold text-gray-900 mt-1.5">{(result.responsibility_score * 100).toFixed(0)}%</p>
           <p className="text-[10px] text-emerald-600 font-bold mt-1 bg-emerald-50 px-2 py-0.5 rounded-md inline-block">
@@ -143,10 +143,10 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
       </div>
 
       {/* Sliders Panel */}
-      <div className="border border-purple-100/60 rounded-3xl p-6 bg-white shadow-sm space-y-6">
+      <div className="border border-primary-200/60 rounded-3xl p-6 bg-white shadow-sm space-y-6">
         <div>
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-1.5">
-            <TrendingUp size={18} className="text-purple-600" /> Fine-Tune Category Allocations
+            <TrendingUp size={18} className="text-primary-900" /> Fine-Tune Category Allocations
           </h3>
           <p className="text-xs text-gray-400 mt-0.5 font-light">Drag individual sliders to rebalance funds. The total budget updates automatically.</p>
         </div>
@@ -203,13 +203,13 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
 
         <div className="pt-5 border-t border-gray-100 flex items-center justify-between">
           <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Adjusted Budget</span>
-          <span className="text-xl font-black text-purple-700">{formatPKRFull(adjustedTotal)}</span>
+          <span className="text-xl font-black text-primary-950">{formatPKRFull(adjustedTotal)}</span>
         </div>
       </div>
 
       {/* Visual Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="border border-purple-50 rounded-3xl p-6 bg-white shadow-sm">
+        <div className="border border-primary-200 rounded-3xl p-6 bg-white shadow-sm">
           <h3 className="text-sm font-bold text-gray-950 mb-1">Budget Breakdown</h3>
           <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-4">Pie Representation</p>
           <ResponsiveContainer width="100%" height={260}>
@@ -226,7 +226,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
           </ResponsiveContainer>
         </div>
 
-        <div className="border border-purple-50 rounded-3xl p-6 bg-white shadow-sm">
+        <div className="border border-primary-200 rounded-3xl p-6 bg-white shadow-sm">
           <h3 className="text-sm font-bold text-gray-950 mb-1">Comparative Chart</h3>
           <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-4">Amounts comparison</p>
           <ResponsiveContainer width="100%" height={260}>
@@ -249,7 +249,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
       )}
 
       {/* Table breakdown */}
-      <div className="border border-purple-100/50 rounded-3xl overflow-hidden bg-white shadow-sm">
+      <div className="border border-primary-200/50 rounded-3xl overflow-hidden bg-white shadow-sm">
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
@@ -268,7 +268,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
                 const dev      = getDeviationColor(adjusted, sysAmt);
                 const styles   = DEVIATION_STYLES[dev];
                 return (
-                  <tr key={key} className="hover:bg-purple-50/20 transition-colors">
+                  <tr key={key} className="hover:bg-primary-50/20 transition-colors">
                     <td className="px-5 py-3.5 flex items-center gap-2 font-bold text-gray-800 capitalize">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: catColor(key) }} />
                       {catLabel(key)}
@@ -289,14 +289,14 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
 
       {/* Advisory Notes */}
       {result.notes?.length > 0 && (
-        <div className="bg-purple-50/30 border border-purple-100 rounded-3xl p-5 relative overflow-hidden">
-          <h3 className="text-xs font-bold text-purple-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <Info size={14} className="text-purple-600" /> Hybrid Engine Advice Notes
+        <div className="bg-primary-50/30 border border-primary-200 rounded-3xl p-5 relative overflow-hidden">
+          <h3 className="text-xs font-bold text-primary-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Info size={14} className="text-primary-800" /> Hybrid Engine Advice Notes
           </h3>
           <ul className="space-y-2">
             {result.notes.map((note, i) => (
               <li key={i} className="text-xs text-gray-600 leading-relaxed flex items-start gap-2.5 font-medium">
-                <span className="text-purple-600 mt-0.5 shrink-0">•</span>{note}
+                <span className="text-primary-800 mt-0.5 shrink-0">•</span>{note}
               </li>
             ))}
           </ul>
@@ -320,10 +320,10 @@ function incomeBucket(income) {
 
 function CommunityInsights({ matches, myBudget }) {
   return (
-    <div className="border border-purple-100/60 rounded-3xl overflow-hidden bg-white shadow-sm">
-      <div className="bg-purple-50/50 px-5 py-4 border-b border-purple-100/40">
+    <div className="border border-primary-200/60 rounded-3xl overflow-hidden bg-white shadow-sm">
+      <div className="bg-primary-50/50 px-5 py-4 border-b border-primary-200/40">
         <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
-          <Sparkles size={16} className="text-purple-600" /> Community Insights
+          <Sparkles size={16} className="text-primary-800" /> Community Insights
         </h3>
         <p className="text-xs text-gray-400 mt-0.5 font-light">
           Compare details with {matches.length} similar user profiles in our database.
@@ -344,7 +344,7 @@ function CommunityInsights({ matches, myBudget }) {
               const dev      = m.deviation_pct;
               const devColor = Math.abs(dev) <= 10 ? "text-emerald-600 bg-emerald-50 border-emerald-100" : Math.abs(dev) <= 25 ? "text-amber-600 bg-amber-50 border-amber-100" : "text-rose-600 bg-rose-50 border-rose-100";
               return (
-                <tr key={i} className="hover:bg-purple-50/10 transition-colors">
+                <tr key={i} className="hover:bg-primary-50/10 transition-colors">
                   <td className="px-5 py-3.5 text-gray-800 font-bold">PKR {incomeBucket(m.income)}/mo</td>
                   <td className="px-5 py-3.5 text-center text-gray-500 font-medium">{m.total_family_members} members</td>
                   <td className="px-5 py-3.5 text-right font-mono text-gray-800 font-extrabold">{formatPKRFull(m.total_recommended_budget)}</td>
@@ -408,7 +408,7 @@ function BudgetManageSection({ buyerId, categories }) {
   if (!dowry || cats.length < 2) return null;
 
   return (
-    <div className="border border-purple-100/60 rounded-3xl p-6 bg-white shadow-sm space-y-4">
+    <div className="border border-primary-200/60 rounded-3xl p-6 bg-white shadow-sm space-y-4">
       <div>
         <h3 className="text-sm font-bold text-gray-900">Reallocate Budget Between Categories</h3>
         <p className="text-xs text-gray-400 mt-0.5 font-light">Shift funds from one category to another to fine-tune your plan.</p>
@@ -420,7 +420,7 @@ function BudgetManageSection({ buyerId, categories }) {
           <select
             value={fromCat}
             onChange={e => { setFromCat(e.target.value); setMsg({ text: '', error: false }); }}
-            className="w-full border border-gray-200/80 bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all">
+            className="w-full border border-gray-200/80 bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all">
             <option value="">Select category…</option>
             {cats.filter(([k]) => k !== toCat).map(([k, v]) => (
               <option key={k} value={k}>
@@ -435,7 +435,7 @@ function BudgetManageSection({ buyerId, categories }) {
           <select
             value={toCat}
             onChange={e => { setToCat(e.target.value); setMsg({ text: '', error: false }); }}
-            className="w-full border border-gray-200/80 bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all">
+            className="w-full border border-gray-200/80 bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all">
             <option value="">Select category…</option>
             {cats.filter(([k]) => k !== fromCat).map(([k]) => (
               <option key={k} value={k}>{catLabel(k)}</option>
@@ -450,11 +450,11 @@ function BudgetManageSection({ buyerId, categories }) {
               type="number" value={amount} min="1" max={maxShift || undefined}
               onChange={e => { setAmount(e.target.value); setMsg({ text: '', error: false }); }}
               placeholder="0"
-              className="flex-1 border border-gray-200/80 rounded-2xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+              className="flex-1 border border-gray-200/80 rounded-2xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
             />
             <button
               onClick={handleShift}
-              className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-pink-500 text-white rounded-2xl text-xs font-bold transition-all shadow-md shadow-purple-500/10 hover:opacity-95 cursor-pointer">
+              className="px-5 py-2.5 bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] text-white rounded-2xl text-xs font-bold transition-all shadow-md shadow-[#ECD4A8]/20 hover:opacity-95 cursor-pointer">
               Shift →
             </button>
           </div>
@@ -463,7 +463,7 @@ function BudgetManageSection({ buyerId, categories }) {
 
       {fromCat && (
         <p className="text-[10px] text-gray-400 font-medium px-0.5">
-          Available from <span className="font-bold text-purple-600">{catLabel(fromCat)}</span>: PKR {maxShift.toLocaleString()}
+          Available from <span className="font-bold text-primary-900">{catLabel(fromCat)}</span>: PKR {maxShift.toLocaleString()}
         </p>
       )}
 

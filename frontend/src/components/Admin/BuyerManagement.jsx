@@ -7,7 +7,7 @@ const TABS = ['Profile', 'Family & Finance', 'Dowry Estimation', 'Cart'];
 
 function getBuyerLevel(orders = 0) {
   if (orders >= 7) return { level: 3, label: 'Loyal Buyer',  color: 'from-teal-500 to-green-500' };
-  if (orders >= 3) return { level: 2, label: 'Active Buyer', color: 'from-blue-500 to-purple-500' };
+  if (orders >= 3) return { level: 2, label: 'Active Buyer', color: 'from-[#a37b3d] to-[#ECD4A8]' };
   return { level: 1, label: 'New Buyer', color: 'from-gray-400 to-gray-500' };
 }
 
@@ -95,7 +95,7 @@ export default function BuyerManagement() {
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-gray-800 text-sm">{b.name}</span>
                     {b.dowry_done && (
-                      <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full">Dowry ✓</span>
+                      <span className="text-[10px] bg-[#FFF5F8] text-[#a37b3d] px-1.5 py-0.5 rounded-full">Dowry ✓</span>
                     )}
                   </div>
                   <p className="text-xs text-gray-400 truncate">{b.email}</p>
@@ -120,7 +120,7 @@ export default function BuyerManagement() {
           ) : (
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
               {/* Header */}
-              <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50">
+              <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-[#FFF5F8] to-[#FCFBFB]">
                 <div>
                   <h3 className="font-bold text-gray-800 text-lg">{selected.name}</h3>
                   <p className="text-sm text-gray-500">{selected.email}</p>
@@ -194,15 +194,15 @@ export default function BuyerManagement() {
                   est ? (
                     <div className="space-y-4">
                       {/* Total — shows buyer's actual adjusted budget (from category_budgets), not the original ML total */}
-                      <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
-                        <p className="text-xs text-purple-500 font-medium">
+                      <div className="bg-[#FFF5F8] border border-[#FBEFF1] rounded-xl p-4">
+                        <p className="text-xs text-[#a37b3d] font-medium">
                           {adjustedTotal > 0 ? "Buyer's Actual Budget" : "System Recommended Budget"}
                         </p>
-                        <p className="text-2xl font-bold text-purple-700 mt-1">
+                        <p className="text-2xl font-bold text-[#a37b3d] mt-1">
                           PKR {(adjustedTotal > 0 ? adjustedTotal : est.total_recommended_budget)?.toLocaleString() || '—'}
                         </p>
                         {adjustedTotal > 0 && adjustedTotal !== est.total_recommended_budget && (
-                          <p className="text-xs text-purple-400 mt-1">
+                          <p className="text-xs text-[#ECD4A8] mt-1">
                             System estimate: PKR {est.total_recommended_budget?.toLocaleString()}
                           </p>
                         )}
@@ -306,14 +306,14 @@ export default function BuyerManagement() {
                                 {catLabel(item.major_category)} · Qty: {item.qty}
                               </p>
                             </div>
-                            <p className="text-sm font-bold text-purple-600">
+                            <p className="text-sm font-bold text-[#a37b3d]">
                               PKR {((item.discount_price || item.price || 0) * (item.qty || 1)).toLocaleString()}
                             </p>
                           </div>
                         ))}
                         <div className="pt-2 border-t border-gray-100 text-right">
                           <span className="text-sm text-gray-500">Cart Total: </span>
-                          <span className="font-bold text-purple-700">
+                          <span className="font-bold text-[#a37b3d]">
                             PKR {(selected.cart_items || [])
                               .reduce((s, i) => s + (i.discount_price || i.price || 0) * (i.qty || 1), 0)
                               .toLocaleString()}

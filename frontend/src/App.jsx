@@ -27,14 +27,14 @@ import logo from './assets/ShaadiSahulat Logo PNG.png';
 
 function getBuyerLevel(orders = 0) {
   if (orders >= 7)  return { level: 3, label: 'Loyal Buyer',  color: 'from-teal-500 to-green-500',   next: null,  nextAt: null };
-  if (orders >= 3)  return { level: 2, label: 'Active Buyer', color: 'from-blue-500 to-purple-500',  next: 3,     nextAt: 7,   progress: (orders - 3) / 4 };
-  return             { level: 1, label: 'New Buyer',    color: 'from-purple-500 to-pink-500',  next: 2,     nextAt: 3,   progress: orders / 3 };
+  if (orders >= 3)  return { level: 2, label: 'Active Buyer', color: 'from-[#a37b3d] to-[#ECD4A8]',  next: 3,     nextAt: 7,   progress: (orders - 3) / 4 };
+  return             { level: 1, label: 'New Buyer',    color: 'from-[#c09858] to-[#ECD4A8]',  next: 2,     nextAt: 3,   progress: orders / 3 };
 }
 
 function getSellerLevel(orders = 0) {
   if (orders >= 50) return { level: 3, label: 'Elite Seller',   color: 'from-amber-500 to-orange-500', next: null, nextAt: null };
   if (orders >= 10) return { level: 2, label: 'Trusted Seller', color: 'from-blue-500 to-teal-500',   next: 3,    nextAt: 50,  progress: (orders - 10) / 40 };
-  return             { level: 1, label: 'Starter Seller', color: 'from-purple-500 to-pink-500',  next: 2,    nextAt: 10,  progress: orders / 10 };
+  return             { level: 1, label: 'Starter Seller', color: 'from-[#ECD4A8] to-[#a37b3d]',  next: 2,    nextAt: 10,  progress: orders / 10 };
 }
 
 function LevelBadge({ level, label, colorClass }) {
@@ -76,9 +76,9 @@ function BuyerAccountView({ buyer }) {
   return (
     <div className="animate-fade-in max-w-lg mx-auto space-y-4">
       {/* Profile card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
             {buyer?.name?.[0]?.toUpperCase() || '?'}
           </div>
           <div className="flex-1 min-w-0">
@@ -112,7 +112,7 @@ function BuyerAccountView({ buyer }) {
       </div>
 
       {/* Level card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         <h3 className="text-sm font-semibold text-gray-600 mb-3">Buyer Level</h3>
         <LevelBadge level={levelInfo.level} label={levelInfo.label} colorClass={levelInfo.color} />
         <LevelProgress info={levelInfo} ordersLabel={`${orders} order${orders !== 1 ? 's' : ''}`} />
@@ -122,7 +122,7 @@ function BuyerAccountView({ buyer }) {
             { l: 2, label: 'Active Buyer', at: '3+ orders' },
             { l: 3, label: 'Loyal Buyer',  at: '7+ orders' },
           ].map(({ l, label, at }) => (
-            <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+            <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-[#FFF5F8] border-[#ECD4A8] text-[#a37b3d]' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
               <p className="font-bold">L{l}</p>
               <p className="font-medium text-[10px]">{label}</p>
               <p className="text-[9px] mt-0.5">{at}</p>
@@ -145,9 +145,9 @@ function SellerAccountView({ seller }) {
   return (
     <div className="animate-fade-in max-w-lg mx-auto space-y-4">
       {/* Profile card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-pink-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-red-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
             {seller?.name?.[0]?.toUpperCase() || '?'}
           </div>
           <div className="flex-1 min-w-0">
@@ -192,7 +192,7 @@ function SellerAccountView({ seller }) {
       </div>
 
       {/* Level card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-pink-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         <h3 className="text-sm font-semibold text-gray-600 mb-3">Seller Level</h3>
         <LevelBadge level={levelInfo.level} label={levelInfo.label} colorClass={levelInfo.color} />
         <LevelProgress info={levelInfo} ordersLabel={`${orders} completed order${orders !== 1 ? 's' : ''}`} />
@@ -202,7 +202,7 @@ function SellerAccountView({ seller }) {
             { l: 2, label: 'Trusted Seller',  at: '10+ orders' },
             { l: 3, label: 'Elite Seller',    at: '50+ orders' },
           ].map(({ l, label, at }) => (
-            <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+            <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-[#FFF5F8] border-[#ECD4A8] text-[#a37b3d]' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
               <p className="font-bold">L{l}</p>
               <p className="font-medium text-[10px]">{label}</p>
               <p className="text-[9px] mt-0.5">{at}</p>
@@ -381,7 +381,7 @@ function AppContent() {
   // If landing page should be shown
   if (showLanding) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 relative">
+    <div className="min-h-screen bg-[#FCFBFB] relative">
         {buyer ? (
           <LandingPage
             onSelectBuyer={() => handleBuyerLogin(buyer)}
@@ -415,7 +415,7 @@ function AppContent() {
     : (isLoggedIn ? SELLER_VIEWS_AUTH : SELLER_VIEWS_GUEST);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex">
+    <div className="min-h-screen bg-[#FCFBFB] flex">
 
       {/* ── SIDEBAR ──────────────────────────────────────────────────────── */}
       <aside className={`fixed md:static w-64 h-screen bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-y-auto z-40 transform transition-transform md:translate-x-0 ${
@@ -440,8 +440,8 @@ function AppContent() {
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
                 view === v.id
                   ? userRole === 'buyer'
-                    ? 'bg-gradient-to-r from-violet-50 to-fuchsia-50 text-violet-700 shadow-sm border border-violet-100/50'
-                    : 'bg-gradient-to-r from-pink-50 to-rose-50 text-pink-700 shadow-sm border border-pink-100/50'
+                    ? 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
+                    : 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
                   : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-gray-800'
               }`}
             >
@@ -457,8 +457,8 @@ function AppContent() {
             <div className="flex items-center gap-3 mb-4">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-sm ${
                 userRole === 'buyer'
-                  ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500'
-                  : 'bg-gradient-to-br from-pink-500 to-rose-500'
+                  ? 'bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8]'
+                  : 'bg-gradient-to-br from-[#c09858] to-[#a37b3d]'
               }`}>
                 {isLoggedIn?.name?.[0]?.toUpperCase()}
               </div>
@@ -483,7 +483,7 @@ function AppContent() {
         <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="md:hidden flex items-center gap-3">
-              <div className={`w-8 h-8 bg-gradient-to-br ${userRole === 'buyer' ? 'from-purple-600 to-pink-500' : 'from-pink-600 to-red-500'} rounded-lg flex items-center justify-center text-white font-bold text-sm`}>
+              <div className={`w-8 h-8 bg-gradient-to-br ${userRole === 'buyer' ? 'from-[#a37b3d] to-[#ECD4A8]' : 'from-[#c09858] to-[#a37b3d]'} rounded-lg flex items-center justify-center text-white font-bold text-sm`}>
                 S
               </div>
               <h1 className="font-bold text-gray-800">ShaadiSahulat</h1>
@@ -499,7 +499,7 @@ function AppContent() {
               {userRole === 'buyer' && (
                 <button
                   onClick={() => setCart(true)}
-                  className="relative flex items-center gap-2 px-3 py-1.5 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 transition-colors shadow-sm"
+                  className="relative flex items-center gap-2 px-3 py-1.5 bg-[#a37b3d] text-white rounded-xl text-sm font-medium hover:bg-[#8a6633] transition-colors shadow-sm"
                 >
                   <ShoppingCart size={16} />
                   {totalItems > 0 && (
