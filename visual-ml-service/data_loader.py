@@ -170,24 +170,24 @@ def validate_dataset(min_images=9):
 
         if count == 0:
             warnings.append(
-                f"❌ {label} ({cat_id}): NO images found! "
+                f"[ERROR] {label} ({cat_id}): NO images found! "
                 f"Add at least {min_images} images to training_data/{cat_id}/"
             )
             is_valid = False
         elif count < min_images:
             warnings.append(
-                f"⚠️  {label} ({cat_id}): Only {count} images. "
+                f"[WARNING] {label} ({cat_id}): Only {count} images. "
                 f"Minimum is {min_images}, recommended is 20. "
                 f"Training may not work well with so few images."
             )
             is_valid = False
         elif count < 20:
             warnings.append(
-                f"✅ {label} ({cat_id}): {count} images (OK, but 20 recommended for better accuracy)"
+                f"[OK] {label} ({cat_id}): {count} images (OK, but 20 recommended for better accuracy)"
             )
         else:
             warnings.append(
-                f"✅ {label} ({cat_id}): {count} images (Great!)"
+                f"[OK] {label} ({cat_id}): {count} images (Great!)"
             )
 
     return is_valid, scan, warnings
@@ -274,8 +274,8 @@ def print_dataset_report():
 
     for cat in CATEGORIES:
         cat_dir = os.path.join(TRAINING_DATA_DIR, cat["id"])
-        exists = "✓" if os.path.exists(cat_dir) else "✗"
-        print(f"    [{exists}] {cat['id']}/  ({cat['label']})")
+        exists = "OK" if os.path.exists(cat_dir) else "MISSING"
+        print(f"    [{exists:7}] {cat['id']}/  ({cat['label']})")
 
     print(f"\n  Image requirements:")
     print(f"    - Minimum 10 images per category (absolute minimum)")

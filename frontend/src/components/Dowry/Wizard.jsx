@@ -6,12 +6,13 @@ import StepResults from './StepResults';
 import api from '../../api/dowryApi';
 import { patchDowryBudgets } from '../../api/buyerApi';
 import { useCategories } from '../../hooks/useCategories';
+import { Sparkles, DollarSign, Users, Target, BarChart2, Check, ArrowRight, ArrowLeft, RefreshCw, Save, ShieldAlert } from 'lucide-react';
 
 const STEPS = [
-  { id: 1, title: 'Financial Profile', icon: '💰' },
-  { id: 2, title: 'Family Context',    icon: '👨‍👩‍👧‍👦' },
-  { id: 3, title: 'Priority Settings', icon: '🎯' },
-  { id: 4, title: 'Results Dashboard', icon: '📊' },
+  { id: 1, title: 'Financial Profile', icon: <DollarSign size={18} /> },
+  { id: 2, title: 'Family Context',    icon: <Users size={18} /> },
+  { id: 3, title: 'Priority Settings', icon: <Target size={18} /> },
+  { id: 4, title: 'Results Dashboard', icon: <BarChart2 size={18} /> },
 ];
 
 const INITIAL_FORM = {
@@ -23,7 +24,7 @@ const INITIAL_FORM = {
   unmarried_siblings:         '',
   married_siblings:           '',
   youngest_sibling_age:       '',
-  wedding_dress_type: 'bridal',          // §2.1 — bridal | groom
+  wedding_dress_type: 'bridal',          // bridal | groom
   priorities: {
     priority_wedding_dress: 'Medium',
     priority_furniture:     'Medium',
@@ -32,7 +33,7 @@ const INITIAL_FORM = {
     priority_decoration:    'Medium',
     priority_miscellaneous: 'Medium',
   },
-  redistributions: {},                   // §2.2 — { priority_furniture: false }
+  redistributions: {},                   // { priority_furniture: false }
 };
 
 function Wizard({ userId }) {
@@ -99,7 +100,7 @@ function Wizard({ userId }) {
           };
         }
 
-        // Use category_budgets.estimated as adjustedEstimates — reflects all shifts done after save
+        // Use category_budgets.estimated as adjustedEstimates
         if (est.category_budgets && Object.keys(est.category_budgets).length > 0) {
           const adjFromBudgets = {};
           for (const [cat, info] of Object.entries(est.category_budgets)) {
@@ -115,7 +116,7 @@ function Wizard({ userId }) {
         setIsLocked(true);
         setCurrentStep(4);
 
-        // Populate localStorage from DB so Dashboard/FinalProjection can read it
+        // Populate localStorage from DB
         if (est.category_budgets && Object.keys(est.category_budgets).length > 0) {
           const totalFromBudgets = Object.values(est.category_budgets)
             .reduce((s, v) => s + (v?.estimated || 0), 0);
@@ -200,7 +201,6 @@ function Wizard({ userId }) {
       const response = await api.estimate(payload);
       if (response.success) {
         setResult(response.data);
-        // Initialize adjusted estimates from engine output
         setAdjustedEstimates({ ...response.data.category_breakdown });
         setCurrentStep(4);
       } else {
@@ -222,11 +222,9 @@ function Wizard({ userId }) {
         user_id:             userId,
         adjusted_estimates:  adjustedEstimates,
       };
-      // Use upsert so each buyer has exactly one estimation (updated on re-submit)
       const response = await api.upsert(payload);
       if (response.success) {
         setSaved(true);
-        // §4.4 + §2.5 — persist latest estimation for budget banner
         if (response.data?.category_breakdown) {
           const catBudgets = {};
           for (const [cat, amt] of Object.entries(response.data.category_breakdown)) {
@@ -246,7 +244,6 @@ function Wizard({ userId }) {
           localStorage.setItem('ss_dowry_latest', dowryPayload);
           if (userId) {
             localStorage.setItem(`ss_dowry_${userId}`, dowryPayload);
-            // Persist adjusted budgets to MongoDB so Admin/Dashboard see correct values
             patchDowryBudgets(userId, catBudgets).catch(() => {});
             window.dispatchEvent(new CustomEvent('dowry-updated', { detail: { buyerId: userId } }));
           }
@@ -270,16 +267,22 @@ function Wizard({ userId }) {
     setError('');
   };
 
-  // ── Locked mode: estimation already exists — show dashboard only ──
+  // Locked mode dashboard
   if (isLocked && result) {
     return (
-      <div className="space-y-6">
-        <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm text-purple-700 flex items-center gap-2">
-          <span>📊</span>
-          <span className="font-semibold">Your Dowry Budget Plan</span>
-          <span className="text-purple-500 ml-1">— Finalized. Use the budget shift tool below to reallocate funds between categories.</span>
+      <div className="space-y-6 animate-fade-in">
+        <div className="bg-gradient-to-r from-violet-50 via-purple-50 to-pink-50 border border-purple-100 rounded-2xl p-5 text-sm text-purple-900 shadow-sm flex items-start gap-4">
+          <div className="p-2.5 bg-white rounded-xl shadow-inner border border-purple-200 shrink-0 text-purple-600">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-gray-900 tracking-tight text-base mb-1">Your Dowry Budget Plan is Finalized</h4>
+            <p className="text-gray-600 leading-relaxed font-light text-xs sm:text-sm">
+              Use the budget re-allocation sliders inside the results dashboard below to dynamically move funds from one category to another as your priorities evolve.
+            </p>
+          </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+        <div className="bg-white rounded-3xl shadow-lg border border-purple-100 p-6 md:p-8">
           <StepResults
             result={result}
             loading={false}
@@ -298,118 +301,137 @@ function Wizard({ userId }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Step Indicator */}
-      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
-        <div className="flex items-center justify-between">
-          {STEPS.map((step, idx) => (
-            <React.Fragment key={step.id}>
-              <div
-                className={`flex items-center gap-2 cursor-pointer transition-all duration-200 ${
-                  currentStep >= step.id ? 'text-purple-700' : 'text-gray-400'
-                }`}
-                onClick={() => {
-                  if (step.id < currentStep) setCurrentStep(step.id);
-                  if (step.id === 4 && result) setCurrentStep(4);
-                }}
-              >
+    <div className="space-y-8 max-w-4xl mx-auto pb-12 animate-fade-in">
+      {/* Wizard Steps - Glassmorphism Indicator */}
+      <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-purple-50 shadow-sm p-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-2">
+          {STEPS.map((step, idx) => {
+            const isActive = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+            return (
+              <React.Fragment key={step.id}>
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 ${
-                    currentStep === step.id
-                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
-                      : currentStep > step.id
-                      ? 'bg-purple-200 text-purple-700'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}
+                  className="flex items-center gap-3 cursor-pointer group transition-all duration-300"
+                  onClick={() => {
+                    if (step.id < currentStep) setCurrentStep(step.id);
+                    if (step.id === 4 && result) setCurrentStep(4);
+                  }}
                 >
-                  {currentStep > step.id ? '✓' : step.id}
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold transition-all duration-300 border ${
+                      isActive
+                        ? 'bg-gradient-to-tr from-violet-600 to-pink-500 text-white shadow-md shadow-purple-500/25 border-transparent scale-105'
+                        : isCompleted
+                        ? 'bg-purple-50 border-purple-100 text-purple-600'
+                        : 'bg-gray-50 border-gray-100 text-gray-400 group-hover:bg-purple-50 group-hover:text-purple-600'
+                    }`}
+                  >
+                    {isCompleted ? <Check size={18} /> : step.icon}
+                  </div>
+                  <div className="text-left">
+                    <p className={`text-[10px] uppercase font-bold tracking-wider ${isActive ? 'text-purple-600' : 'text-gray-400'}`}>Step 0{step.id}</p>
+                    <p className={`text-xs font-bold ${isActive ? 'text-gray-950' : 'text-gray-500 group-hover:text-gray-700'}`}>{step.title}</p>
+                  </div>
                 </div>
-                <div className="hidden sm:block">
-                  <div className="text-sm font-medium">{step.title}</div>
-                </div>
-              </div>
-              {idx < STEPS.length - 1 && (
-                <div
-                  className={`flex-1 h-0.5 mx-2 transition-colors duration-200 ${
-                    currentStep > step.id ? 'bg-purple-300' : 'bg-gray-200'
-                  }`}
-                />
-              )}
-            </React.Fragment>
-          ))}
+                {idx < STEPS.length - 1 && (
+                  <div
+                    className={`hidden sm:block flex-1 h-0.5 max-w-[50px] md:max-w-[80px] rounded-full transition-colors duration-300 ${
+                      currentStep > step.id ? 'bg-gradient-to-r from-violet-500 to-purple-500' : 'bg-gray-100'
+                    }`}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 
-      {/* Error Banner */}
+      {/* Error Alert Box */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-          {error}
+        <div className="bg-rose-50 border border-rose-100 text-rose-800 p-4 rounded-2xl text-xs md:text-sm flex items-center gap-3 animate-pulse">
+          <ShieldAlert className="text-rose-500 shrink-0" size={20} />
+          <span className="font-semibold">{error}</span>
         </div>
       )}
 
-      {/* Step Content */}
-      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
-        {currentStep === 1 && (
-          <StepFinancial formData={formData} updateForm={updateForm} />
-        )}
-        {currentStep === 2 && (
-          <StepFamily formData={formData} updateForm={updateForm} />
-        )}
-        {currentStep === 3 && (
-          <StepPriority
-            formData={formData}
-            categories={CATEGORIES}
-            updatePriority={updatePriority}
-            updateRedistribution={updateRedistribution}
-            updateForm={updateForm}
-          />
-        )}
-        {currentStep === 4 && (
-          <StepResults
-            result={result}
-            loading={loading}
-            saved={saved}
-            adjustedEstimates={adjustedEstimates}
-            onAdjust={(key, val) =>
-              setAdjustedEstimates((prev) => ({ ...prev, [key]: val }))
-            }
-            onSave={handleSave}
-            onReset={handleReset}
-            priorities={formData.priorities}
-            categories={dbCats}
-            buyerId={userId}
-          />
-        )}
-      </div>
+      {/* Primary Card Container */}
+      <div className="bg-white rounded-3xl border border-purple-50/50 shadow-xl shadow-purple-500/[0.02] p-6 md:p-8 min-h-[400px] flex flex-col justify-between">
+        <div className="mb-8">
+          {currentStep === 1 && (
+            <StepFinancial formData={formData} updateForm={updateForm} />
+          )}
+          {currentStep === 2 && (
+            <StepFamily formData={formData} updateForm={updateForm} />
+          )}
+          {currentStep === 3 && (
+            <StepPriority
+              formData={formData}
+              categories={CATEGORIES}
+              updatePriority={updatePriority}
+              updateRedistribution={updateRedistribution}
+              updateForm={updateForm}
+            />
+          )}
+          {currentStep === 4 && (
+            <StepResults
+              result={result}
+              loading={loading}
+              saved={saved}
+              adjustedEstimates={adjustedEstimates}
+              onAdjust={(key, val) =>
+                setAdjustedEstimates((prev) => ({ ...prev, [key]: val }))
+              }
+              onSave={handleSave}
+              onReset={handleReset}
+              priorities={formData.priorities}
+              categories={dbCats}
+              buyerId={userId}
+            />
+          )}
+        </div>
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={handleBack}
-          disabled={currentStep === 1}
-          className="px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-        >
-          Back
-        </button>
-        <div className="flex gap-3">
-          {currentStep < 4 && (
-            <button
-              onClick={currentStep === 3 ? handleEstimate : handleNext}
-              disabled={loading}
-              className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-medium hover:bg-purple-700 disabled:opacity-50 transition-all shadow-lg shadow-purple-200"
-            >
-              {loading ? 'Calculating...' : currentStep === 3 ? 'Calculate Estimate' : 'Next'}
-            </button>
-          )}
-          {currentStep === 4 && result && !saved && (
-            <button
-              onClick={handleSave}
-              disabled={loading}
-              className="px-6 py-2.5 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 disabled:opacity-50 transition-all"
-            >
-              {loading ? 'Saving...' : 'Save Estimate'}
-            </button>
-          )}
+        {/* Wizard Footer controls */}
+        <div className="flex items-center justify-between pt-6 border-t border-gray-100/80">
+          <button
+            onClick={handleBack}
+            disabled={currentStep === 1}
+            className="px-5 py-2.5 rounded-2xl border border-gray-200 text-gray-500 font-bold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-2 text-sm"
+          >
+            <ArrowLeft size={16} /> Back
+          </button>
+          
+          <div className="flex items-center gap-3">
+            {currentStep === 4 && result && !saved && (
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                className="px-6 py-2.5 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-2 text-sm shadow-md shadow-emerald-500/10"
+              >
+                {loading ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
+                {loading ? 'Saving...' : 'Save Plan'}
+              </button>
+            )}
+
+            {currentStep < 4 && (
+              <button
+                onClick={currentStep === 3 ? handleEstimate : handleNext}
+                disabled={loading}
+                className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-violet-600 to-pink-500 text-white font-bold hover:opacity-95 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-2 text-sm shadow-lg shadow-purple-500/10"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="animate-spin" size={16} />
+                    <span>Calculating...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{currentStep === 3 ? 'Calculate Estimate' : 'Continue'}</span>
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -422,7 +444,6 @@ function buildPayload(formData) {
   const total        = Number(formData.total_siblings       || 0);
   const parentsAlive = formData.parents_alive || 'both';
   const youngestAge  = Number(formData.youngest_sibling_age || 0);
-  // Repeat youngest age for each unmarried sibling so count matches (ruleEngine validates this)
   const ageArray = youngestAge > 0 && unmarried > 0
     ? Array(unmarried).fill(youngestAge)
     : [];
@@ -430,7 +451,7 @@ function buildPayload(formData) {
     monthly_household_income:    Number(formData.monthly_household_income),
     total_savings_available:     Number(formData.total_savings_available),
     expected_contribution:       Number(formData.expected_contribution || 0),
-    total_family_members:        total + 2,  // parents (2) + siblings
+    total_family_members:        total + 2,
     married_children_count:      married,
     unmarried_children_count:    unmarried,
     age_of_each_unmarried_child: ageArray,
