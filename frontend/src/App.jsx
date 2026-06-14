@@ -266,7 +266,7 @@ function AppContent() {
   // Isolate cart per buyer — switch storage key on login/logout
   useEffect(() => {
     setBuyerId(buyer?.buyer_id || null);
-  }, [buyer?.buyer_id]);
+  }, [buyer?.buyer_id, setBuyerId]);
 
   const handleSelectBuyer = () => {
     setUserRole('buyer');

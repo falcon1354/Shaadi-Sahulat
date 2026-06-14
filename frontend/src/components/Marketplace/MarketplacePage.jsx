@@ -580,7 +580,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
       }
       onHighlightCleared?.();
     }
-  }, [highlightProductId, products, onHighlightCleared]);
+  }, [highlightProductId, products, onHighlightCleared, isAdminView, onViewProduct]);
 
   // Save recently viewed when product detail opens (modal path for admin)
   useEffect(() => {
@@ -591,7 +591,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
         price: viewProduct.price, major_category: viewProduct.major_category,
       });
     }
-  }, [viewProduct]);
+  }, [viewProduct, buyerId]);
 
   // Handler for clicking a product card
   const handleViewProduct = (product) => {
