@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { Shirt, Users, User, AlertCircle, Ban, Search, Camera } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import ResultsGrid from './ResultsGrid';
 import ServiceStatus from './ServiceStatus';
@@ -6,15 +7,15 @@ import visualApi from '../../api/visualApi';
 
 // Only Bridal / Groom — map to a valid ML category for the backend
 const HINT_OPTIONS = [
-  { id: 'bridal', label: 'Bridal', icon: '👰', backendCat: 'bridal_lehenga' },
-  { id: 'groom',  label: 'Groom',  icon: '🤵', backendCat: null },          // no dedicated model class; TF-IDF handles it
+  { id: 'bridal', label: 'Bridal', icon: <User size={20} className="text-pink-500" />, backendCat: 'bridal_lehenga' },
+  { id: 'groom',  label: 'Groom',  icon: <Users size={20} className="text-blue-500" />, backendCat: null },          // no dedicated model class; TF-IDF handles it
 ];
 
 // Error stage → display config
 const STAGE_DISPLAY = {
-  content_safety:      { icon: '🚫', title: 'Content Safety Check Failed',    color: 'bg-red-50 border-red-200' },
-  category_validation: { icon: '⚠️', title: 'Dress Category Not Recognised',  color: 'bg-yellow-50 border-yellow-200' },
-  similarity_gate:     { icon: '🔍', title: 'No Matching Dress Found',         color: 'bg-orange-50 border-orange-200' },
+  content_safety:      { icon: <Ban size={24} className="text-red-500" />, title: 'Content Safety Check Failed',    color: 'bg-red-50 border-red-200' },
+  category_validation: { icon: <AlertCircle size={24} className="text-yellow-500" />, title: 'Dress Category Not Recognised',  color: 'bg-yellow-50 border-yellow-200' },
+  similarity_gate:     { icon: <Search size={24} className="text-orange-500" />, title: 'No Matching Dress Found',         color: 'bg-orange-50 border-orange-200' },
 };
 
 function wordCount(text) {
@@ -89,8 +90,11 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
     <div className="animate-fade-in">
       {/* Title */}
       <div className="text-center mb-6">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-fuchsia-100 text-fuchsia-600 rounded-full mb-4 shadow-sm">
+          <Camera size={32} />
+        </div>
         <h2 className="text-3xl font-bold text-gray-800 mb-2">
-          👗 Visual Dress Recommendation
+          Visual Dress Recommendation
         </h2>
         <p className="text-gray-500 max-w-xl mx-auto text-sm">
           Upload a wedding dress photo, describe it in a few words, and our AI finds the most similar

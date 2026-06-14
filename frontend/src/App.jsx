@@ -17,6 +17,10 @@ import AdminLogin          from './components/Admin/AdminLogin';
 import AdminLayout         from './components/Admin/AdminLayout';
 import { CartProvider, useCart } from './context/CartContext';
 import { getBuyerFromStorage, saveBuyerToStorage, clearBuyerFromStorage } from './api/buyerApi';
+import { 
+  LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User, 
+  ShoppingCart, PlusCircle, Package, LineChart, Lock, Store 
+} from 'lucide-react';
 
 // ── Level helpers ─────────────────────────────────────────────────────────
 
@@ -212,25 +216,25 @@ function SellerAccountView({ seller }) {
 // ── App Views ──────────────────────────────────────────────────────────────
 
 const BUYER_VIEWS = [
-  { id: 'buyer-dashboard', label: 'Dashboard',       icon: '📊' },
-  { id: 'marketplace',     label: 'Marketplace',     icon: '🛍️' },
-  { id: 'visual',          label: 'Find by Photo',   icon: '📸' },
-  { id: 'dowry',           label: 'Budget Estimator',icon: '💰' },
-  { id: 'projection',      label: 'Final Projection',icon: '📈' },
-  { id: 'account',         label: 'My Account',      icon: '👤' },
+  { id: 'buyer-dashboard', label: 'Dashboard',       icon: <LayoutDashboard size={20} /> },
+  { id: 'marketplace',     label: 'Marketplace',     icon: <ShoppingBag size={20} /> },
+  { id: 'visual',          label: 'Find by Photo',   icon: <Camera size={20} /> },
+  { id: 'dowry',           label: 'Budget Estimator',icon: <Calculator size={20} /> },
+  { id: 'projection',      label: 'Final Projection',icon: <TrendingUp size={20} /> },
+  { id: 'account',         label: 'My Account',      icon: <User size={20} /> },
 ];
 
 const SELLER_VIEWS_AUTH = [
-  { id: 'seller-dashboard', label: 'Dashboard',            icon: '📊' },
-  { id: 'upload',           label: 'Upload Product',       icon: '➕' },
-  { id: 'my-products',      label: 'My Products',          icon: '📦' },
-  { id: 'fin-projection',   label: 'Financial Projection', icon: '💹' },
-  { id: 'seller-account',   label: 'My Account',           icon: '👤' },
+  { id: 'seller-dashboard', label: 'Dashboard',            icon: <LayoutDashboard size={20} /> },
+  { id: 'upload',           label: 'Upload Product',       icon: <PlusCircle size={20} /> },
+  { id: 'my-products',      label: 'My Products',          icon: <Package size={20} /> },
+  { id: 'fin-projection',   label: 'Financial Projection', icon: <LineChart size={20} /> },
+  { id: 'seller-account',   label: 'My Account',           icon: <User size={20} /> },
 ];
 
 // Shown only when seller is not yet authenticated
 const SELLER_VIEWS_GUEST = [
-  { id: 'seller-dashboard', label: 'Login / Register', icon: '🔐' },
+  { id: 'seller-dashboard', label: 'Login / Register', icon: <Lock size={20} /> },
 ];
 
 function AppContent() {
@@ -394,7 +398,7 @@ function AppContent() {
         <div className="p-5 border-b border-gray-100/50">
           <div className="flex items-center gap-3 mb-4">
             <div className={`w-12 h-12 bg-gradient-to-br ${userRole === 'buyer' ? 'from-violet-500 to-fuchsia-500' : 'from-pink-500 to-rose-500'} rounded-[1rem] shadow-sm flex items-center justify-center text-white font-bold text-xl`}>
-              {userRole === 'buyer' ? '👰' : '🏪'}
+              {userRole === 'buyer' ? <ShoppingBag size={24} /> : <Store size={24} />}
             </div>
             <div>
               <h1 className="font-heading font-bold text-gray-800 text-base leading-tight tracking-tight">ShaadiSahulat</h1>
@@ -471,9 +475,9 @@ function AppContent() {
               {userRole === 'buyer' && (
                 <button
                   onClick={() => setCart(true)}
-                  className="relative flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors"
+                  className="relative flex items-center gap-2 px-3 py-1.5 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 transition-colors shadow-sm"
                 >
-                  <span>🛒</span>
+                  <ShoppingCart size={16} />
                   {totalItems > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                       {totalItems > 9 ? '9+' : totalItems}

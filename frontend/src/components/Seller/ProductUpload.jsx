@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Shirt, Sofa, Monitor, Utensils, Sparkles, Gift, Package } from 'lucide-react';
 import sellerApi from '../../api/sellerApi';
 import { useCategories } from '../../hooks/useCategories';
 
 // ── Category tree (mirrors config.py SELLER_CATEGORY_TREE) ────────────────
 const CATEGORY_TREE = [
   {
-    id: 'wedding_dress', label: 'Wedding Dress', icon: '👗',
+    id: 'wedding_dress', label: 'Wedding Dress', icon: <Shirt size={36} strokeWidth={1.5} className="text-violet-500" />,
     multipleImages: true,
     subcategories: [
       {
@@ -28,7 +29,7 @@ const CATEGORY_TREE = [
     ],
   },
   {
-    id: 'furniture', label: 'Furniture', icon: '🛋️',
+    id: 'furniture', label: 'Furniture', icon: <Sofa size={36} strokeWidth={1.5} className="text-pink-500" />,
     multipleImages: false,
     subcategories: [
       { id: 'sofa_set',       label: 'Sofa Set',       items: null },
@@ -39,7 +40,7 @@ const CATEGORY_TREE = [
     ],
   },
   {
-    id: 'electronics', label: 'Electronics', icon: '📺',
+    id: 'electronics', label: 'Electronics', icon: <Monitor size={36} strokeWidth={1.5} className="text-blue-500" />,
     multipleImages: false,
     subcategories: [
       { id: 'led_tv',          label: 'LED TV',          items: null },
@@ -49,7 +50,7 @@ const CATEGORY_TREE = [
     ],
   },
   {
-    id: 'kitchen_items', label: 'Kitchen Items', icon: '🍳',
+    id: 'kitchen_items', label: 'Kitchen Items', icon: <Utensils size={36} strokeWidth={1.5} className="text-orange-500" />,
     multipleImages: false,
     subcategories: [
       {
@@ -74,7 +75,7 @@ const CATEGORY_TREE = [
     ],
   },
   {
-    id: 'decoration', label: 'Decoration', icon: '✨',
+    id: 'decoration', label: 'Decoration', icon: <Sparkles size={36} strokeWidth={1.5} className="text-yellow-500" />,
     multipleImages: false,
     subcategories: [
       { id: 'lights',             label: 'Lights / Fairy Lights',  items: null },
@@ -85,7 +86,7 @@ const CATEGORY_TREE = [
     ],
   },
   {
-    id: 'miscellaneous', label: 'Miscellaneous', icon: '🎁',
+    id: 'miscellaneous', label: 'Miscellaneous', icon: <Gift size={36} strokeWidth={1.5} className="text-teal-500" />,
     multipleImages: false,
     subcategories: [
       {
@@ -194,7 +195,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
       return {
         id:             dbCat.category_id,
         label:          dbCat.label,
-        icon:           dbCat.icon || staticDef?.icon || '📦',
+        icon:           staticDef?.icon || <Package size={36} strokeWidth={1.5} className="text-gray-400" />,
         multipleImages: dbCat.category_id === 'wedding_dress',
         subcategories:  subs,
       };
@@ -385,10 +386,12 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <button
               key={cat.id}
               onClick={() => selectMajorCat(cat.id)}
-              className="flex flex-col items-center gap-2 p-4 border-2 border-gray-100 rounded-xl
-                         hover:border-purple-400 hover:bg-purple-50 transition-all text-center"
+              className="flex flex-col items-center gap-3 p-6 glass-card border border-gray-100 rounded-[1.5rem]
+                         hover:border-violet-300 hover:bg-violet-50/50 hover-lift transition-all text-center"
             >
-              <span className="text-3xl">{cat.icon}</span>
+              <div className="p-3 bg-white rounded-full shadow-sm">
+                {cat.icon}
+              </div>
               <span className="text-sm font-semibold text-gray-700">{cat.label}</span>
             </button>
           ))}
