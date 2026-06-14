@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-[#FAFAFA] text-gray-800 antialiased selection:bg-purple-200 selection:text-purple-900;
+    @apply bg-[#FCFBFB] text-gray-800 antialiased selection:bg-[#FBEFF1] selection:text-[#a37b3d];
     font-family: 'Inter', system-ui, sans-serif;
   }
   
@@ -93,7 +93,7 @@ input[type='range']::-webkit-slider-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #8b5cf6; /* violet-500 */
+  background: #ECD4A8; /* shaadi-gold */
   border: 2px solid white;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   cursor: pointer;
@@ -106,7 +106,7 @@ input[type='range']::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #8b5cf6;
+  background: #ECD4A8;
   border: 2px solid white;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   cursor: pointer;
@@ -121,9 +121,9 @@ input[type='range']::-moz-range-thumb:hover {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .pipeline-stage.active {
-  background: linear-gradient(135deg, #a855f7, #ec4899); /* violet-500 to pink-500 */
+  background: linear-gradient(135deg, #ECD4A8, #c09858); /* shaadi-gold gradient */
   color: white;
-  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+  box-shadow: 0 4px 15px rgba(236, 212, 168, 0.3);
 }
 .pipeline-stage.passed {
   background: #10b981; /* emerald-500 */
