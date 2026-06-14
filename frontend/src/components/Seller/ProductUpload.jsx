@@ -230,6 +230,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
   };
 
   // §11.3 — fetch price suggestion whenever key fields change
+  // Falls back to static PRICE_RANGES when API returns zeros (no products in DB yet)
   useEffect(() => {
     if (!majorCat || !form.subcategory) { setPriceSuggestion(null); return; }
     let cancelled = false;
@@ -242,8 +243,29 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
           color:          form.color      || '',
           condition:      form.condition  || '',
         });
-        if (!cancelled && data.success) setPriceSuggestion(data);
-        else if (!cancelled) setPriceSuggestion(null);
+        if (!cancelled && data.success) {
+          // If API returns zeros, fall back to static PRICE_RANGES
+          const lo = data.range_low  || 0;
+          const hi = data.range_high || 0;
+          if (lo === 0 && hi === 0) {
+            // Build a fallback suggestion from static ranges
+            const key = form.item_type || form.subcategory;
+            const staticRange = PRICE_RANGES[key];
+            if (staticRange) {
+              setPriceSuggestion({ ...data, range_low: staticRange.min, range_high: staticRange.max, band_pct: 30 });
+            } else if (majorCat === 'wedding_dress') {
+              const wdRange = getWeddingDressRange(form.subcategory, form.condition);
+              if (wdRange) setPriceSuggestion({ ...data, range_low: wdRange.min, range_high: wdRange.max, band_pct: 30 });
+              else setPriceSuggestion(null);
+            } else {
+              setPriceSuggestion(null);
+            }
+          } else {
+            setPriceSuggestion(data);
+          }
+        } else if (!cancelled) {
+          setPriceSuggestion(null);
+        }
       } catch { if (!cancelled) setPriceSuggestion(null); }
     }, 600);
     return () => { cancelled = true; clearTimeout(t); };
@@ -652,31 +674,19 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
               {priceSuggestion && (() => {
                 const lo  = priceSuggestion.range_low  || 0;
                 const hi  = priceSuggestion.range_high || 0;
+                if (lo === 0 && hi === 0) return null;
                 const avg = Math.round((lo + hi) / 2);
                 const pct = priceSuggestion.band_pct || 30;
-                const belowPct = priceNum > 0 && priceNum < lo
-                  ? Math.round((lo - priceNum) / lo * 100)
-                  : 0;
-                const abovePct = priceNum > 0 && priceNum > hi
-                  ? Math.round((priceNum - hi) / hi * 100)
-                  : 0;
+                const isBelow = priceNum > 0 && priceNum < lo;
+                const isAbove = priceNum > 0 && hi > 0 && priceNum > hi;
+                const isInRange = priceNum > 0 && !isBelow && !isAbove;
                 return (
                   <div className="mt-1.5">
                     <p className="text-[11px] text-blue-600 font-medium">
                       Suggested: PKR {lo.toLocaleString()} – {hi.toLocaleString()}
                       {' '}(avg PKR {avg.toLocaleString()}, ±{pct}%)
                     </p>
-                    {priceNum > 0 && belowPct > 0 && (
-                      <p className="text-[11px] text-amber-600 font-semibold mt-0.5">
-                        ⚠ Below suggested range by {belowPct}%. Are you sure?
-                      </p>
-                    )}
-                    {priceNum > 0 && abovePct > 0 && (
-                      <p className="text-[11px] text-amber-600 font-semibold mt-0.5">
-                        ⚠ Above suggested range by {abovePct}%. Are you sure?
-                      </p>
-                    )}
-                    {priceNum > 0 && !belowPct && !abovePct && (
+                    {isInRange && (
                       <p className="text-[11px] text-green-600 mt-0.5">✓ Within suggested range</p>
                     )}
                   </div>
