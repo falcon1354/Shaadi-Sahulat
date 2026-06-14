@@ -29,7 +29,7 @@ function StepFinancial({ formData, updateForm }) {
               onChange={handleChange('monthly_household_income')}
               placeholder="e.g., 80,000"
               min="1"
-              className="w-full pl-14 pr-4 py-3.5 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all text-sm font-medium"
+              className="w-full pl-14 pr-4 py-3.5 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm font-medium"
             />
           </div>
           <p className="text-[10px] text-gray-400 font-medium">Your total monthly household earnings</p>
@@ -48,7 +48,7 @@ function StepFinancial({ formData, updateForm }) {
               onChange={handleChange('total_savings_available')}
               placeholder="e.g., 500,000"
               min="0"
-              className="w-full pl-14 pr-4 py-3.5 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all text-sm font-medium"
+              className="w-full pl-14 pr-4 py-3.5 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm font-medium"
             />
           </div>
           <p className="text-[10px] text-gray-400 font-medium">Total savings you have accumulated</p>
@@ -67,7 +67,7 @@ function StepFinancial({ formData, updateForm }) {
               onChange={handleChange('expected_contribution')}
               placeholder="Optional — e.g., 100,000"
               min="0"
-              className="w-full pl-14 pr-4 py-3.5 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all text-sm font-medium"
+              className="w-full pl-14 pr-4 py-3.5 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm font-medium"
             />
           </div>
           <p className="text-[10px] text-gray-400 font-medium">
@@ -77,11 +77,11 @@ function StepFinancial({ formData, updateForm }) {
       </div>
 
       {/* Info Box */}
-      <div className="bg-gradient-to-r from-purple-50/60 to-pink-50/60 border border-purple-100/50 rounded-2xl p-5 relative overflow-hidden">
-        <h4 className="text-xs font-extrabold text-purple-900 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-          <Sparkles size={14} className="text-purple-600 animate-pulse" /> Safety Limit Allocation Rules
+      <div className="bg-gradient-to-r from-primary-50/60 to-primary-100/60 border border-primary-200/50 rounded-2xl p-5 relative overflow-hidden">
+        <h4 className="text-xs font-extrabold text-primary-900 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles size={14} className="text-primary-800 animate-pulse" /> Safety Limit Allocation Rules
         </h4>
-        <ul className="text-xs text-purple-700/90 space-y-1.5 leading-relaxed font-medium">
+        <ul className="text-xs text-primary-900/90 space-y-1.5 leading-relaxed font-medium">
           <li>• Cap 1: Maximum 40% of your annual income is allocated</li>
           <li>• Cap 2: Maximum 80% of your savings can be utilized</li>
           <li>• Base Pool: Determined by the lower value between Cap 1 and Cap 2</li>

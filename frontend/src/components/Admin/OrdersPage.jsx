@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 
 const STATUS_CONFIG = {
   'Order Placed':        { color: 'bg-blue-100 text-blue-700 border-blue-200',    dot: 'bg-blue-500'   },
-  'Payment Confirmed':   { color: 'bg-purple-100 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
+  'Payment Confirmed':   { color: 'bg-[#FFF5F8] text-[#a37b3d] border-[#FBEFF1]', dot: 'bg-[#FFF5F8]0' },
   'Processing':          { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', dot: 'bg-yellow-500' },
   'Shipped':             { color: 'bg-orange-100 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
   'Out for Delivery':    { color: 'bg-teal-100 text-teal-700 border-teal-200',    dot: 'bg-teal-500'   },
   'Delivered':           { color: 'bg-green-100 text-green-700 border-green-200',  dot: 'bg-green-500'  },
   'Cancelled':           { color: 'bg-red-100 text-red-700 border-red-200',       dot: 'bg-red-500'    },
-  'Return Requested':    { color: 'bg-pink-100 text-pink-700 border-pink-200',    dot: 'bg-pink-500'   },
+  'Return Requested':    { color: 'bg-[#FFF5F8] text-[#a37b3d] border-[#FBEFF1]',    dot: 'bg-[#FFF5F8]0'   },
 };
 
 const STATUSES = Object.keys(STATUS_CONFIG);

@@ -97,7 +97,7 @@ export default function CartDrawer({ open, onClose, buyerId }) {
               const price    = item.discount_price || item.price || 0;
               return (
                 <div key={item.product_id}
-                  className="flex gap-3 p-3 border border-gray-100 rounded-xl hover:border-purple-100 transition-colors">
+                  className="flex gap-3 p-3 border border-gray-100 rounded-xl hover:border-[#ECD4A8] transition-colors">
                   {/* Thumbnail */}
                   <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
                     {imageUrl
@@ -108,13 +108,13 @@ export default function CartDrawer({ open, onClose, buyerId }) {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-purple-500 font-medium capitalize mb-0.5">
+                    <p className="text-xs text-[#a37b3d] font-medium capitalize mb-0.5">
                       {item.major_category?.replace(/_/g, ' ')}
                     </p>
                     <p className="text-sm font-semibold text-gray-800 truncate">{item.title}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       PKR {price.toLocaleString()} × {item.qty}
-                      <span className="ml-2 font-semibold text-purple-700">
+                      <span className="ml-2 font-semibold text-[#a37b3d]">
                         = PKR {(price * item.qty).toLocaleString()}
                       </span>
                     </p>
@@ -122,13 +122,13 @@ export default function CartDrawer({ open, onClose, buyerId }) {
                     <div className="flex items-center gap-2 mt-1.5">
                       <button
                         onClick={() => updateQty(item.product_id, item.qty - 1)}
-                        className="w-6 h-6 rounded-full bg-gray-100 hover:bg-purple-100 text-gray-600 text-sm font-bold leading-none flex items-center justify-center">
+                        className="w-6 h-6 rounded-full bg-gray-100 hover:bg-[#FFF5F8] text-gray-600 text-sm font-bold leading-none flex items-center justify-center">
                         −
                       </button>
                       <span className="text-sm font-medium w-4 text-center">{item.qty}</span>
                       <button
                         onClick={() => updateQty(item.product_id, item.qty + 1)}
-                        className="w-6 h-6 rounded-full bg-gray-100 hover:bg-purple-100 text-gray-600 text-sm font-bold leading-none flex items-center justify-center">
+                        className="w-6 h-6 rounded-full bg-gray-100 hover:bg-[#FFF5F8] text-gray-600 text-sm font-bold leading-none flex items-center justify-center">
                         +
                       </button>
                       <button
@@ -150,7 +150,7 @@ export default function CartDrawer({ open, onClose, buyerId }) {
             {/* Total */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Total</span>
-              <span className="text-lg font-bold text-purple-700">PKR {totalPrice.toLocaleString()}</span>
+              <span className="text-lg font-bold text-[#a37b3d]">PKR {totalPrice.toLocaleString()}</span>
             </div>
 
             {/* §5.3 Budget Check */}
@@ -189,7 +189,7 @@ export default function CartDrawer({ open, onClose, buyerId }) {
                 </button>
                 <button
                   onClick={handleCheckout}
-                  className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-colors">
+                  className="w-full py-2.5 bg-[#a37b3d] hover:bg-[#8a6633] text-white rounded-xl text-sm font-semibold transition-colors">
                   Confirm Order &amp; Update Budget
                 </button>
               </>

@@ -11,7 +11,7 @@ function SimilarityTooltip({ item }) {
     <div className="absolute bottom-full right-0 mb-2 z-20 w-48 bg-white rounded-xl shadow-xl border border-gray-200 p-3 text-xs pointer-events-none">
       <p className="font-semibold text-gray-700 mb-2">Similarity Breakdown</p>
       {[
-        { label: 'Image',  pct: img,   color: 'bg-purple-500' },
+        { label: 'Image',  pct: img,   color: 'bg-primary-500' },
         { label: 'Colour', pct: color, color: 'bg-teal-500' },
         { label: 'Text',   pct: text,  color: 'bg-orange-400' },
       ].map(({ label, pct, color: cls }) => (
@@ -49,7 +49,7 @@ function ResultCard({ item }) {
   const matchPct    = item.match_percentage ?? Math.round((item.hybrid_score || 0) * 100);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all overflow-hidden flex flex-col">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-primary-400 transition-all overflow-hidden flex flex-col">
       {/* Image */}
       <div className="relative aspect-square bg-gray-50 overflow-hidden">
         {imageUrl ? (
@@ -64,7 +64,7 @@ function ResultCard({ item }) {
         )}
 
         {/* Match % badge — top-left */}
-        <span className="absolute top-2 left-2 bg-purple-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+        <span className="absolute top-2 left-2 bg-primary-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
           {matchPct}% match
         </span>
 
@@ -82,7 +82,7 @@ function ResultCard({ item }) {
           onMouseLeave={() => setShowTooltip(false)}
         >
           <button
-            className="w-6 h-6 rounded-full bg-white/80 border border-gray-200 flex items-center justify-center text-[10px] text-gray-500 hover:bg-white hover:border-purple-300 transition-all shadow-sm"
+            className="w-6 h-6 rounded-full bg-white/80 border border-gray-200 flex items-center justify-center text-[10px] text-gray-500 hover:bg-white hover:border-primary-400 transition-all shadow-sm"
             title="Similarity breakdown"
           >
             ℹ
@@ -93,7 +93,7 @@ function ResultCard({ item }) {
 
       {/* Info */}
       <div className="p-3 flex flex-col flex-1">
-        <p className="text-xs text-purple-500 font-medium mb-0.5 capitalize">
+        <p className="text-xs text-primary-900 font-medium mb-0.5 capitalize">
           {item.category?.replace(/_/g, ' ')}
         </p>
         <p className="text-sm font-semibold text-gray-800 line-clamp-2 flex-1">
@@ -111,7 +111,7 @@ function ResultCard({ item }) {
               </span>
             </>
           ) : item.price ? (
-            <span className="text-sm font-bold text-purple-700">
+            <span className="text-sm font-bold text-primary-950">
               PKR {Number(item.price).toLocaleString()}
             </span>
           ) : null}
@@ -131,7 +131,7 @@ export default function ResultsGrid({ result }) {
 
   if (!results || results.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-8 text-center">
+      <div className="bg-white rounded-xl shadow-sm border border-primary-200 p-8 text-center">
         <span className="text-4xl">🔍</span>
         <p className="text-gray-600 mt-2">No similar dresses found.</p>
         <p className="text-xs text-gray-400 mt-1">
@@ -146,7 +146,7 @@ export default function ResultsGrid({ result }) {
   const embDim        = search_metadata?.embedding_dim || 1280;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-5">
+    <div className="bg-white rounded-xl shadow-sm border border-primary-200 p-5">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
@@ -160,7 +160,7 @@ export default function ResultsGrid({ result }) {
           </p>
         </div>
         {validation?.used_preferred_category && (
-          <span className="text-xs text-purple-500 bg-purple-50 px-2 py-0.5 rounded-full">
+          <span className="text-xs text-primary-900 bg-primary-50 px-2 py-0.5 rounded-full">
             🏷️ Hint used
           </span>
         )}

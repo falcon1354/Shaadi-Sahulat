@@ -48,7 +48,7 @@ export default function SellerAuthPage({ onLogin }) {
     <div className="animate-fade-in max-w-md mx-auto">
       {/* Header */}
       <div className="text-center mb-6">
-        <div className="w-14 h-14 bg-gradient-to-br from-pink-500 to-red-400 rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-3">
+        <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-800 rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-3">
           🏪
         </div>
         <h2 className="text-2xl font-bold text-gray-800">
@@ -61,7 +61,7 @@ export default function SellerAuthPage({ onLogin }) {
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-pink-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-primary-200 p-6">
         {/* Tab switcher */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-5">
           {[
@@ -70,7 +70,7 @@ export default function SellerAuthPage({ onLogin }) {
           ].map(({ id, label }) => (
             <button key={id} onClick={() => switchMode(id)}
               className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                mode === id ? 'bg-white text-pink-700 shadow-sm' : 'text-gray-500'
+                mode === id ? 'bg-white text-primary-950 shadow-sm' : 'text-gray-500'
               }`}>
               {label}
             </button>
@@ -95,7 +95,7 @@ export default function SellerAuthPage({ onLogin }) {
                 onChange={e => update('name', e.target.value)}
                 placeholder="Your name or business name"
                 required
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           )}
@@ -109,7 +109,7 @@ export default function SellerAuthPage({ onLogin }) {
               onChange={e => update('email', e.target.value)}
               placeholder="you@email.com"
               required
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -122,7 +122,7 @@ export default function SellerAuthPage({ onLogin }) {
               onChange={e => update('password', e.target.value)}
               placeholder="Min 6 characters"
               required
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -137,7 +137,7 @@ export default function SellerAuthPage({ onLogin }) {
                     value={form.phone}
                     onChange={e => update('phone', e.target.value)}
                     placeholder="03xx-xxxxxxx"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -147,7 +147,7 @@ export default function SellerAuthPage({ onLogin }) {
                     value={form.city}
                     onChange={e => update('city', e.target.value)}
                     placeholder="Lahore"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -165,7 +165,7 @@ export default function SellerAuthPage({ onLogin }) {
                       onClick={() => update('seller_type', id)}
                       className={`flex-1 py-2 text-sm rounded-xl border transition-all ${
                         form.seller_type === id
-                          ? 'bg-pink-50 border-pink-400 text-pink-700 font-semibold'
+                          ? 'bg-primary-50 border-primary-500 text-primary-900 font-semibold'
                           : 'border-gray-200 text-gray-500 hover:border-gray-300'
                       }`}>
                       {label}
@@ -179,7 +179,7 @@ export default function SellerAuthPage({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-pink-600 to-red-500 text-white rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 transition-all mt-2">
+            className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-800 text-white rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 transition-all mt-2">
             {loading ? 'Please wait…' : (mode === 'login' ? 'Sign In' : 'Create Account')}
           </button>
         </form>
@@ -187,7 +187,7 @@ export default function SellerAuthPage({ onLogin }) {
         <p className="text-center text-xs text-gray-400 mt-4">
           {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
           <button onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
-            className="text-pink-600 font-medium hover:underline">
+            className="text-primary-950 font-medium hover:underline">
             {mode === 'login' ? 'Register' : 'Sign in'}
           </button>
         </p>

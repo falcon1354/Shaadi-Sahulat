@@ -34,15 +34,15 @@ export default function ImageUpload({ onFileSelect, preview, loading }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-4">
+    <div className="bg-white rounded-xl shadow-sm border border-primary-200 p-4">
       <h3 className="text-sm font-semibold text-gray-700 mb-3">📸 Upload Dress Image</h3>
 
       {!preview ? (
         <div
           className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
             dragActive
-              ? 'border-purple-400 bg-purple-50'
-              : 'border-gray-300 hover:border-purple-300 hover:bg-purple-50/50'
+              ? 'border-primary-500 bg-primary-50'
+              : 'border-gray-300 hover:border-primary-400 hover:bg-primary-50/50'
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -70,7 +70,7 @@ export default function ImageUpload({ onFileSelect, preview, loading }) {
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="bg-white/90 rounded-full p-4 animate-pulse-glow">
-                <svg className="animate-spin h-8 w-8 text-purple-600" viewBox="0 0 24 24">
+                <svg className="animate-spin h-8 w-8 text-primary-900" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
@@ -82,7 +82,7 @@ export default function ImageUpload({ onFileSelect, preview, loading }) {
               e.stopPropagation();
               inputRef.current?.click();
             }}
-            className="absolute bottom-2 right-2 bg-white/90 rounded-lg px-3 py-1.5 text-xs text-purple-600 font-medium shadow-sm hover:bg-white"
+            className="absolute bottom-2 right-2 bg-white/90 rounded-lg px-3 py-1.5 text-xs text-primary-900 font-medium shadow-sm hover:bg-white"
           >
             Change Image
           </button>

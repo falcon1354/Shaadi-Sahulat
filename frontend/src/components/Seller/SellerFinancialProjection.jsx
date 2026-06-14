@@ -70,38 +70,38 @@ export default function SellerFinancialProjection({ seller }) {
   return (
     <div className="animate-fade-in space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] rounded-2xl p-6 text-white shadow-lg">
         <h1 className="text-3xl font-bold mb-1">💹 Financial Projections</h1>
-        <p className="text-emerald-100">Revenue, expenses, and profit analysis</p>
+        <p className="text-[#FBEFF1]">Revenue, expenses, and profit analysis</p>
       </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-emerald-100">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#FBEFF1]">
           <p className="text-gray-500 text-sm font-medium">Monthly Revenue</p>
-          <h3 className="text-2xl font-bold text-emerald-600 mt-1">Rs {(financials.thisMonth.revenue / 1000).toLocaleString()}K</h3>
-          <p className={`text-xs mt-2 font-medium ${growthRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <h3 className="text-2xl font-bold text-[#a37b3d] mt-1">Rs {(financials.thisMonth.revenue / 1000).toLocaleString()}K</h3>
+          <p className={`text-xs mt-2 font-medium ${growthRate >= 0 ? 'text-[#a37b3d]' : 'text-red-600'}`}>
             {growthRate >= 0 ? '↑' : '↓'} {Math.abs(growthRate)}% vs last month
           </p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-emerald-100">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#FBEFF1]">
           <p className="text-gray-500 text-sm font-medium">Monthly Profit</p>
-          <h3 className="text-2xl font-bold text-emerald-600 mt-1">Rs {(financials.thisMonth.profit / 1000).toLocaleString()}K</h3>
-          <p className="text-xs text-emerald-500 mt-2">{profitMargin}% profit margin</p>
+          <h3 className="text-2xl font-bold text-[#a37b3d] mt-1">Rs {(financials.thisMonth.profit / 1000).toLocaleString()}K</h3>
+          <p className="text-xs text-[#a37b3d] mt-2">{profitMargin}% profit margin</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-emerald-100">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#FBEFF1]">
           <p className="text-gray-500 text-sm font-medium">Total Expenses</p>
-          <h3 className="text-2xl font-bold text-orange-600 mt-1">Rs {(totalExpenses / 1000).toLocaleString()}K</h3>
-          <p className="text-xs text-orange-500 mt-2">
+          <h3 className="text-2xl font-bold text-[#8a6633] mt-1">Rs {(totalExpenses / 1000).toLocaleString()}K</h3>
+          <p className="text-xs text-[#ECD4A8] mt-2">
             {Math.round((totalExpenses / financials.thisMonth.revenue) * 100)}% of revenue
           </p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-emerald-100">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#FBEFF1]">
           <p className="text-gray-500 text-sm font-medium">Orders This Month</p>
-          <h3 className="text-2xl font-bold text-purple-600 mt-1">{financials.thisMonth.orders}</h3>
+          <h3 className="text-2xl font-bold text-primary-900 mt-1">{financials.thisMonth.orders}</h3>
           <p className="text-xs text-gray-500 mt-2">
             Avg: Rs {financials.thisMonth.avgOrderValue.toLocaleString()}
           </p>
@@ -122,7 +122,7 @@ export default function SellerFinancialProjection({ seller }) {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
               activeTab === tab.id
-                ? 'bg-white text-emerald-700 shadow-sm'
+                ? 'bg-white text-[#a37b3d] shadow-sm'
                 : 'text-gray-600 hover:text-gray-800'
             }`}
           >
@@ -137,63 +137,63 @@ export default function SellerFinancialProjection({ seller }) {
         <div className="space-y-6">
           {/* Comparison Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FBEFF1]">
               <h3 className="text-sm font-medium text-gray-500 mb-3">This Month</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Revenue</span>
-                  <span className="font-bold text-emerald-600">Rs {financials.thisMonth.revenue.toLocaleString()}</span>
+                  <span className="font-bold text-[#a37b3d]">Rs {financials.thisMonth.revenue.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Expenses</span>
-                  <span className="font-bold text-orange-600">Rs {financials.thisMonth.expenses.toLocaleString()}</span>
+                  <span className="font-bold text-[#8a6633]">Rs {financials.thisMonth.expenses.toLocaleString()}</span>
                 </div>
                 <div className="border-t border-gray-200 pt-2 flex justify-between">
                   <span className="text-sm font-medium text-gray-700">Net Profit</span>
-                  <span className="font-bold text-emerald-600">Rs {financials.thisMonth.profit.toLocaleString()}</span>
+                  <span className="font-bold text-[#a37b3d]">Rs {financials.thisMonth.profit.toLocaleString()}</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FBEFF1]">
               <h3 className="text-sm font-medium text-gray-500 mb-3">Last Month</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Revenue</span>
-                  <span className="font-bold text-emerald-600">Rs {financials.lastMonth.revenue.toLocaleString()}</span>
+                  <span className="font-bold text-[#a37b3d]">Rs {financials.lastMonth.revenue.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Expenses</span>
-                  <span className="font-bold text-orange-600">Rs {financials.lastMonth.expenses.toLocaleString()}</span>
+                  <span className="font-bold text-[#8a6633]">Rs {financials.lastMonth.expenses.toLocaleString()}</span>
                 </div>
                 <div className="border-t border-gray-200 pt-2 flex justify-between">
                   <span className="text-sm font-medium text-gray-700">Net Profit</span>
-                  <span className="font-bold text-emerald-600">Rs {financials.lastMonth.profit.toLocaleString()}</span>
+                  <span className="font-bold text-[#a37b3d]">Rs {financials.lastMonth.profit.toLocaleString()}</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-purple-100">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary-200">
               <h3 className="text-sm font-medium text-gray-500 mb-3">This Quarter</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Revenue</span>
-                  <span className="font-bold text-emerald-600">Rs {(financials.thisQuarter.revenue / 1000).toLocaleString()}K</span>
+                  <span className="font-bold text-[#a37b3d]">Rs {(financials.thisQuarter.revenue / 1000).toLocaleString()}K</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Expenses</span>
-                  <span className="font-bold text-orange-600">Rs {(financials.thisQuarter.expenses / 1000).toLocaleString()}K</span>
+                  <span className="font-bold text-[#8a6633]">Rs {(financials.thisQuarter.expenses / 1000).toLocaleString()}K</span>
                 </div>
                 <div className="border-t border-gray-200 pt-2 flex justify-between">
                   <span className="text-sm font-medium text-gray-700">Net Profit</span>
-                  <span className="font-bold text-emerald-600">Rs {(financials.thisQuarter.profit / 1000).toLocaleString()}K</span>
+                  <span className="font-bold text-[#a37b3d]">Rs {(financials.thisQuarter.profit / 1000).toLocaleString()}K</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Key Insights */}
-          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-200">
+          <div className="bg-gradient-to-r from-[#FFF5F8] to-teal-50 rounded-2xl p-6 border border-[#FBEFF1]">
             <h3 className="font-bold text-gray-800 mb-3">📊 Key Insights</h3>
             <ul className="space-y-2 text-sm text-gray-700">
               <li>✓ Revenue increased by {growthRate}% compared to last month</li>
@@ -208,7 +208,7 @@ export default function SellerFinancialProjection({ seller }) {
       {/* TAB: Revenue */}
       {activeTab === 'revenue' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-100">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FBEFF1]">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Revenue by Category</h2>
             
             <div className="space-y-4">
@@ -216,13 +216,13 @@ export default function SellerFinancialProjection({ seller }) {
                 <div key={idx} className="pb-4 border-b border-gray-100 last:border-0">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium text-gray-800">{item.category}</span>
-                    <span className="text-lg font-bold text-emerald-600">Rs {item.revenue.toLocaleString()}</span>
+                    <span className="text-lg font-bold text-[#a37b3d]">Rs {item.revenue.toLocaleString()}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
                       <div
-                        className="bg-gradient-to-r from-emerald-400 to-teal-400 h-2 rounded-full"
+                        className="bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] h-2 rounded-full"
                         style={{ width: `${item.percentage}%` }}
                       />
                     </div>
@@ -232,7 +232,7 @@ export default function SellerFinancialProjection({ seller }) {
               ))}
             </div>
 
-            <div className="mt-6 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+            <div className="mt-6 p-4 bg-[#FFF5F8] rounded-lg border border-[#FBEFF1]">
               <p className="text-sm text-gray-700">
                 <strong>Total Monthly Revenue:</strong> Rs {financials.thisMonth.revenue.toLocaleString()}
               </p>
@@ -244,7 +244,7 @@ export default function SellerFinancialProjection({ seller }) {
       {/* TAB: Expenses */}
       {activeTab === 'expenses' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-100">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FBEFF1]">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Expense Breakdown</h2>
             
             <div className="space-y-4">
@@ -252,13 +252,13 @@ export default function SellerFinancialProjection({ seller }) {
                 <div key={idx} className="pb-4 border-b border-gray-100 last:border-0">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium text-gray-800">{exp.category}</span>
-                    <span className="text-lg font-bold text-orange-600">Rs {exp.amount.toLocaleString()}</span>
+                    <span className="text-lg font-bold text-[#8a6633]">Rs {exp.amount.toLocaleString()}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
                       <div
-                        className="bg-gradient-to-r from-orange-400 to-red-400 h-2 rounded-full"
+                        className="bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] h-2 rounded-full"
                         style={{ width: `${exp.percentage}%` }}
                       />
                     </div>
@@ -268,7 +268,7 @@ export default function SellerFinancialProjection({ seller }) {
               ))}
             </div>
 
-            <div className="mt-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
+            <div className="mt-6 p-4 bg-[#FFF5F8] rounded-lg border border-[#FBEFF1]">
               <p className="text-sm text-gray-700">
                 <strong>Total Monthly Expenses:</strong> Rs {totalExpenses.toLocaleString()}
               </p>
@@ -283,7 +283,7 @@ export default function SellerFinancialProjection({ seller }) {
       {/* TAB: Transactions */}
       {activeTab === 'transactions' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FBEFF1]">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Transaction History</h2>
             
             <div className="space-y-2">
@@ -291,7 +291,7 @@ export default function SellerFinancialProjection({ seller }) {
                 <div key={trans.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${
-                      trans.type === 'income' ? 'bg-green-500' : 'bg-red-500'
+                      trans.type === 'income' ? 'bg-[#a37b3d]' : 'bg-red-500'
                     }`} />
                     <div>
                       <p className="text-sm font-medium text-gray-800">{trans.description}</p>
@@ -299,7 +299,7 @@ export default function SellerFinancialProjection({ seller }) {
                     </div>
                   </div>
                   <span className={`text-sm font-bold ${
-                    trans.type === 'income' ? 'text-green-600' : 'text-red-600'
+                    trans.type === 'income' ? 'text-[#a37b3d]' : 'text-red-600'
                   }`}>
                     {trans.type === 'income' ? '+' : ''} Rs {Math.abs(trans.amount).toLocaleString()}
                   </span>
@@ -313,7 +313,7 @@ export default function SellerFinancialProjection({ seller }) {
       {/* TAB: Projection */}
       {activeTab === 'projection' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-purple-100">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-primary-200">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Profit Projection (Next 4 Months)</h2>
             
             <div className="flex items-end justify-around h-48 gap-4 mb-6">
@@ -338,12 +338,12 @@ export default function SellerFinancialProjection({ seller }) {
                     <p className="font-medium text-gray-800">{item.month}</p>
                     <p className="text-xs text-gray-500">Confidence: {item.confidence}</p>
                   </div>
-                  <p className="text-lg font-bold text-emerald-600">Rs {item.projected.toLocaleString()}</p>
+                  <p className="text-lg font-bold text-[#a37b3d]">Rs {item.projected.toLocaleString()}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-300">
               <h4 className="font-bold text-gray-800 mb-2">📈 Projection Insights</h4>
               <p className="text-sm text-gray-700">
                 Based on current trends, projected profit shows steady growth with Feb being your strongest month. 

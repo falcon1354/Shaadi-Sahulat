@@ -6,7 +6,7 @@ export default function DowryPage({ userId }) {
   return (
     <div className="animate-fade-in">
       <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-100 text-violet-600 rounded-full mb-4 shadow-sm">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-[#FFF5F8] text-[#a37b3d] rounded-full mb-4 shadow-sm border border-[#ECD4A8]">
           <Calculator size={32} />
         </div>
         <h2 className="text-3xl font-bold text-gray-800 mb-2">

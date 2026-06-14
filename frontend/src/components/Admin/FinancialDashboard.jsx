@@ -51,7 +51,7 @@ export default function FinancialDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Sellers',    value: stats?.seller_count     || 0, icon: '🏪', color: 'from-purple-500 to-pink-500'   },
+          { label: 'Total Sellers',    value: stats?.seller_count     || 0, icon: '🏪', color: 'from-[#a37b3d] to-[#ECD4A8]'   },
           { label: 'Total Buyers',     value: stats?.buyer_count      || 0, icon: '👰', color: 'from-blue-500 to-cyan-500'     },
           { label: 'Products Listed',  value: stats?.product_count    || 0, icon: '📦', color: 'from-orange-500 to-red-500'    },
           { label: 'Dowry Estimations',value: stats?.estimation_count || 0, icon: '📊', color: 'from-green-500 to-teal-500'   },
@@ -67,10 +67,10 @@ export default function FinancialDashboard() {
       </div>
 
       {/* Revenue banner */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white">
-        <p className="text-purple-200 text-sm font-medium">Simulated Total Revenue</p>
-        <p className="text-3xl font-bold mt-1">PKR {(stats?.revenue_simulated || 0).toLocaleString()}</p>
-        <p className="text-purple-300 text-xs mt-2">Based on listed product prices × available inventory</p>
+      <div className="bg-gradient-to-r from-[#a37b3d] to-[#a37b3d] rounded-2xl p-6 text-white">
+        <p className="text-[#FDF2F3] text-sm font-medium">Simulated Total Revenue</p>
+        <h3 className="text-3xl font-bold mt-1">PKR {(stats?.revenue_simulated || 0).toLocaleString()}</h3>
+        <p className="text-[#FDF2F3] text-xs mt-2">Based on listed product prices × available inventory</p>
       </div>
 
       {/* Charts */}
@@ -129,7 +129,7 @@ export default function FinancialDashboard() {
               </div>
               <div className="p-3">
                 <p className="text-xs font-semibold text-gray-700 line-clamp-2 leading-tight">{prod.title}</p>
-                <p className="text-xs text-purple-600 font-bold mt-1">PKR {prod.price?.toLocaleString()}</p>
+                <p className="text-xs text-[#a37b3d] font-bold mt-1">PKR {prod.price?.toLocaleString()}</p>
                 <span className="inline-block mt-1 text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
                   {catLabels[prod.major_category] || prod.major_category}
                 </span>
@@ -174,7 +174,7 @@ export default function FinancialDashboard() {
                       <td className="py-2.5 text-gray-400 font-mono text-xs">{s.seller_id}</td>
                       <td className="py-2.5 text-gray-500 capitalize">{s.seller_type || 'individual'}</td>
                       <td className="py-2.5 text-gray-500">{s.city || '—'}</td>
-                      <td className="py-2.5 text-right font-bold text-purple-700">{s.product_count ?? 0}</td>
+                      <td className="py-2.5 text-right font-bold text-[#a37b3d]">{s.product_count ?? 0}</td>
                       <td className="py-2.5 text-right">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           s.level === 3 ? 'bg-amber-100 text-amber-700' :

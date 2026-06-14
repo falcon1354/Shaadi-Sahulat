@@ -143,17 +143,17 @@ function OvershootModal({ state, onContinue, onShift, onClose, majorCats }) {
         <div className="flex flex-col gap-2">
           <button
             onClick={onShift}
-            className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-colors">
+            className="w-full py-2.5 bg-[#ECD4A8] hover:bg-[#dfc08d] text-gray-950 rounded-xl text-sm font-bold transition-all cursor-pointer shadow-md shadow-[#ECD4A8]/10">
             Shift Budget from Another Category
           </button>
           <button
             onClick={onContinue}
-            className="w-full py-2 text-sm text-gray-600 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors">
+            className="w-full py-2 text-sm text-gray-600 border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer">
             Continue Anyway (over-budget)
           </button>
           <button
             onClick={onClose}
-            className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+            className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
             Cancel
           </button>
         </div>
@@ -189,10 +189,10 @@ function BudgetShiftModal({ targetCat, overshoot, onDone, onClose, buyerId, majo
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[#FBEFF1]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-800">Shift Budget</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none p-1">×</button>
         </div>
 
         <div className="space-y-4">
@@ -201,7 +201,7 @@ function BudgetShiftModal({ targetCat, overshoot, onDone, onClose, buyerId, majo
             <select
               value={fromCat}
               onChange={e => { setFromCat(e.target.value); setError(''); }}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]/20 focus:border-[#ECD4A8] bg-white">
               <option value="">Select category…</option>
               {cats.map(([k, v]) => (
                 <option key={k} value={k}>
@@ -219,7 +219,7 @@ function BudgetShiftModal({ targetCat, overshoot, onDone, onClose, buyerId, majo
               min="1"
               max={maxShift}
               onChange={e => { setAmount(e.target.value); setError(''); }}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]/20 focus:border-[#ECD4A8]"
               placeholder="0"
             />
             {fromCat && (
@@ -229,7 +229,7 @@ function BudgetShiftModal({ targetCat, overshoot, onDone, onClose, buyerId, majo
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Shift To</label>
-            <div className="border border-purple-200 bg-purple-50 rounded-xl px-3 py-2 text-sm text-purple-700 font-medium">
+            <div className="border border-[#FBEFF1] bg-[#FFF5F8] rounded-xl px-3 py-2 text-sm text-[#a37b3d] font-semibold">
               {getCatLabel(targetCat)}
             </div>
           </div>
@@ -242,12 +242,12 @@ function BudgetShiftModal({ targetCat, overshoot, onDone, onClose, buyerId, majo
         <div className="flex gap-2 mt-5">
           <button
             onClick={handleConfirm}
-            className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-colors">
+            className="flex-1 py-2.5 bg-[#ECD4A8] hover:bg-[#dfc08d] text-gray-950 rounded-xl text-sm font-bold transition-all shadow-md shadow-[#ECD4A8]/10 cursor-pointer">
             Confirm Shift
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+            className="px-4 py-2 text-sm text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
             Cancel
           </button>
         </div>
@@ -267,8 +267,8 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
   useEffect(() => {
     if (highlight && cardRef.current) {
       cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      cardRef.current.classList.add('ring-2', 'ring-purple-400');
-      const t = setTimeout(() => cardRef.current?.classList.remove('ring-2', 'ring-purple-400'), 3000);
+      cardRef.current.classList.add('ring-2', 'ring-[#ECD4A8]');
+      const t = setTimeout(() => cardRef.current?.classList.remove('ring-2', 'ring-[#ECD4A8]'), 3000);
       return () => clearTimeout(t);
     }
   }, [highlight]);
@@ -281,14 +281,14 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
   return (
     <>
       <div ref={cardRef}
-        className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all overflow-hidden flex flex-col">
+        className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#ECD4A8] transition-all overflow-hidden flex flex-col">
         {/* Image */}
         <div className="relative aspect-square bg-gray-50 overflow-hidden">
           {imageUrl ? (
             <img src={imageUrl} alt={product.title} className="w-full h-full object-cover"
               onError={e => { e.target.style.display = 'none'; }} />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">
+            <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl bg-gray-50">
               📦
             </div>
           )}
@@ -303,7 +303,7 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
             </span>
           )}
           {product.similarity_score !== undefined && (
-            <span className="absolute bottom-2 right-2 bg-purple-600/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+            <span className="absolute bottom-2 right-2 bg-[#ECD4A8]/90 text-gray-955 text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border border-white/40">
               {Math.round(product.similarity_score * 100)}% match
             </span>
           )}
@@ -311,8 +311,8 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
           {!isAdminView && (
             <button
               onClick={e => { e.stopPropagation(); onToggleWishlist(product); }}
-              className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all ${
-                isWishlisted ? 'bg-pink-500 text-white' : 'bg-white/80 text-gray-400 hover:text-pink-500'
+              className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-sm transition-all cursor-pointer ${
+                isWishlisted ? 'bg-[#FFF5F8]0 text-white' : 'bg-white/80 text-gray-400 hover:text-[#a37b3d]'
               } ${product.condition && product.condition !== 'New' ? 'top-8' : 'top-2'}`}
               title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}>
               <Heart size={14} className={isWishlisted ? 'fill-white' : ''} />
@@ -322,7 +322,7 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
 
         {/* Info */}
         <div className="p-3 flex flex-col flex-1">
-          <p className="text-xs text-purple-500 font-medium mb-0.5 capitalize">
+          <p className="text-xs text-[#a37b3d] font-bold mb-0.5 capitalize">
             {product.major_category?.replace(/_/g, ' ')}
             {product.subcategory ? ` › ${product.subcategory.replace(/_/g, ' ')}` : ''}
           </p>
@@ -335,7 +335,7 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
                 <span className="text-xs text-gray-400 line-through">PKR {product.price.toLocaleString()}</span>
               </>
             ) : (
-              <span className="text-sm font-bold text-purple-700">PKR {product.price?.toLocaleString()}</span>
+              <span className="text-sm font-bold text-[#a37b3d]">PKR {product.price?.toLocaleString()}</span>
             )}
           </div>
 
@@ -346,12 +346,12 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
 
           <div className="mt-3 flex gap-2">
             <button onClick={() => onView && onView(product)}
-              className="flex-1 py-1.5 text-xs font-semibold text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">
+              className="flex-1 py-1.5 text-xs font-semibold text-[#a37b3d] border border-[#FBEFF1] rounded-lg hover:bg-[#FFF5F8] transition-colors cursor-pointer">
               View Details
             </button>
             {!isAdminView && (
               <button onClick={handleAddToCart}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors">
+                className="px-3 py-1.5 text-xs font-bold text-gray-900 bg-[#ECD4A8] rounded-lg hover:bg-[#dfc08d] transition-all cursor-pointer shadow-md shadow-[#ECD4A8]/10">
                 + Cart
               </button>
             )}
@@ -360,7 +360,7 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
               target="_blank"
               rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}
-              className="px-2 py-1.5 text-xs text-gray-400 border border-gray-200 rounded-lg hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors flex items-center justify-center"
+              className="px-2 py-1.5 text-xs text-gray-400 border border-gray-200 rounded-lg hover:bg-[#FFF5F8] hover:text-[#a37b3d] hover:border-[#ECD4A8] transition-colors flex items-center justify-center"
               title="Share product page"
             >
               <Link2 size={14} />
@@ -398,15 +398,15 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-[#FBEFF1]">
         {imageUrl && (
           <div className="relative aspect-video w-full overflow-hidden rounded-t-2xl bg-gray-50">
             <img src={imageUrl} alt={product.title} className="w-full h-full object-cover" />
             {!isAdminView && (
               <button
                 onClick={() => onToggleWishlist(product)}
-                className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-all ${
-                  isWishlisted ? 'bg-pink-500 text-white' : 'bg-white/90 text-gray-400 hover:text-pink-500'
+                className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-all cursor-pointer ${
+                  isWishlisted ? 'bg-[#FFF5F8]0 text-white' : 'bg-white/90 text-gray-400 hover:text-[#a37b3d]'
                 }`}>
                 <Heart size={18} className={isWishlisted ? 'fill-white' : ''} />
               </button>
@@ -416,7 +416,7 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
         <div className="p-5">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-xs text-purple-500 font-medium capitalize mb-1">
+              <p className="text-xs text-[#a37b3d] font-bold capitalize mb-1">
                 {product.major_category?.replace(/_/g, ' ')}
               </p>
               <h2 className="text-lg font-bold text-gray-800">{product.title}</h2>
@@ -426,11 +426,11 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
 
           {/* Budget banner inside modal */}
           {budgetInfo && (
-            <div className="mb-3 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs">
-              <p className="font-semibold text-purple-700 capitalize mb-1">
+            <div className="mb-3 p-3 bg-[#FFF5F8] rounded-xl border border-[#FBEFF1] text-xs">
+              <p className="font-bold text-[#a37b3d] capitalize mb-1">
                 Your {product.major_category?.replace(/_/g, ' ')} Budget
               </p>
-              <div className="flex gap-3 text-gray-600">
+              <div className="flex gap-3 text-gray-600 font-medium">
                 <span>Budget: <strong>PKR {budgetInfo.estimated?.toLocaleString()}</strong></span>
                 <span>Spent: <strong>PKR {(budgetInfo.spent || 0).toLocaleString()}</strong></span>
                 <span className={budgetInfo.remaining < 0 ? 'text-red-500' : 'text-green-600'}>
@@ -450,7 +450,7 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
                 </span>
               </>
             ) : (
-              <span className="text-xl font-bold text-purple-700">PKR {product.price?.toLocaleString()}</span>
+              <span className="text-xl font-bold text-[#a37b3d]">PKR {product.price?.toLocaleString()}</span>
             )}
           </div>
 
@@ -479,7 +479,7 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
           {!isAdminView && (
             <button
               onClick={() => onAddToCart(product, () => { setToast(true); setTimeout(() => setToast(false), 1800); })}
-              className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-colors">
+              className="w-full py-2.5 bg-[#ECD4A8] hover:bg-[#dfc08d] text-gray-955 rounded-xl text-sm font-bold transition-all shadow-md shadow-[#ECD4A8]/10 cursor-pointer">
               Add to Cart
             </button>
           )}
@@ -755,7 +755,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Search by description… (e.g. red silk lehenga)"
-          className="w-full pl-9 pr-24 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+          className="w-full pl-9 pr-24 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8] bg-white"
         />
         {searchQuery && (
           <button onClick={clearSearch}
@@ -764,7 +764,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
           </button>
         )}
         {searching && (
-          <div className="absolute right-16 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+          <div className="absolute right-16 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-[#ECD4A8] border-t-[#a37b3d] rounded-full animate-spin" />
         )}
       </div>
 
@@ -774,8 +774,8 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
           <button key={cat.id} onClick={() => handleCatChange(cat.id)}
             className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
               activeCat === cat.id
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'bg-white text-gray-600 border border-gray-200 hover:border-purple-300'
+                ? 'bg-[#a37b3d] text-white shadow-md'
+                : 'bg-white text-gray-600 border border-gray-200 hover:border-[#ECD4A8]'
             }`}>
             <span>{cat.icon}</span>
             <span>{cat.label}</span>
@@ -786,8 +786,8 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
       {/* Budget banner — hidden for admin and when buyer has no estimation */}
       {!isAdminView && activeCat && hasDowry && (
         budgetInfo ? (
-          <div className="mb-4 p-3 bg-purple-50 border border-purple-100 rounded-xl flex items-center gap-4 text-sm flex-wrap">
-            <span className="font-semibold text-purple-700 capitalize">
+          <div className="mb-4 p-3 bg-[#FFF5F8] border border-[#FBEFF1] rounded-xl flex items-center gap-4 text-sm flex-wrap">
+            <span className="font-semibold text-[#a37b3d] capitalize">
               {MAJOR_CATS.find(c => c.id === activeCat)?.label || activeCat} Budget
             </span>
             <span className="text-gray-600">
@@ -817,7 +817,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
           <span className="text-sm text-gray-600">
             {searching ? 'Searching…' : `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} for "${searchQuery}"`}
           </span>
-          <button onClick={clearSearch} className="text-xs text-purple-500 hover:underline">Show all</button>
+          <button onClick={clearSearch} className="text-xs text-[#a37b3d] hover:underline">Show all</button>
         </div>
       )}
 
@@ -830,7 +830,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
             </span>
             <button onClick={() => setShowFilter(v => !v)}
               className={`text-xs px-3 py-1.5 border rounded-lg font-medium transition-colors ${
-                showFilter ? 'bg-purple-100 border-purple-300 text-purple-700' : 'bg-white border-gray-200 text-gray-600 hover:border-purple-300'
+                showFilter ? 'bg-[#FFF5F8] border-[#ECD4A8] text-[#a37b3d]' : 'bg-white border-gray-200 text-gray-600 hover:border-[#ECD4A8]'
               }`}>
               Filters
             </button>
@@ -839,7 +839,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
             )}
           </div>
           <select value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white">
+            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#ECD4A8] bg-white">
             {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
@@ -847,23 +847,23 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
 
       {/* Filter panel */}
       {showFilter && searchResults === null && (
-        <div className="bg-white rounded-xl border border-purple-100 p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-[#FBEFF1] p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Min Price (PKR)</label>
             <input type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)}
               placeholder="0" min="0"
-              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Max Price (PKR)</label>
             <input type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)}
               placeholder="Any" min="0"
-              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Condition</label>
             <select value={condition} onChange={e => setCondition(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]">
               <option value="">All</option>
               {CONDITIONS.filter(Boolean).map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -872,13 +872,13 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
             <label className="block text-xs font-medium text-gray-600 mb-1">City</label>
             <input type="text" value={cityFilter} onChange={e => setCityFilter(e.target.value)}
               placeholder="e.g. Lahore"
-              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]" />
           </div>
           <div className="col-span-2 md:col-span-4 flex gap-2 justify-end">
             <button onClick={clearFilters}
               className="px-4 py-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg">Reset</button>
             <button onClick={applyFilters}
-              className="px-4 py-1.5 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-lg font-medium">Apply</button>
+              className="px-4 py-1.5 text-sm text-white bg-[#a37b3d] hover:bg-[#8a6633] rounded-lg font-medium">Apply</button>
           </div>
         </div>
       )}
@@ -886,7 +886,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
       {/* Product grid */}
       {(loading || searching) ? (
         <div className="flex justify-center items-center py-20">
-          <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-[#ECD4A8] border-t-[#a37b3d] rounded-full animate-spin" />
         </div>
       ) : displayProducts.length === 0 ? (
         <div className="text-center py-16">
@@ -897,7 +897,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
               : 'No products found in this category yet.'}
           </p>
           {searchResults !== null && (
-            <button onClick={clearSearch} className="mt-2 text-xs text-purple-500 hover:underline">
+            <button onClick={clearSearch} className="mt-2 text-xs text-[#a37b3d] hover:underline">
               Browse all products
             </button>
           )}
@@ -923,12 +923,12 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
       {searchResults === null && totalPages > 1 && (
         <div className="flex justify-center gap-3 mt-8">
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-            className="px-4 py-2 text-sm border border-gray-200 rounded-xl disabled:opacity-40 hover:border-purple-400 transition-colors">
+            className="px-4 py-2 text-sm border border-gray-200 rounded-xl disabled:opacity-40 hover:border-[#ECD4A8] transition-colors">
             ← Prev
           </button>
           <span className="px-4 py-2 text-sm text-gray-500">{page} / {totalPages}</span>
           <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}
-            className="px-4 py-2 text-sm border border-gray-200 rounded-xl disabled:opacity-40 hover:border-purple-400 transition-colors">
+            className="px-4 py-2 text-sm border border-gray-200 rounded-xl disabled:opacity-40 hover:border-[#ECD4A8] transition-colors">
             Next →
           </button>
         </div>

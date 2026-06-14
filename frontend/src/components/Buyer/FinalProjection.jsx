@@ -75,17 +75,17 @@ export default function FinalProjection({ buyer }) {
   if (!dowry?.category_budgets) {
     return (
       <div className="animate-fade-in space-y-6 max-w-5xl mx-auto">
-        <div className="bg-gradient-to-tr from-violet-600 via-purple-600 to-pink-500 rounded-3xl p-8 text-white shadow-xl shadow-purple-500/10 relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="bg-gradient-to-br from-[#a37b3d] via-[#ECD4A8] to-[#FFF5F8] rounded-3xl p-8 text-[#3d2c12] shadow-xl shadow-[#ECD4A8]/20 relative overflow-hidden">
+          <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-white/20 rounded-full blur-2xl pointer-events-none" />
           <h1 className="text-3xl font-black mb-2 flex items-center gap-2">
             <BarChart3 size={32} /> Spending Projection
           </h1>
-          <p className="text-purple-100 font-light max-w-xl">
+          <p className="text-[#5c4724] font-light max-w-xl">
             Live budget forecasting, historical comparison, and real-time tracking metrics.
           </p>
         </div>
-        <div className="bg-white/85 backdrop-blur-md rounded-3xl p-16 text-center border border-purple-100/60 shadow-xl shadow-purple-900/[0.02]">
-          <div className="w-20 h-20 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-purple-100">
+        <div className="bg-white rounded-3xl p-16 text-center border border-[#FBEFF1] shadow-xl">
+          <div className="w-20 h-20 bg-[#FFF5F8] text-[#a37b3d] rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-[#FDF2F3]">
             <Compass className="animate-pulse" size={40} />
           </div>
           <h2 className="text-xl font-extrabold text-gray-900 mb-2">No Active Estimates Found</h2>
@@ -119,31 +119,31 @@ export default function FinalProjection({ buyer }) {
 
   const projections = {
     optimistic:  { label: 'Optimistic Track',   total: Math.round(totalEst * 0.70), pct: 70, desc: 'Calculated minimal requirements', color: 'from-emerald-500 to-teal-500' },
-    realistic:   { label: 'Realistic Path',    total: Math.round(totalEst * 0.85), pct: 85, desc: 'Standard shopping trajectory', color: 'from-purple-600 to-indigo-600' },
-    pessimistic: { label: 'Maximum Limit', total: totalEst,                    pct: 100, desc: 'Complete category consumption', color: 'from-pink-500 to-rose-500' },
+    realistic:   { label: 'Realistic Path',    total: Math.round(totalEst * 0.85), pct: 85, desc: 'Standard shopping trajectory', color: 'from-[#a37b3d] to-[#ECD4A8]' },
+    pessimistic: { label: 'Maximum Limit', total: totalEst,                    pct: 100, desc: 'Complete category consumption', color: 'from-rose-400 to-rose-500' },
   };
 
   return (
     <div className="animate-fade-in space-y-8 max-w-5xl mx-auto pb-12">
       {/* Header Banner */}
-      <div className="bg-gradient-to-tr from-violet-600 via-purple-600 to-pink-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-purple-500/10 relative overflow-hidden">
-        <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+      <div className="bg-gradient-to-br from-[#a37b3d] via-[#ECD4A8] to-[#FFF5F8] rounded-3xl p-6 sm:p-8 text-[#3d2c12] shadow-xl shadow-[#ECD4A8]/20 relative overflow-hidden">
+        <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-white/20 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-black mb-1.5 flex items-center gap-2 tracking-tight">
               <BarChart3 size={32} /> Spending Projection
             </h1>
-            <p className="text-purple-100 font-light text-sm sm:text-base">
+            <p className="text-[#5c4724] font-light text-sm sm:text-base">
               Synchronized with your real-time Dowry Estimator data.
             </p>
           </div>
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 shrink-0 flex items-center gap-3">
-            <div className="p-2 bg-white rounded-xl text-purple-600 shadow-sm">
+          <div className="bg-white/30 backdrop-blur-md border border-white/40 rounded-2xl px-5 py-3 shrink-0 flex items-center gap-3">
+            <div className="p-2 bg-white rounded-xl text-[#a37b3d] shadow-sm">
               <Sparkles size={18} />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-bold tracking-wider text-purple-200">Active Budget</p>
-              <p className="text-sm font-black">{formatPKRFull(totalEst)}</p>
+              <p className="text-[10px] uppercase font-bold tracking-wider text-[#7c6031]">Active Budget</p>
+              <p className="text-sm font-black text-[#3d2c12]">{formatPKRFull(totalEst)}</p>
             </div>
           </div>
         </div>
@@ -151,34 +151,34 @@ export default function FinalProjection({ buyer }) {
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="bg-white rounded-3xl p-5 border border-purple-50 shadow-sm relative overflow-hidden hover:scale-[1.02] transition-all duration-300">
+        <div className="bg-white rounded-3xl p-5 border border-[#FBEFF1] shadow-sm relative overflow-hidden hover:scale-[1.02] transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total Allocation</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#FFF5F8] text-[#a37b3d] flex items-center justify-center">
               <Wallet size={16} />
             </div>
           </div>
           <h3 className="text-xl font-black text-gray-900">{formatPKR(totalEst)}</h3>
-          <div className="flex items-center gap-1 mt-2 text-[10px] text-purple-600 font-bold bg-purple-50 px-2 py-0.5 rounded-md w-fit">
+          <div className="flex items-center gap-1 mt-2 text-[10px] text-[#a37b3d] font-bold bg-[#FFF5F8] px-2 py-0.5 rounded-md w-fit">
             <span>Configured Budget</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 border border-purple-50 shadow-sm relative overflow-hidden hover:scale-[1.02] transition-all duration-300">
+        <div className="bg-white rounded-3xl p-5 border border-[#FBEFF1] shadow-sm relative overflow-hidden hover:scale-[1.02] transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total Expensed</span>
-            <div className="w-8 h-8 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center">
               <ShoppingBag size={16} />
             </div>
           </div>
           <h3 className="text-xl font-black text-gray-900">{formatPKR(totalSpent)}</h3>
-          <div className="flex items-center gap-1 mt-2 text-[10px] text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded-md w-fit">
+          <div className="flex items-center gap-1 mt-2 text-[10px] text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-md w-fit">
             <ArrowUpRight size={10} />
             <span>{spentPct}% utilized</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 border border-purple-50 shadow-sm relative overflow-hidden hover:scale-[1.02] transition-all duration-300">
+        <div className="bg-white rounded-3xl p-5 border border-[#FBEFF1] shadow-sm relative overflow-hidden hover:scale-[1.02] transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Remaining Balance</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -196,7 +196,7 @@ export default function FinalProjection({ buyer }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 border border-purple-50 shadow-sm relative overflow-hidden hover:scale-[1.02] transition-all duration-300">
+        <div className="bg-white rounded-3xl p-5 border border-[#FBEFF1] shadow-sm relative overflow-hidden hover:scale-[1.02] transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Active Shopping</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -223,7 +223,7 @@ export default function FinalProjection({ buyer }) {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
               activeTab === tab.id
-                ? 'bg-white text-purple-700 shadow-md border border-purple-100/50'
+                ? 'bg-white text-[#a37b3d] shadow-md border border-[#FBEFF1]'
                 : 'text-gray-500 hover:text-gray-950 hover:bg-white/40'
             }`}>
             {tab.icon}
@@ -235,41 +235,41 @@ export default function FinalProjection({ buyer }) {
       {/* TAB: Overview */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-purple-50 space-y-6">
+          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-[#FBEFF1] space-y-6">
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-1">Overall Spending Progress</h2>
               <p className="text-xs text-gray-400 font-light">Calculates aggregate funds spent against the defined target limit.</p>
             </div>
             
-            <div className="bg-gray-50/50 p-6 border border-gray-100 rounded-2xl">
+            <div className="bg-[#FCFBFB] p-6 border border-[#FBEFF1] rounded-2xl">
               <div className="flex justify-between mb-2">
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Aggregate progress</span>
-                <span className="text-xs font-mono font-black text-purple-700">{spentPct}% Spent</span>
+                <span className="text-xs font-mono font-black text-[#a37b3d]">{spentPct}% Spent</span>
               </div>
               <div className="w-full bg-gray-200/60 rounded-full h-3 overflow-hidden p-0.5">
                 <div
-                  className="bg-gradient-to-r from-violet-600 via-purple-600 to-pink-500 h-2 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] h-2 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, spentPct)}%` }}
                 />
               </div>
             </div>
 
-            <div className="border border-purple-100/40 rounded-2xl overflow-hidden">
+            <div className="border border-[#FBEFF1] rounded-2xl overflow-hidden">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="bg-gray-50/80 border-b border-gray-100">
+                  <tr className="bg-[#FCFBFB] border-b border-[#FBEFF1]">
                     <th className="text-left px-5 py-3.5 text-gray-500 font-bold uppercase tracking-wider">Budget Parameter</th>
                     <th className="text-right px-5 py-3.5 text-gray-500 font-bold uppercase tracking-wider">Balance Value</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[#FBEFF1]">
                   {[
                     { label: 'Total Allocated Budget', val: formatPKRFull(totalEst),    cls: 'text-gray-900 font-extrabold' },
-                    { label: 'Total Actual Spending',  val: formatPKRFull(totalSpent),  cls: 'text-purple-600 font-black' },
+                    { label: 'Total Actual Spending',  val: formatPKRFull(totalSpent),  cls: 'text-[#a37b3d] font-black' },
                     { label: 'Remaining Disposable Funds', val: formatPKRFull(totalRemain), cls: totalRemain < 0 ? 'text-rose-600 font-black' : 'text-emerald-600 font-black' },
                     { label: 'Remaining Percentage',  val: `${totalEst > 0 ? Math.round((totalRemain / totalEst) * 100) : 0}%`, cls: totalRemain < 0 ? 'text-rose-600' : 'text-emerald-600' },
                   ].map((row, i) => (
-                    <tr key={i} className="hover:bg-purple-50/10 transition-colors">
+                    <tr key={i} className="hover:bg-[#FCFBFB] transition-colors">
                       <td className="px-5 py-3.5 text-gray-700 font-semibold">{row.label}</td>
                       <td className={`text-right px-5 py-3.5 font-mono ${row.cls}`}>{row.val}</td>
                     </tr>
@@ -283,7 +283,7 @@ export default function FinalProjection({ buyer }) {
 
       {/* TAB: By Category */}
       {activeTab === 'category' && (
-        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-purple-50 space-y-6">
+        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-[#FBEFF1] space-y-6">
           <div>
             <h2 className="text-lg font-bold text-gray-900 mb-1">Estimated vs Actual Category Spending</h2>
             <p className="text-xs text-gray-400 font-light font-medium">Detailed category metrics highlighting budget headroom vs current expenditure.</p>
@@ -295,32 +295,32 @@ export default function FinalProjection({ buyer }) {
               const isOver = item.actual > item.estimated;
               const icon   = catIcon(item.cat);
               return (
-                <div key={idx} className="p-5 bg-gray-50/40 border border-gray-100 rounded-2xl hover:bg-gray-50/90 transition-all duration-200">
+                <div key={idx} className="p-5 bg-[#FCFBFB] border border-[#FBEFF1] rounded-2xl hover:bg-[#FFF5F8]/50 transition-all duration-200">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                     <div className="flex items-center gap-2.5">
-                      <span className="text-xl p-2 bg-white rounded-xl shadow-sm border border-gray-100/50">{icon}</span>
+                      <span className="text-xl p-2 bg-white rounded-xl shadow-sm border border-[#FBEFF1]">{icon}</span>
                       <div>
                         <h4 className="text-sm font-bold text-gray-900 capitalize">{item.category}</h4>
                         <span className="text-[10px] text-gray-400 font-medium">Tracking category code: {item.cat}</span>
                       </div>
                     </div>
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border w-fit ${
-                      isOver ? 'bg-rose-50 border-rose-200 text-rose-700' : pct > 0 ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-gray-50 border-gray-200 text-gray-500'
+                      isOver ? 'bg-rose-50 border-rose-200 text-rose-700' : pct > 0 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-gray-50 border-gray-200 text-gray-500'
                     }`}>
                       {isOver ? `Over by ${formatPKRFull(item.actual - item.estimated)}` : `${pct}% Used`}
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                    <div className="bg-white p-3.5 rounded-xl border border-gray-100/80">
+                    <div className="bg-white p-3.5 rounded-xl border border-[#FBEFF1]">
                       <p className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Allocated Default</p>
-                      <p className="text-sm font-black text-purple-600 mt-1">{formatPKRFull(item.estimated)}</p>
+                      <p className="text-sm font-black text-[#a37b3d] mt-1">{formatPKRFull(item.estimated)}</p>
                     </div>
-                    <div className="bg-white p-3.5 rounded-xl border border-gray-100/80">
+                    <div className="bg-white p-3.5 rounded-xl border border-[#FBEFF1]">
                       <p className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Expensed Amount</p>
-                      <p className="text-sm font-black text-pink-600 mt-1">{formatPKRFull(item.actual)}</p>
+                      <p className="text-sm font-black text-rose-500 mt-1">{formatPKRFull(item.actual)}</p>
                     </div>
-                    <div className="bg-white p-3.5 rounded-xl border border-gray-100/80">
+                    <div className="bg-white p-3.5 rounded-xl border border-[#FBEFF1]">
                       <p className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Available Cash</p>
                       <p className={`text-sm font-black mt-1 ${item.remaining < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                         {formatPKRFull(item.remaining)}
@@ -330,7 +330,7 @@ export default function FinalProjection({ buyer }) {
                   
                   <div className="w-full bg-gray-200/60 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className={`h-1.5 rounded-full ${isOver ? 'bg-rose-500' : 'bg-gradient-to-r from-violet-600 to-pink-500'}`}
+                      className={`h-1.5 rounded-full ${isOver ? 'bg-rose-500' : 'bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8]'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -343,7 +343,7 @@ export default function FinalProjection({ buyer }) {
 
       {/* TAB: Remaining */}
       {activeTab === 'remaining' && (
-        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-purple-50 space-y-6">
+        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-[#FBEFF1] space-y-6">
           <div>
             <h2 className="text-lg font-bold text-gray-900 mb-1">Cashflow Headroom</h2>
             <p className="text-xs text-gray-400 font-light font-medium">Available balance leftovers remaining in each custom category.</p>
@@ -355,7 +355,7 @@ export default function FinalProjection({ buyer }) {
               const isOver    = item.remaining < 0;
               const icon      = catIcon(item.cat);
               return (
-                <div key={idx} className="p-5 border border-purple-50/50 rounded-2xl bg-gray-50/20 flex flex-col justify-between">
+                <div key={idx} className="p-5 border border-[#FBEFF1] rounded-2xl bg-[#FCFBFB] flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{icon}</span>
@@ -387,7 +387,7 @@ export default function FinalProjection({ buyer }) {
       {/* TAB: Projections */}
       {activeTab === 'projected' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-purple-50 space-y-6">
+          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-[#FBEFF1] space-y-6">
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-1">Smart Spending Projections</h2>
               <p className="text-xs text-gray-400 font-light font-medium">Predictive scenarios calculated dynamically using baseline thresholds.</p>
@@ -397,7 +397,7 @@ export default function FinalProjection({ buyer }) {
               {Object.entries(projections).map(([key, proj]) => {
                 const diff = proj.total - totalEst;
                 return (
-                  <div key={key} className="p-5 border border-gray-100 rounded-2xl bg-gray-50/50 flex flex-col justify-between">
+                  <div key={key} className="p-5 border border-[#FBEFF1] rounded-2xl bg-[#FCFBFB] flex flex-col justify-between">
                     <div>
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold text-white bg-gradient-to-r ${proj.color} mb-3`}>
                         {proj.label}
@@ -405,7 +405,7 @@ export default function FinalProjection({ buyer }) {
                       <h4 className="text-sm font-bold text-gray-900 mb-1">{proj.desc}</h4>
                       <p className="text-[10px] text-gray-400 font-medium leading-relaxed">System predicted threshold: {proj.pct}% of limit.</p>
                     </div>
-                    <div className="mt-6 pt-4 border-t border-gray-100">
+                    <div className="mt-6 pt-4 border-t border-[#FBEFF1]">
                       <p className="text-xl font-mono font-black text-gray-900">{formatPKRFull(proj.total)}</p>
                       <p className={`text-[10px] font-bold mt-1 ${diff > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                         {diff > 0
@@ -419,8 +419,8 @@ export default function FinalProjection({ buyer }) {
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-violet-50 via-purple-50 to-pink-50 border border-purple-100/60 rounded-3xl p-6 relative overflow-hidden flex items-start gap-4">
-            <div className="p-3 bg-white rounded-2xl shadow-inner border border-purple-200 text-purple-600 shrink-0">
+          <div className="bg-gradient-to-r from-[#FFF5F8] via-[#FCFBFB] to-[#FDF2F3] border border-[#FBEFF1] rounded-3xl p-6 relative overflow-hidden flex items-start gap-4">
+            <div className="p-3 bg-white rounded-2xl shadow-inner border border-[#ECD4A8] text-[#a37b3d] shrink-0">
               <Sparkles size={20} />
             </div>
             <div>
@@ -435,4 +435,3 @@ export default function FinalProjection({ buyer }) {
     </div>
   );
 }
-

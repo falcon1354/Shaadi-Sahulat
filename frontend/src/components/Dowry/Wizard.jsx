@@ -271,8 +271,8 @@ function Wizard({ userId }) {
   if (isLocked && result) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <div className="bg-gradient-to-r from-violet-50 via-purple-50 to-pink-50 border border-purple-100 rounded-2xl p-5 text-sm text-purple-900 shadow-sm flex items-start gap-4">
-          <div className="p-2.5 bg-white rounded-xl shadow-inner border border-purple-200 shrink-0 text-purple-600">
+        <div className="bg-gradient-to-r from-[#FFF5F8] via-[#FDF2F3] to-[#FBEFF1] border border-[#FBEFF1] rounded-2xl p-5 text-sm text-[#a37b3d] shadow-sm flex items-start gap-4">
+          <div className="p-2.5 bg-white rounded-xl shadow-inner border border-[#FEF4F7] shrink-0 text-[#a37b3d]">
             <Sparkles size={20} />
           </div>
           <div>
@@ -282,7 +282,7 @@ function Wizard({ userId }) {
             </p>
           </div>
         </div>
-        <div className="bg-white rounded-3xl shadow-lg border border-purple-100 p-6 md:p-8">
+        <div className="bg-white rounded-3xl shadow-lg border border-[#FBEFF1] p-6 md:p-8">
           <StepResults
             result={result}
             loading={false}
@@ -303,7 +303,7 @@ function Wizard({ userId }) {
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12 animate-fade-in">
       {/* Wizard Steps - Glassmorphism Indicator */}
-      <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-purple-50 shadow-sm p-6">
+      <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-primary-200 shadow-sm p-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-2">
           {STEPS.map((step, idx) => {
             const isActive = currentStep === step.id;
@@ -320,23 +320,23 @@ function Wizard({ userId }) {
                   <div
                     className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold transition-all duration-300 border ${
                       isActive
-                        ? 'bg-gradient-to-tr from-violet-600 to-pink-500 text-white shadow-md shadow-purple-500/25 border-transparent scale-105'
+                        ? 'bg-gradient-to-tr from-primary-500 to-primary-800 text-white shadow-md shadow-primary-500/25 border-transparent scale-105'
                         : isCompleted
-                        ? 'bg-purple-50 border-purple-100 text-purple-600'
-                        : 'bg-gray-50 border-gray-100 text-gray-400 group-hover:bg-purple-50 group-hover:text-purple-600'
+                        ? 'bg-primary-50 border-primary-200 text-primary-900'
+                        : 'bg-gray-50 border-gray-100 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-900'
                     }`}
                   >
                     {isCompleted ? <Check size={18} /> : step.icon}
                   </div>
                   <div className="text-left">
-                    <p className={`text-[10px] uppercase font-bold tracking-wider ${isActive ? 'text-purple-600' : 'text-gray-400'}`}>Step 0{step.id}</p>
+                    <p className={`text-[10px] uppercase font-bold tracking-wider ${isActive ? 'text-primary-900' : 'text-gray-400'}`}>Step 0{step.id}</p>
                     <p className={`text-xs font-bold ${isActive ? 'text-gray-950' : 'text-gray-500 group-hover:text-gray-700'}`}>{step.title}</p>
                   </div>
                 </div>
                 {idx < STEPS.length - 1 && (
                   <div
                     className={`hidden sm:block flex-1 h-0.5 max-w-[50px] md:max-w-[80px] rounded-full transition-colors duration-300 ${
-                      currentStep > step.id ? 'bg-gradient-to-r from-violet-500 to-purple-500' : 'bg-gray-100'
+                      currentStep > step.id ? 'bg-gradient-to-r from-primary-400 to-primary-700' : 'bg-gray-100'
                     }`}
                   />
                 )}
@@ -355,7 +355,7 @@ function Wizard({ userId }) {
       )}
 
       {/* Primary Card Container */}
-      <div className="bg-white rounded-3xl border border-purple-50/50 shadow-xl shadow-purple-500/[0.02] p-6 md:p-8 min-h-[400px] flex flex-col justify-between">
+      <div className="bg-white rounded-3xl border border-primary-200/50 shadow-xl shadow-primary-500/[0.02] p-6 md:p-8 min-h-[400px] flex flex-col justify-between">
         <div className="mb-8">
           {currentStep === 1 && (
             <StepFinancial formData={formData} updateForm={updateForm} />
@@ -416,7 +416,7 @@ function Wizard({ userId }) {
               <button
                 onClick={currentStep === 3 ? handleEstimate : handleNext}
                 disabled={loading}
-                className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-violet-600 to-pink-500 text-white font-bold hover:opacity-95 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-2 text-sm shadow-lg shadow-purple-500/10"
+                className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-primary-500 to-primary-800 text-white font-bold hover:opacity-95 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-2 text-sm shadow-lg shadow-primary-500/10"
               >
                 {loading ? (
                   <>

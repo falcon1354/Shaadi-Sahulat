@@ -137,7 +137,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
   if (loading) {
     return (
       <div className="animate-fade-in flex flex-col items-center justify-center py-32 gap-4">
-        <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-[#FBEFF1] border-t-[#a37b3d] rounded-full animate-spin" />
         <p className="text-gray-400 text-sm">Loading product…</p>
       </div>
     );
@@ -151,7 +151,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
         <p className="text-gray-400 text-sm mb-6">This product may have been removed.</p>
         <button
           onClick={onBack}
-          className="px-6 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors"
+          className="px-6 py-2.5 bg-[#a37b3d] text-white rounded-xl text-sm font-semibold hover:bg-[#8a6633] transition-colors"
         >
           ← Back
         </button>
@@ -192,9 +192,9 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
       {/* Back button */}
       <button
         onClick={onBack}
-        className="mb-6 flex items-center gap-2 text-sm text-gray-500 hover:text-purple-600 font-medium transition-colors group"
+        className="mb-6 flex items-center gap-2 text-sm text-gray-500 hover:text-[#a37b3d] font-medium transition-colors group"
       >
-        <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 group-hover:bg-purple-100 transition-colors text-base">←</span>
+        <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 group-hover:bg-[#FFF5F8] transition-colors text-base">←</span>
         Back
       </button>
 
@@ -226,7 +226,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
               </span>
             )}
             {product.similarity_score !== undefined && (
-              <span className="absolute bottom-4 right-4 bg-purple-600/90 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow">
+              <span className="absolute bottom-4 right-4 bg-[#a37b3d]/90 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow">
                 {Math.round(product.similarity_score * 100)}% match
               </span>
             )}
@@ -237,8 +237,8 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
                 onClick={toggleWishlist}
                 className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all text-lg ${
                   isWishlisted
-                    ? 'bg-pink-500 text-white scale-110'
-                    : 'bg-white/90 text-gray-400 hover:text-pink-500 hover:scale-110'
+                    ? 'bg-[#FFF5F8]0 text-white scale-110'
+                    : 'bg-white/90 text-gray-400 hover:text-[#a37b3d] hover:scale-110'
                 }`}
                 title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
               >
@@ -251,7 +251,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
           <div className="flex items-center gap-2 text-xs text-gray-400 px-1">
             <span>🛍️ Marketplace</span>
             <span>›</span>
-            <span className="capitalize text-purple-600 font-medium">
+            <span className="capitalize text-[#a37b3d] font-medium">
               {product.major_category?.replace(/_/g, ' ')}
             </span>
             {product.subcategory && (
@@ -268,7 +268,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
 
           {/* Title & price */}
           <div>
-            <p className="text-xs text-purple-500 font-semibold uppercase tracking-wide mb-1 capitalize">
+            <p className="text-xs text-[#a37b3d] font-semibold uppercase tracking-wide mb-1 capitalize">
               {product.major_category?.replace(/_/g, ' ')}
             </p>
             <h1 className="text-2xl font-bold text-gray-900 leading-snug mb-3">
@@ -289,7 +289,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
                   </span>
                 </>
               ) : (
-                <span className="text-3xl font-bold text-purple-700">
+                <span className="text-3xl font-bold text-[#a37b3d]">
                   PKR {product.price?.toLocaleString()}
                 </span>
               )}
@@ -298,8 +298,8 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
 
           {/* Budget banner */}
           {budgetInfo && (
-            <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100">
-              <p className="text-xs font-bold text-purple-700 uppercase tracking-wide mb-2 capitalize">
+            <div className="p-4 bg-[#FFF5F8] rounded-2xl border border-[#FBEFF1]">
+              <p className="text-xs font-bold text-[#a37b3d] uppercase tracking-wide mb-2 capitalize">
                 💰 Your {product.major_category?.replace(/_/g, ' ')} Budget
               </p>
               <div className="grid grid-cols-3 gap-3 text-xs">
@@ -354,7 +354,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
               <h3 className="text-sm font-bold text-gray-700 mb-2">Details</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {fields.map(({ label, value, icon }) => (
-                  <div key={label} className="bg-gray-50 border border-gray-100 rounded-xl p-3 hover:border-purple-200 hover:bg-purple-50 transition-colors">
+                  <div key={label} className="bg-gray-50 border border-gray-100 rounded-xl p-3 hover:border-[#FBEFF1] hover:bg-[#FFF5F8] transition-colors">
                     <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">
                       {icon} {label}
                     </p>
@@ -368,7 +368,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
           {/* Seller info */}
           <div className="flex items-center justify-between py-4 border-t border-gray-100">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] flex items-center justify-center text-white font-bold text-sm">
                 {product.seller_name?.[0]?.toUpperCase() || 'S'}
               </div>
               <div>
@@ -388,7 +388,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
             <div className="flex gap-3 pt-1">
               <button
                 onClick={handleAddToCart}
-                className="flex-1 py-3.5 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white rounded-2xl text-sm font-bold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                className="flex-1 py-3.5 bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] hover:from-[#8a6633] hover:to-[#ECD4A8] text-white rounded-2xl text-sm font-bold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
               >
                 🛒 Add to Cart
               </button>
@@ -396,8 +396,8 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
                 onClick={toggleWishlist}
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-all border-2 ${
                   isWishlisted
-                    ? 'bg-pink-500 text-white border-pink-500 shadow-md'
-                    : 'bg-white text-gray-400 border-gray-200 hover:border-pink-400 hover:text-pink-500'
+                    ? 'bg-[#FFF5F8] text-[#a37b3d] border-[#a37b3d] shadow-md'
+                    : 'bg-white text-gray-400 border-gray-200 hover:border-[#ECD4A8] hover:text-[#a37b3d]'
                 }`}
                 title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
               >
@@ -413,7 +413,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
                 href={`http://localhost:3000/products/${product.product_id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gray-50 text-gray-600 rounded-xl text-xs font-semibold border border-gray-200 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gray-50 text-gray-600 rounded-xl text-xs font-semibold border border-gray-200 hover:bg-[#FFF5F8] hover:border-[#FBEFF1] hover:text-[#a37b3d] transition-colors"
               >
                 🔗 Share Product Page
               </a>
@@ -423,7 +423,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
                   setToast(true);
                   setTimeout(() => setToast(false), 2000);
                 }}
-                className="px-3 py-2.5 bg-gray-50 text-gray-500 rounded-xl text-xs font-semibold border border-gray-200 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                className="px-3 py-2.5 bg-gray-50 text-gray-500 rounded-xl text-xs font-semibold border border-gray-200 hover:bg-[#FFF5F8] hover:text-[#a37b3d] transition-colors"
                 title="Copy link"
               >
                 📋

@@ -502,11 +502,11 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-xl font-extrabold text-gray-950 tracking-tight flex items-center gap-2">
-                    <Heart className="text-pink-500 fill-pink-500" size={22} /> Wishlist Collection
+                    <Heart className="text-[#a37b3d] fill-[#a37b3d]" size={22} /> Wishlist Collection
                   </h2>
                   <p className="text-gray-400 text-xs mt-0.5">Quick access to your curated design highlights</p>
                 </div>
-                <span className="text-xs font-semibold px-2.5 py-1 bg-pink-50 text-pink-600 rounded-lg">
+                <span className="text-xs font-semibold px-2.5 py-1 bg-[#FFF5F8] text-[#a37b3d] rounded-lg">
                   {wishlist.length} Saved
                 </span>
               </div>
@@ -516,20 +516,20 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                   <div
                     key={item.product_id}
                     onClick={() => onViewProduct && onViewProduct(item)}
-                    className="group p-4 bg-pink-50/30 hover:bg-pink-50/60 rounded-2xl border border-pink-100/60 transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                    className="group p-4 bg-[#FFF5F8]/30 hover:bg-[#FFF5F8]/60 rounded-2xl border border-[#FBEFF1]/60 transition-all duration-300 cursor-pointer flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold text-pink-600 uppercase tracking-wider bg-white px-2 py-0.5 rounded-md border border-pink-100">
+                        <span className="text-[10px] font-bold text-[#a37b3d] uppercase tracking-wider bg-white px-2 py-0.5 rounded-md border border-[#FBEFF1]">
                           {catLabel(item.major_category)}
                         </span>
-                        <ArrowUpRight size={14} className="text-pink-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <ArrowUpRight size={14} className="text-[#ECD4A8] opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                       <p className="text-xs font-bold text-gray-900 line-clamp-2 leading-snug">{item.title}</p>
                     </div>
-                    <div className="flex justify-between items-center mt-4 pt-2.5 border-t border-pink-100/50">
+                    <div className="flex justify-between items-center mt-4 pt-2.5 border-t border-[#FBEFF1]/50">
                       <span className="text-[10px] text-gray-400 font-semibold">Original Price</span>
-                      <span className="text-sm font-extrabold text-pink-600">PKR {(item.price || 0).toLocaleString()}</span>
+                      <span className="text-sm font-extrabold text-[#a37b3d]">PKR {(item.price || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 ))}
@@ -561,7 +561,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                   <div
                     key={item.product_id}
                     onClick={() => onViewProduct && onViewProduct(item)}
-                    className="group flex items-center gap-4 p-3 bg-gray-50/60 hover:bg-purple-50/30 rounded-2xl border border-gray-100/80 transition-all duration-300 cursor-pointer"
+                    className="group flex items-center gap-4 p-3 bg-gray-50/60 hover:bg-[#FFF5F8]/30 rounded-2xl border border-gray-100/80 transition-all duration-300 cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-[#FFF5F8] text-[#a37b3d] border border-[#FDF2F3] rounded-xl flex items-center justify-center shrink-0 shadow-sm">
                       <ShoppingBag size={20} />

@@ -6,7 +6,7 @@ import { useCategories } from '../../hooks/useCategories';
 // ── Category tree (mirrors config.py SELLER_CATEGORY_TREE) ────────────────
 const CATEGORY_TREE = [
   {
-    id: 'wedding_dress', label: 'Wedding Dress', icon: <Shirt size={36} strokeWidth={1.5} className="text-violet-500" />,
+    id: 'wedding_dress', label: 'Wedding Dress', icon: <Shirt size={36} strokeWidth={1.5} className="text-primary-800" />,
     multipleImages: true,
     subcategories: [
       {
@@ -29,7 +29,7 @@ const CATEGORY_TREE = [
     ],
   },
   {
-    id: 'furniture', label: 'Furniture', icon: <Sofa size={36} strokeWidth={1.5} className="text-pink-500" />,
+    id: 'furniture', label: 'Furniture', icon: <Sofa size={36} strokeWidth={1.5} className="text-primary-800" />,
     multipleImages: false,
     subcategories: [
       { id: 'sofa_set',       label: 'Sofa Set',       items: null },
@@ -378,7 +378,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
   // ── Step 1 — Pick major category ─────────────────────────────────────────
   if (!majorCat) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-primary-200 p-6">
         <h2 className="text-xl font-bold text-gray-800 mb-2">Upload New Product</h2>
         <p className="text-sm text-gray-500 mb-5">Select a category to continue</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -387,7 +387,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
               key={cat.id}
               onClick={() => selectMajorCat(cat.id)}
               className="flex flex-col items-center gap-3 p-6 glass-card border border-gray-100 rounded-[1.5rem]
-                         hover:border-violet-300 hover:bg-violet-50/50 hover-lift transition-all text-center"
+                         hover:border-primary-400 hover:bg-primary-50/50 hover-lift transition-all text-center"
             >
               <div className="p-3 bg-white rounded-full shadow-sm">
                 {cat.icon}
@@ -402,11 +402,11 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
 
   // ── Step 2 — Product form ─────────────────────────────────────────────────
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-primary-200 p-6">
       {/* Header with back button */}
       <div className="flex items-center gap-3 mb-5">
         <button onClick={() => setMajorCat(null)}
-          className="text-sm text-gray-400 hover:text-purple-600 transition-colors flex items-center gap-1">
+          className="text-sm text-gray-400 hover:text-primary-950 transition-colors flex items-center gap-1">
           ← Back
         </button>
         <span className="text-lg">{catDef.icon}</span>
@@ -433,7 +433,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
               {majorCat === 'wedding_dress' ? 'Dress Type *' : 'Subcategory *'}
             </label>
             <select value={form.subcategory} onChange={(e) => setForm(f => ({ ...f, subcategory: e.target.value, item_type: '' }))} required
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
               <option value="">— Select —</option>
               {subcatOptions.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
@@ -446,7 +446,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                 {majorCat === 'wedding_dress' ? 'Style *' : 'Item Type *'}
               </label>
               <select value={form.item_type} onChange={set('item_type')} required
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="">— Select —</option>
                 {itemOptions.map(it => <option key={it.id} value={it.id}>{it.label}</option>)}
               </select>
@@ -459,7 +459,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
           <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
           <input type="text" value={form.title} onChange={set('title')} required
             placeholder={majorCat === 'wedding_dress' ? 'e.g. Royal Red Bridal Lehenga' : 'e.g. Elegant 6-seater Sofa Set'}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -470,7 +470,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
           </label>
           <textarea value={form.description} onChange={set('description')} required rows={3}
             placeholder="Describe color, material, style, condition and any special features…"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none" />
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none" />
         </div>
 
         {/* ── Wedding dress specific fields ────────────────────────────── */}
@@ -479,12 +479,12 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
               <input type="text" value={form.color} onChange={set('color')} placeholder="e.g. Deep Red"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Fabric</label>
               <select value={form.fabric} onChange={set('fabric')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="">— Select —</option>
                 {FABRICS.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
@@ -492,7 +492,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Embroidery</label>
               <select value={form.embroidery_type} onChange={set('embroidery_type')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="">— Select —</option>
                 {EMBROIDERY.map(e => <option key={e} value={e}>{e}</option>)}
               </select>
@@ -500,7 +500,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
               <select value={form.size} onChange={set('size')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="">— Select —</option>
                 {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
@@ -508,7 +508,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
               <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -521,12 +521,12 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
               <input type="text" value={form.color} onChange={set('color')} placeholder="e.g. Walnut Brown"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
               <select value={form.material} onChange={set('material')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="">— Select —</option>
                 {FURNITURE_MATS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
@@ -534,7 +534,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
               <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -547,12 +547,12 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
               <input type="text" value={form.brand} onChange={set('brand')} placeholder="e.g. Samsung, Haier, Dawlance"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
               <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -565,17 +565,17 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
               <input type="text" value={form.brand} onChange={set('brand')} placeholder="e.g. National, Dawlance"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
               <input type="text" value={form.material} onChange={set('material')} placeholder="e.g. Steel, Bone China"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
               <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -588,12 +588,12 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
               <input type="text" value={form.color} onChange={set('color')} placeholder="e.g. Warm White, Gold"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
               <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                 {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -613,7 +613,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                       value={form[`cf_${cf.field_id}`] || ''}
                       onChange={e => setForm(f => ({ ...f, [`cf_${cf.field_id}`]: e.target.value }))}
                       required={cf.required}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="">— Select —</option>
                       {(cf.options || []).map(o => <option key={o} value={o}>{o}</option>)}
@@ -625,7 +625,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                       onChange={e => setForm(f => ({ ...f, [`cf_${cf.field_id}`]: e.target.value }))}
                       required={cf.required}
                       placeholder={cf.type === 'number' ? '0' : `Enter ${cf.label.toLowerCase()}`}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   )}
                 </div>
@@ -638,12 +638,12 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
             <input type="text" value={form.city} onChange={set('city')} placeholder="e.g. Lahore"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
             <input type="number" value={form.stock_quantity} onChange={set('stock_quantity')} min="1" placeholder="1"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
         </div>
 
@@ -666,7 +666,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                 className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white ${
                   priceError
                     ? 'border-red-400 focus:ring-red-400'
-                    : 'border-gray-200 focus:ring-purple-400'
+                    : 'border-gray-200 focus:ring-primary-500'
                 }`}
               />
               {priceError && (
@@ -706,7 +706,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                   className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
                     showDiscount
                       ? 'bg-green-100 text-green-700 border-green-300'
-                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:border-purple-300'
+                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:border-[#FBEFF1]'
                   }`}
                 >
                   {showDiscount ? '✓ Discount ON' : '+ Add Discount'}
@@ -715,7 +715,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                   <div className="flex items-center gap-1 flex-1">
                     <input type="number" value={form.discount_pct} onChange={set('discount_pct')}
                       min="1" max="50" placeholder="e.g. 15"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" />
                     <span className="text-sm text-gray-500 flex-shrink-0">%</span>
                   </div>
                 )}
@@ -736,7 +736,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
             <span className="ml-2 text-xs text-gray-400 font-normal">JPG/PNG/WebP, max 5 MB</span>
           </label>
           <div
-            className="border-2 border-dashed border-purple-200 rounded-xl p-4 text-center cursor-pointer hover:border-purple-400 transition-colors"
+            className="border-2 border-dashed border-primary-300 rounded-xl p-4 text-center cursor-pointer hover:border-primary-500 transition-colors"
             onClick={() => fileRef.current?.click()}
           >
             <p className="text-sm text-gray-500">
@@ -758,7 +758,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                 <div key={idx} className="relative">
                   <img src={src} alt="" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
                   {idx === 0 && maxImages > 1 && (
-                    <span className="absolute -top-1 -left-1 bg-purple-600 text-white text-xs px-1 rounded">Primary</span>
+                    <span className="absolute -top-1 -left-1 bg-primary-900 text-white text-xs px-1 rounded">Primary</span>
                   )}
                   <button type="button" onClick={() => removeImage(idx)}
                     className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none">
@@ -772,8 +772,8 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
 
         <button
           type="submit" disabled={loading}
-          className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white font-semibold rounded-xl
-                     hover:from-purple-700 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-800 text-white font-semibold rounded-xl
+                     hover:from-primary-600 hover:to-primary-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading
             ? <span className="flex items-center justify-center gap-2">

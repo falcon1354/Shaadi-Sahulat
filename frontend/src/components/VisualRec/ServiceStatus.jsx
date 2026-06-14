@@ -39,7 +39,7 @@ export default function ServiceStatus() {
   const modelColor = isFineTuned ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700';
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-purple-100">
+    <div className="bg-white rounded-xl shadow-sm border border-primary-200">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full p-4 flex items-center justify-between"
@@ -136,7 +136,7 @@ export default function ServiceStatus() {
 
           <button
             onClick={refresh}
-            className="w-full py-2 text-xs text-purple-600 hover:bg-purple-50 rounded-lg transition-all mt-1"
+            className="w-full py-2 text-xs text-primary-900 hover:bg-primary-50 rounded-lg transition-all mt-1"
           >
             🔄 Refresh Status
           </button>

@@ -15,16 +15,16 @@ const PARENT_OPTIONS = [
     label: 'Only Father',
     icon: '👨',
     desc: 'Conservative adjustment applied for missing mother',
-    color: 'bg-violet-50/70 border-violet-300 text-violet-950',
-    hover: 'hover:border-violet-300 hover:bg-violet-50/20',
+    color: 'bg-primary-50/70 border-primary-300 text-primary-900',
+    hover: 'hover:border-primary-300 hover:bg-primary-50/20',
   },
   {
     value: 'only_mother',
     label: 'Only Mother',
     icon: '👩',
     desc: 'Conservative adjustment applied for missing father',
-    color: 'bg-pink-50/70 border-pink-300 text-pink-950',
-    hover: 'hover:border-pink-300 hover:bg-pink-50/20',
+    color: 'bg-primary-100/70 border-primary-400 text-primary-950',
+    hover: 'hover:border-primary-400 hover:bg-primary-50/20',
   },
   {
     value: 'neither',
@@ -60,7 +60,7 @@ function StepFamily({ formData, updateForm }) {
       </div>
 
       {/* Parents status check */}
-      <div className="bg-purple-50/30 border border-purple-100/50 rounded-3xl p-6">
+      <div className="bg-primary-50/30 border border-primary-200/50 rounded-3xl p-6">
         <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-4 flex items-center gap-1.5">
           Parents Status Context
         </h3>
@@ -94,7 +94,7 @@ function StepFamily({ formData, updateForm }) {
       {/* Sibling counts */}
       <div className="bg-gray-50/50 border border-gray-100 rounded-3xl p-6 space-y-6">
         <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-          <Users size={14} className="text-purple-600" /> Sibling Details
+          <Users size={14} className="text-primary-800" /> Sibling Details
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
@@ -105,7 +105,7 @@ function StepFamily({ formData, updateForm }) {
               onChange={(e) => updateForm({ total_siblings: e.target.value })}
               placeholder="e.g., 3"
               min="0"
-              className="w-full px-4 py-3 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-50 outline-none transition-all bg-white text-sm font-semibold"
+              className="w-full px-4 py-3 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all bg-white text-sm font-semibold"
             />
           </div>
           <div className="space-y-1.5">
@@ -116,7 +116,7 @@ function StepFamily({ formData, updateForm }) {
               onChange={(e) => updateForm({ unmarried_siblings: e.target.value })}
               placeholder="e.g., 2"
               min="0"
-              className="w-full px-4 py-3 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-50 outline-none transition-all bg-white text-sm font-semibold"
+              className="w-full px-4 py-3 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all bg-white text-sm font-semibold"
             />
           </div>
           <div className="space-y-1.5">
@@ -127,7 +127,7 @@ function StepFamily({ formData, updateForm }) {
               onChange={(e) => updateForm({ married_siblings: e.target.value })}
               placeholder="e.g., 1"
               min="0"
-              className="w-full px-4 py-3 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-50 outline-none transition-all bg-white text-sm font-semibold"
+              className="w-full px-4 py-3 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all bg-white text-sm font-semibold"
             />
           </div>
         </div>
@@ -153,18 +153,18 @@ function StepFamily({ formData, updateForm }) {
               placeholder="e.g., 20"
               min="1"
               max="60"
-              className="w-full sm:w-48 px-4 py-3 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-50 outline-none transition-all bg-white text-sm font-semibold"
+              className="w-full sm:w-48 px-4 py-3 border border-gray-200/80 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all bg-white text-sm font-semibold"
             />
           </div>
         )}
       </div>
 
       {/* Explanation banner */}
-      <div className="bg-gradient-to-r from-violet-50/60 to-pink-50/60 border border-purple-100/50 rounded-2xl p-5 relative overflow-hidden">
-        <h4 className="text-xs font-extrabold text-purple-900 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-          <HelpCircle size={14} className="text-purple-600" /> Sibling & Parent Scoring Impact
+      <div className="bg-gradient-to-r from-primary-50/60 to-primary-100/60 border border-primary-200/50 rounded-2xl p-5 relative overflow-hidden">
+        <h4 className="text-xs font-extrabold text-primary-900 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+          <HelpCircle size={14} className="text-primary-800" /> Sibling & Parent Scoring Impact
         </h4>
-        <ul className="text-xs text-purple-700/90 space-y-1.5 leading-relaxed font-medium">
+        <ul className="text-xs text-primary-900/90 space-y-1.5 leading-relaxed font-medium">
           <li>• Active unmarried siblings reduce current spending capacity to preserve future sibling wedding options</li>
           <li>• Both parents present allows full capital allocation, while missing parents result in protective capital limits</li>
         </ul>

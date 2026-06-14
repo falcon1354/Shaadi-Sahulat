@@ -4,11 +4,11 @@ import logo from '../assets/ShaadiSahulat Logo PNG.png';
 
 export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
   return (
-    <div className="min-h-screen bg-[#FAFAFA] relative overflow-hidden flex items-center justify-center px-4 font-sans">
+    <div className="min-h-screen bg-[#FCFBFB] relative overflow-hidden flex items-center justify-center px-4 font-sans">
       
       {/* Decorative Background Elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-pulse-glow"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[30rem] h-[30rem] bg-pink-300 rounded-full mix-blend-multiply filter blur-[120px] opacity-40"></div>
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#FDF2F3] rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-pulse-glow"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[30rem] h-[30rem] bg-[#FEF4F7] rounded-full mix-blend-multiply filter blur-[120px] opacity-60"></div>
       
       <div className="w-full max-w-4xl relative z-10 animate-fade-in py-12">
         {/* Header */}
@@ -16,7 +16,7 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
           <div className="w-32 h-32 mx-auto mb-6 flex items-center justify-center">
             <img src={logo} alt="ShaadiSahulat Logo" className="w-full h-full object-contain drop-shadow-md" />
           </div>
-          <h1 className="font-heading text-5xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-600 via-fuchsia-500 to-rose-500 mb-4 tracking-tight">
+          <h1 className="font-heading text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#a37b3d] via-[#ECD4A8] to-rose-400 mb-4 tracking-tight">
             ShaadiSahulat
           </h1>
           <p className="text-xl text-gray-600 font-light mb-2">Your Complete Wedding Planning Platform</p>
@@ -28,9 +28,9 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
           {/* Buyer Card */}
           <div
             onClick={onSelectBuyer}
-            className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative"
+            className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative border border-[#FBEFF1]"
           >
-            <div className="h-40 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-[1.5rem] flex items-center justify-center relative overflow-hidden">
+            <div className="h-40 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
               <ShoppingBag size={64} color="white" strokeWidth={1} className="group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md" />
             </div>
@@ -46,14 +46,14 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
                   "Track spending & analytics"
                 ].map((text, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <CheckCircle2 size={18} className="text-violet-500 flex-shrink-0" />
+                    <CheckCircle2 size={18} className="text-[#a37b3d] flex-shrink-0" />
                     <span className="text-sm text-gray-600 font-medium">{text}</span>
                   </div>
                 ))}
               </div>
 
               <button
-                className="w-full px-4 py-3.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                className="w-full px-4 py-3.5 bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] text-gray-900 font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 Continue as Buyer 
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
@@ -64,11 +64,11 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
           {/* Seller Card */}
           <div
             onClick={onSelectSeller}
-            className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative"
+            className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative border border-[#FBEFF1]"
           >
-            <div className="h-40 bg-gradient-to-br from-pink-500 to-rose-500 rounded-[1.5rem] flex items-center justify-center relative overflow-hidden">
+            <div className="h-40 bg-gradient-to-br from-[#c09858] via-[#ECD4A8] to-[#FFF5F8] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden">
                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
-               <Store size={64} color="white" strokeWidth={1} className="group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md" />
+               <Store size={64} className="text-gray-900 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md" strokeWidth={1} />
             </div>
             <div className="p-8">
               <h2 className="font-heading text-2xl font-bold text-gray-800 mb-2">I'm a Seller</h2>
@@ -82,14 +82,14 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
                   "Financial projections & reports"
                 ].map((text, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <CheckCircle2 size={18} className="text-rose-500 flex-shrink-0" />
+                    <CheckCircle2 size={18} className="text-[#a37b3d] flex-shrink-0" />
                     <span className="text-sm text-gray-600 font-medium">{text}</span>
                   </div>
                 ))}
               </div>
 
               <button
-                className="w-full px-4 py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                className="w-full px-4 py-3.5 bg-gradient-to-r from-[#c09858] to-[#ECD4A8] text-gray-900 font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 Continue as Seller 
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />

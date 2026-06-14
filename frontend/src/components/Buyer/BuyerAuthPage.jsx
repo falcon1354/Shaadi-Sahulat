@@ -42,7 +42,7 @@ export default function BuyerAuthPage({ onLogin }) {
   return (
     <div className="animate-fade-in max-w-md mx-auto">
       <div className="text-center mb-6">
-        <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-400 rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-3">
+        <div className="w-14 h-14 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-3">
           👤
         </div>
         <h2 className="text-2xl font-bold text-gray-800">
@@ -55,13 +55,13 @@ export default function BuyerAuthPage({ onLogin }) {
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         {/* Tab switcher */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-5">
           {['login', 'register'].map(m => (
             <button key={m} onClick={() => { setMode(m); setError(''); }}
               className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                mode === m ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500'
+                mode === m ? 'bg-white text-[#a37b3d] shadow-sm' : 'text-gray-500'
               }`}>
               {m === 'login' ? 'Sign In' : 'Register'}
             </button>
@@ -84,7 +84,7 @@ export default function BuyerAuthPage({ onLogin }) {
                 onChange={e => update('name', e.target.value)}
                 placeholder="Your name"
                 required
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]"
               />
             </div>
           )}
@@ -97,7 +97,7 @@ export default function BuyerAuthPage({ onLogin }) {
               onChange={e => update('email', e.target.value)}
               placeholder="you@email.com"
               required
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]"
             />
           </div>
 
@@ -109,7 +109,7 @@ export default function BuyerAuthPage({ onLogin }) {
               onChange={e => update('password', e.target.value)}
               placeholder="Min 6 characters"
               required
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]"
             />
           </div>
 
@@ -122,7 +122,7 @@ export default function BuyerAuthPage({ onLogin }) {
                   value={form.phone}
                   onChange={e => update('phone', e.target.value)}
                   placeholder="03xx-xxxxxxx"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]"
                 />
               </div>
               <div>
@@ -132,7 +132,7 @@ export default function BuyerAuthPage({ onLogin }) {
                   value={form.city}
                   onChange={e => update('city', e.target.value)}
                   placeholder="Lahore"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ECD4A8]"
                 />
               </div>
             </div>
@@ -141,7 +141,7 @@ export default function BuyerAuthPage({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 transition-all mt-2">
+            className="w-full py-3 bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] text-gray-900 rounded-xl font-semibold text-sm hover:opacity-90 disabled:opacity-60 transition-all mt-2">
             {loading ? 'Please wait…' : (mode === 'login' ? 'Sign In' : 'Create Account')}
           </button>
         </form>
@@ -151,7 +151,7 @@ export default function BuyerAuthPage({ onLogin }) {
             ? "Don't have an account? "
             : "Already have an account? "}
           <button onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}
-            className="text-purple-600 font-medium hover:underline">
+            className="text-[#a37b3d] font-medium hover:underline">
             {mode === 'login' ? 'Register' : 'Sign in'}
           </button>
         </p>
