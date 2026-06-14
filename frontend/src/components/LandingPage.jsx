@@ -1,5 +1,6 @@
 import React from 'react';
-import { Gem, ShoppingBag, Store, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Store, CheckCircle2, ArrowRight } from 'lucide-react';
+import logo from '../assets/ShaadiSahulat Logo PNG.png';
 
 export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
   return (
@@ -12,9 +13,8 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
       <div className="w-full max-w-4xl relative z-10 animate-fade-in py-12">
         {/* Header */}
         <div className="text-center mb-16">
-          <div className="w-24 h-24 bg-white/60 backdrop-blur-md rounded-3xl flex items-center justify-center text-rose-500 mx-auto mb-6 shadow-soft border border-white relative group">
-            <div className="absolute inset-0 bg-rose-500 rounded-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-500"></div>
-            <Gem size={44} strokeWidth={1.5} className="drop-shadow-sm group-hover:scale-110 transition-transform duration-500" />
+          <div className="w-32 h-32 mx-auto mb-6 flex items-center justify-center">
+            <img src={logo} alt="ShaadiSahulat Logo" className="w-full h-full object-contain drop-shadow-md" />
           </div>
           <h1 className="font-heading text-5xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-600 via-fuchsia-500 to-rose-500 mb-4 tracking-tight">
             ShaadiSahulat
