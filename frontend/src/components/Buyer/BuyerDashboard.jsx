@@ -20,7 +20,7 @@ function readRecentlyViewed(buyerId) {
   } catch { return []; }
 }
 
-export default function BuyerDashboard({ buyer }) {
+export default function BuyerDashboard({ buyer, onViewProduct }) {
   const buyerId = buyer?.buyer_id;
   const { categories } = useCategories();
 
@@ -205,8 +205,19 @@ export default function BuyerDashboard({ buyer }) {
               </h2>
               <div className="space-y-3">
                 {wishlist.slice(0, 6).map((item) => (
-                  <div key={item.product_id} className="p-3 bg-pink-50 rounded-lg border border-pink-100 hover:bg-pink-100 transition-colors">
-                    <p className="text-sm font-medium text-gray-800 line-clamp-2">{item.title}</p>
+                  <div
+                    key={item.product_id}
+                    onClick={() => onViewProduct && onViewProduct(item)}
+                    className={`p-3 bg-pink-50 rounded-lg border border-pink-100 transition-colors ${
+                      onViewProduct ? 'cursor-pointer hover:bg-pink-100 hover:border-pink-300 hover:shadow-sm' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-800 line-clamp-2 flex-1">{item.title}</p>
+                      {onViewProduct && (
+                        <span className="text-purple-400 text-xs shrink-0 mt-0.5">View →</span>
+                      )}
+                    </div>
                     <div className="flex justify-between items-center mt-2">
                       <span className="text-xs text-gray-500 capitalize">
                         {catLabel(item.major_category)}
@@ -229,8 +240,19 @@ export default function BuyerDashboard({ buyer }) {
               </h2>
               <div className="space-y-3">
                 {recentlyViewed.slice(0, 6).map((item) => (
-                  <div key={item.product_id} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <p className="text-sm font-medium text-gray-800 line-clamp-1">{item.title}</p>
+                  <div
+                    key={item.product_id}
+                    onClick={() => onViewProduct && onViewProduct(item)}
+                    className={`p-3 bg-gray-50 rounded-lg transition-colors ${
+                      onViewProduct ? 'cursor-pointer hover:bg-purple-50 hover:shadow-sm border border-transparent hover:border-purple-100' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-800 line-clamp-1 flex-1">{item.title}</p>
+                      {onViewProduct && (
+                        <span className="text-purple-400 text-xs shrink-0 mt-0.5">View →</span>
+                      )}
+                    </div>
                     <div className="flex justify-between items-center mt-1">
                       <span className="text-xs text-gray-500 capitalize">
                         {catLabel(item.major_category)}

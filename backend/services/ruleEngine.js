@@ -3,20 +3,19 @@
  * ======================================================
  * Pure function — no DB, no network. Import anywhere.
  *
- * 7 Categories:
- *   1. wedding_dress  — 25%  (was bridal_dress 15% + groom_dress 10%, merged per spec §2.1)
+ * 6 Categories:
+ *   1. wedding_dress  — 45%  (was bridal_dress + groom_dress + jewelry, merged)
  *   2. furniture      — 20%
  *   3. electronics    — 15%
- *   4. jewelry        — 20%
- *   5. kitchen_items  — 12%
- *   6. decoration     —  5%
- *   7. miscellaneous  —  3%
+ *   4. kitchen_items  — 12%
+ *   5. decoration     —  5%
+ *   6. miscellaneous  —  3%
  */
 
 // Default allocation percentages for known categories.
 // Any DB category NOT listed here gets equal share of remaining weight.
 const KNOWN_ALLOCATION = {
-  wedding_dress: 0.25,
+  wedding_dress: 0.45,
   furniture:     0.20,
   electronics:   0.15,
   kitchen_items: 0.12,

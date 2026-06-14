@@ -398,7 +398,6 @@ function buildSyntheticRecords(n) {
       priority_wedding_dress: randPriority(0.40, 0.15),
       priority_furniture:     randPriority(0.35, 0.20),
       priority_electronics:   randPriority(0.30, 0.20),
-      priority_jewelry:       randPriority(0.35, 0.15),
       priority_kitchen_items: randPriority(0.25, 0.25),
       priority_decoration:    randPriority(0.20, 0.30),
       priority_miscellaneous: randPriority(0.15, 0.35),

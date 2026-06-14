@@ -13,12 +13,11 @@ const STEPS = [
   { id: 4, title: 'Results Dashboard', icon: '📊' },
 ];
 
-// §2.1 — Wedding Dress merged; 7 categories total
+// §2.1 — Wedding Dress merged; 6 categories total
 const CATEGORIES = [
   { key: 'priority_wedding_dress', label: 'Wedding Dress', icon: '👗', hasTypeSelector: true },
   { key: 'priority_furniture',     label: 'Furniture',     icon: '🛋️' },
   { key: 'priority_electronics',   label: 'Electronics',   icon: '📺' },
-  { key: 'priority_jewelry',       label: 'Jewelry',       icon: '💍' },
   { key: 'priority_kitchen_items', label: 'Kitchen Items', icon: '🍳' },
   { key: 'priority_decoration',    label: 'Decoration',    icon: '🎀' },
   { key: 'priority_miscellaneous', label: 'Miscellaneous', icon: '📦' },
@@ -38,7 +37,6 @@ const INITIAL_FORM = {
     priority_wedding_dress: 'Medium',
     priority_furniture:     'Medium',
     priority_electronics:   'Medium',
-    priority_jewelry:       'Medium',
     priority_kitchen_items: 'Medium',
     priority_decoration:    'Medium',
     priority_miscellaneous: 'Medium',
@@ -61,7 +59,6 @@ function Wizard({ userId }) {
         { key: 'priority_wedding_dress', label: 'Wedding Dress', icon: '👗', hasTypeSelector: true },
         { key: 'priority_furniture',     label: 'Furniture',     icon: '🛋️' },
         { key: 'priority_electronics',   label: 'Electronics',   icon: '📺' },
-        { key: 'priority_jewelry',       label: 'Jewelry',       icon: '💍' },
         { key: 'priority_kitchen_items', label: 'Kitchen Items', icon: '🍳' },
         { key: 'priority_decoration',    label: 'Decoration',    icon: '🎀' },
         { key: 'priority_miscellaneous', label: 'Miscellaneous', icon: '📦' },
@@ -247,9 +244,7 @@ function Wizard({ userId }) {
             loading={false}
             saved={true}
             adjustedEstimates={adjustedEstimates}
-            onAdjust={(key, val) =>
-              setAdjustedEstimates((prev) => ({ ...prev, [key]: val }))
-            }
+            onAdjust={null}
             onSave={null}
             onReset={null}
             priorities={result.priorities || {}}

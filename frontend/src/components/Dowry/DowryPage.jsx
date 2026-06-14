@@ -9,7 +9,7 @@ export default function DowryPage({ userId }) {
           💰 Dowry Budget Estimation
         </h2>
         <p className="text-gray-500 max-w-xl mx-auto">
-          Get a personalized dowry budget estimate using our Hybrid Rule-Based + ML (K-Means) engine.
+          Get a personalized dowry budget estimate.
           Enter your financial and family details to get started.
         </p>
       </div>
