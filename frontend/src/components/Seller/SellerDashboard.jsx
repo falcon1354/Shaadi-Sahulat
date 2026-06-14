@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Store, Package, Banknote, ShoppingCart, Users, PlusCircle, BarChart3, MessageCircle, Settings, TrendingUp, ClipboardList, Star, Bell } from 'lucide-react';
 
 export default function SellerDashboard({ seller }) {
   const [stats] = useState({
@@ -34,7 +35,7 @@ export default function SellerDashboard({ seller }) {
     <div className="animate-fade-in space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-pink-500 to-red-500 rounded-2xl p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">Welcome back, {seller?.name?.split(' ')[0]}! 🏪</h1>
+        <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">Welcome back, {seller?.name?.split(' ')[0]}! <Store className="text-yellow-300" size={32} /></h1>
         <p className="text-pink-100">Manage your store and track your sales</p>
       </div>
 
@@ -46,7 +47,7 @@ export default function SellerDashboard({ seller }) {
               <p className="text-gray-500 text-sm font-medium">Total Products</p>
               <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.totalProducts}</h3>
             </div>
-            <span className="text-2xl">📦</span>
+            <Package className="text-pink-400" size={28} />
           </div>
           <p className="text-xs text-gray-400 mt-2">In your catalog</p>
         </div>
@@ -57,7 +58,7 @@ export default function SellerDashboard({ seller }) {
               <p className="text-gray-500 text-sm font-medium">Total Revenue</p>
               <h3 className="text-2xl font-bold text-gray-800 mt-1">Rs {(stats.totalSales / 1000).toLocaleString()}K</h3>
             </div>
-            <span className="text-2xl">💰</span>
+            <Banknote className="text-pink-400" size={28} />
           </div>
           <p className="text-xs text-green-500 mt-2">↑ 12% this month</p>
         </div>
@@ -68,7 +69,7 @@ export default function SellerDashboard({ seller }) {
               <p className="text-gray-500 text-sm font-medium">Total Orders</p>
               <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.totalOrders}</h3>
             </div>
-            <span className="text-2xl">🛒</span>
+            <ShoppingCart className="text-pink-400" size={28} />
           </div>
           <p className="text-xs text-gray-400 mt-2">Orders received</p>
         </div>
@@ -79,7 +80,7 @@ export default function SellerDashboard({ seller }) {
               <p className="text-gray-500 text-sm font-medium">Customers</p>
               <h3 className="text-2xl font-bold text-gray-800 mt-1">{stats.totalCustomers}</h3>
             </div>
-            <span className="text-2xl">👥</span>
+            <Users className="text-pink-400" size={28} />
           </div>
           <p className="text-xs text-gray-400 mt-2">Unique buyers</p>
         </div>
@@ -87,23 +88,23 @@ export default function SellerDashboard({ seller }) {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <button className="p-4 bg-white rounded-xl border border-pink-100 hover:shadow-md transition-all text-center cursor-pointer group">
-          <span className="text-3xl mb-2 block group-hover:scale-110 transition-transform">➕</span>
+        <button className="p-4 bg-white rounded-xl border border-pink-100 hover:shadow-md transition-all text-center cursor-pointer flex flex-col items-center group">
+          <PlusCircle className="text-gray-400 mb-2 group-hover:scale-110 group-hover:text-pink-500 transition-all" size={32} />
           <p className="text-sm font-medium text-gray-800">Add Product</p>
           <p className="text-xs text-gray-400">Upload new item</p>
         </button>
-        <button className="p-4 bg-white rounded-xl border border-pink-100 hover:shadow-md transition-all text-center cursor-pointer group">
-          <span className="text-3xl mb-2 block group-hover:scale-110 transition-transform">📊</span>
+        <button className="p-4 bg-white rounded-xl border border-pink-100 hover:shadow-md transition-all text-center cursor-pointer flex flex-col items-center group">
+          <BarChart3 className="text-gray-400 mb-2 group-hover:scale-110 group-hover:text-pink-500 transition-all" size={32} />
           <p className="text-sm font-medium text-gray-800">Analytics</p>
           <p className="text-xs text-gray-400">View insights</p>
         </button>
-        <button className="p-4 bg-white rounded-xl border border-pink-100 hover:shadow-md transition-all text-center cursor-pointer group">
-          <span className="text-3xl mb-2 block group-hover:scale-110 transition-transform">💬</span>
+        <button className="p-4 bg-white rounded-xl border border-pink-100 hover:shadow-md transition-all text-center cursor-pointer flex flex-col items-center group">
+          <MessageCircle className="text-gray-400 mb-2 group-hover:scale-110 group-hover:text-pink-500 transition-all" size={32} />
           <p className="text-sm font-medium text-gray-800">Messages</p>
           <p className="text-xs text-gray-400">2 new inquiries</p>
         </button>
-        <button className="p-4 bg-white rounded-xl border border-pink-100 hover:shadow-md transition-all text-center cursor-pointer group">
-          <span className="text-3xl mb-2 block group-hover:scale-110 transition-transform">⚙️</span>
+        <button className="p-4 bg-white rounded-xl border border-pink-100 hover:shadow-md transition-all text-center cursor-pointer flex flex-col items-center group">
+          <Settings className="text-gray-400 mb-2 group-hover:scale-110 group-hover:text-pink-500 transition-all" size={32} />
           <p className="text-sm font-medium text-gray-800">Settings</p>
           <p className="text-xs text-gray-400">Manage account</p>
         </button>
@@ -112,7 +113,7 @@ export default function SellerDashboard({ seller }) {
       {/* Monthly Sales Chart */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-pink-100">
         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <span>📈</span> Monthly Sales Trend
+          <TrendingUp className="text-pink-500" size={24} /> Monthly Sales Trend
         </h2>
         
         <div className="flex items-end justify-around h-48 gap-4">
@@ -134,7 +135,7 @@ export default function SellerDashboard({ seller }) {
         {/* Recent Orders */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-pink-100">
           <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <span>📋</span> Recent Orders
+            <ClipboardList className="text-pink-500" size={24} /> Recent Orders
           </h2>
           
           <div className="space-y-3">
@@ -168,7 +169,7 @@ export default function SellerDashboard({ seller }) {
         {/* Top Products */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-pink-100">
           <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <span>⭐</span> Top Products
+            <Star className="text-yellow-500 fill-yellow-500" size={24} /> Top Products
           </h2>
           
           <div className="space-y-3">
@@ -204,12 +205,12 @@ export default function SellerDashboard({ seller }) {
       {/* Alerts & Notifications */}
       <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-6 border border-amber-200">
         <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-          <span>🔔</span> Important Alerts
+          <Bell className="text-amber-500" size={24} /> Important Alerts
         </h3>
         <div className="space-y-2 text-sm text-gray-700">
           <p>✓ 2 products need stock update</p>
           <p>✓ 1 pending order needs confirmation</p>
-          <p>✓ Your store rating: 4.8/5 ⭐</p>
+          <p className="flex items-center gap-1">✓ Your store rating: 4.8/5 <Star className="text-yellow-500 fill-yellow-500" size={16} /></p>
         </div>
       </div>
     </div>

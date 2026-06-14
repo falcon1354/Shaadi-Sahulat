@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Gem, Hand, Banknote, Heart, TrendingUp, Eye, Wallet } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 
 function readDowry(buyerId) {
@@ -72,13 +73,13 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
     <div className="animate-fade-in space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">Welcome back, {buyer?.name?.split(' ')[0]}! 👋</h1>
+        <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">Welcome back, {buyer?.name?.split(' ')[0]}! <Hand className="text-yellow-300" size={32} /></h1>
         <p className="text-purple-100">Track your wedding planning journey</p>
       </div>
 
       {!mergedDowry ? (
         <div className="bg-white rounded-2xl p-8 text-center border border-purple-100 shadow-sm">
-          <p className="text-4xl mb-3">💍</p>
+          <Gem className="text-purple-300 mx-auto mb-3" size={48} />
           <h2 className="text-lg font-bold text-gray-800 mb-2">No Budget Estimate Yet</h2>
           <p className="text-sm text-gray-500 mb-1">Complete the Dowry Estimation wizard to see your personalised budget breakdown here.</p>
           <p className="text-xs text-gray-400">Go to Dowry Estimation → fill the wizard → Save Estimation</p>
@@ -93,7 +94,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                   <p className="text-gray-500 text-sm font-medium">Total Budget</p>
                   <h3 className="text-2xl font-bold text-gray-800 mt-1">PKR {totalEst.toLocaleString()}</h3>
                 </div>
-                <span className="text-2xl">💍</span>
+                <Wallet className="text-purple-400" size={28} />
               </div>
               <p className="text-xs text-gray-400 mt-2">{activeCats.length} active categories</p>
             </div>
@@ -104,7 +105,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                   <p className="text-gray-500 text-sm font-medium">Total Spent</p>
                   <h3 className="text-2xl font-bold text-purple-600 mt-1">PKR {totalSpent.toLocaleString()}</h3>
                 </div>
-                <span className="text-2xl">💸</span>
+                <Banknote className="text-purple-400" size={28} />
               </div>
               <p className="text-xs text-gray-400 mt-2">{spentPct}% of budget</p>
             </div>
@@ -115,7 +116,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                   <p className="text-gray-500 text-sm font-medium">Remaining</p>
                   <h3 className="text-2xl font-bold text-green-600 mt-1">PKR {totalRemain.toLocaleString()}</h3>
                 </div>
-                <span className="text-2xl">💰</span>
+                <Gem className="text-green-500" size={28} />
               </div>
               <p className="text-xs text-green-500 mt-2">Available to spend</p>
             </div>
@@ -126,7 +127,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                   <p className="text-gray-500 text-sm font-medium">Wishlist</p>
                   <h3 className="text-2xl font-bold text-pink-600 mt-1">{wishlist.length}</h3>
                 </div>
-                <span className="text-2xl">❤️</span>
+                <Heart className="text-pink-500" size={28} />
               </div>
               <p className="text-xs text-gray-400 mt-2">Saved items</p>
             </div>
@@ -136,7 +137,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-purple-100">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <span>📈</span> Budget by Category
+                <TrendingUp className="text-blue-500" size={24} /> Budget by Category
               </h2>
               {mergedDowry.saved_at && (
                 <span className="text-xs text-gray-400">
@@ -201,7 +202,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
           {wishlist.length > 0 && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-purple-100">
               <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span>❤️</span> Wishlist ({wishlist.length})
+                <Heart className="text-pink-500" size={24} /> Wishlist ({wishlist.length})
               </h2>
               <div className="space-y-3">
                 {wishlist.slice(0, 6).map((item) => (
@@ -236,7 +237,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
           {recentlyViewed.length > 0 && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-purple-100">
               <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span>👁️</span> Recently Viewed
+                <Eye className="text-gray-500" size={24} /> Recently Viewed
               </h2>
               <div className="space-y-3">
                 {recentlyViewed.slice(0, 6).map((item) => (
