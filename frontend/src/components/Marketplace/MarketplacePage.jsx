@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Heart, MapPin, Link2, ShoppingBag, Package, Shirt, Sofa, Monitor, Utensils, Sparkles, Gift } from 'lucide-react';
 import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
 import { useCategories } from '../../hooks/useCategories';
@@ -306,7 +307,7 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
                 isWishlisted ? 'bg-pink-500 text-white' : 'bg-white/80 text-gray-400 hover:text-pink-500'
               } ${product.condition && product.condition !== 'New' ? 'top-8' : 'top-2'}`}
               title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}>
-              ❤
+              <Heart size={14} className={isWishlisted ? 'fill-white' : ''} />
             </button>
           )}
         </div>
@@ -332,7 +333,7 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
 
           <div className="mt-1.5 flex items-center justify-between text-[10px] text-gray-400">
             <span>{product.seller_name || 'Seller'}</span>
-            {product.city && <span>📍 {product.city}</span>}
+            {product.city && <span className="flex items-center gap-0.5"><MapPin size={10} /> {product.city}</span>}
           </div>
 
           <div className="mt-3 flex gap-2">
@@ -351,10 +352,10 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
               target="_blank"
               rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}
-              className="px-2 py-1.5 text-xs text-gray-400 border border-gray-200 rounded-lg hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors"
+              className="px-2 py-1.5 text-xs text-gray-400 border border-gray-200 rounded-lg hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors flex items-center justify-center"
               title="Share product page"
             >
-              🔗
+              <Link2 size={14} />
             </a>
           </div>
         </div>
@@ -399,7 +400,7 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
                 className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-all ${
                   isWishlisted ? 'bg-pink-500 text-white' : 'bg-white/90 text-gray-400 hover:text-pink-500'
                 }`}>
-                ❤
+                <Heart size={18} className={isWishlisted ? 'fill-white' : ''} />
               </button>
             )}
           </div>
@@ -489,10 +490,22 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
   const { categories } = useCategories();
   const buyerId = buyer?.buyer_id || null;
 
+  const getCategoryIcon = (id) => {
+    switch(id) {
+      case 'wedding_dress': return <Shirt size={20} />;
+      case 'furniture': return <Sofa size={20} />;
+      case 'electronics': return <Monitor size={20} />;
+      case 'kitchen_items': return <Utensils size={20} />;
+      case 'decoration': return <Sparkles size={20} />;
+      case 'miscellaneous': return <Gift size={20} />;
+      default: return <Package size={20} />;
+    }
+  };
+
   // Build dynamic MAJOR_CATS: "All" tab + one per DB category
   const MAJOR_CATS = [
-    { id: '', label: 'All', icon: '🛍️' },
-    ...categories.map(c => ({ id: c.category_id, label: c.label, icon: c.icon || '📦' })),
+    { id: '', label: 'All', icon: <ShoppingBag size={20} /> },
+    ...categories.map(c => ({ id: c.category_id, label: c.label, icon: getCategoryIcon(c.category_id) })),
   ];
 
   const [activeCat,   setActiveCat]   = useState('');
