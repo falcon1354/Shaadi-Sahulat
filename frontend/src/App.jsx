@@ -21,6 +21,7 @@ import {
   LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User, 
   ShoppingCart, PlusCircle, Package, LineChart, Lock, Store 
 } from 'lucide-react';
+import logo from './assets/ShaadiSahulat Logo PNG.png';
 
 // ── Level helpers ─────────────────────────────────────────────────────────
 
@@ -397,9 +398,7 @@ function AppContent() {
       }`}>
         <div className="p-5 border-b border-gray-100/50">
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-12 h-12 bg-gradient-to-br ${userRole === 'buyer' ? 'from-violet-500 to-fuchsia-500' : 'from-pink-500 to-rose-500'} rounded-[1rem] shadow-sm flex items-center justify-center text-white font-bold text-xl`}>
-              {userRole === 'buyer' ? <ShoppingBag size={24} /> : <Store size={24} />}
-            </div>
+            <img src={logo} alt="ShaadiSahulat" className="w-10 h-10 object-contain flex-shrink-0" />
             <div>
               <h1 className="font-heading font-bold text-gray-800 text-base leading-tight tracking-tight">ShaadiSahulat</h1>
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-0.5">{userRole === 'buyer' ? 'Buyer Portal' : 'Seller Portal'}</p>
