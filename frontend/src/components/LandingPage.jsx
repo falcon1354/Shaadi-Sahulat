@@ -2,55 +2,64 @@ import React from 'react';
 
 export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-2xl">
+    <div className="min-h-screen bg-[#FAFAFA] relative overflow-hidden flex items-center justify-center px-4 font-sans">
+      
+      {/* Decorative Background Elements */}
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-pulse-glow"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[30rem] h-[30rem] bg-pink-300 rounded-full mix-blend-multiply filter blur-[120px] opacity-40"></div>
+      
+      <div className="w-full max-w-4xl relative z-10 animate-fade-in py-12">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-pink-500 rounded-3xl flex items-center justify-center text-white text-4xl mx-auto mb-4 shadow-lg">
-            💍
+        <div className="text-center mb-16">
+          <div className="w-24 h-24 bg-white/60 backdrop-blur-md rounded-3xl flex items-center justify-center text-white text-5xl mx-auto mb-6 shadow-soft border border-white">
+            <span className="drop-shadow-sm">💍</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2">ShaadiSahulat</h1>
-          <p className="text-lg text-gray-600">Your Complete Wedding Planning Platform</p>
-          <p className="text-sm text-gray-400 mt-2">Smart budgeting, AI-powered dress matching, and seamless shopping</p>
+          <h1 className="font-heading text-5xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-500 to-rose-500 mb-4 tracking-tight">
+            ShaadiSahulat
+          </h1>
+          <p className="text-xl text-gray-600 font-light mb-2">Your Complete Wedding Planning Platform</p>
+          <p className="text-sm text-gray-500 bg-white/50 inline-block px-4 py-1.5 rounded-full border border-gray-100">Smart budgeting, AI-powered dress matching, and seamless shopping</p>
         </div>
 
         {/* Role Selection Cards */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
           {/* Buyer Card */}
           <div
             onClick={onSelectBuyer}
-            className="group cursor-pointer bg-white rounded-2xl shadow-sm border border-purple-100 hover:border-purple-300 hover:shadow-xl transition-all duration-300 overflow-hidden hover:scale-105"
+            className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden"
           >
-            <div className="h-32 bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
-              <span className="text-6xl group-hover:scale-110 transition-transform duration-300">👰</span>
+            <div className="h-40 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-[1.5rem] flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
+              <span className="text-7xl group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-md">👰</span>
             </div>
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">I'm a Buyer</h2>
-              <p className="text-sm text-gray-600 mb-4">Bride, groom, or wedding planner</p>
+            <div className="p-8">
+              <h2 className="font-heading text-2xl font-bold text-gray-800 mb-2">I'm a Buyer</h2>
+              <p className="text-sm text-gray-500 mb-6 font-light">Bride, groom, or wedding planner</p>
               
-              <div className="space-y-2 mb-6">
-                <div className="flex items-start gap-3">
-                  <span className="text-purple-500 font-bold mt-0.5">✓</span>
-                  <span className="text-sm text-gray-600">Smart dowry estimation wizard</span>
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs font-bold shadow-sm">✓</div>
+                  <span className="text-sm text-gray-600 font-medium">Smart dowry estimation wizard</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-purple-500 font-bold mt-0.5">✓</span>
-                  <span className="text-sm text-gray-600">AI dress matching by photo</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs font-bold shadow-sm">✓</div>
+                  <span className="text-sm text-gray-600 font-medium">AI dress matching by photo</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-purple-500 font-bold mt-0.5">✓</span>
-                  <span className="text-sm text-gray-600">Browse marketplace & shopping cart</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs font-bold shadow-sm">✓</div>
+                  <span className="text-sm text-gray-600 font-medium">Browse marketplace & shopping cart</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-purple-500 font-bold mt-0.5">✓</span>
-                  <span className="text-sm text-gray-600">Track spending & analytics</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs font-bold shadow-sm">✓</div>
+                  <span className="text-sm text-gray-600 font-medium">Track spending & analytics</span>
                 </div>
               </div>
 
               <button
-                className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-purple-700 transition-all shadow-md group-hover:shadow-lg"
+                className="w-full px-4 py-3.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2"
               >
-                Continue as Buyer →
+                Continue as Buyer 
+                <span className="group-hover:translate-x-1 transition-transform">→</span>
               </button>
             </div>
           </div>
@@ -58,47 +67,49 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
           {/* Seller Card */}
           <div
             onClick={onSelectSeller}
-            className="group cursor-pointer bg-white rounded-2xl shadow-sm border border-pink-100 hover:border-pink-300 hover:shadow-xl transition-all duration-300 overflow-hidden hover:scale-105"
+            className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden"
           >
-            <div className="h-32 bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center">
-              <span className="text-6xl group-hover:scale-110 transition-transform duration-300">🏪</span>
+            <div className="h-40 bg-gradient-to-br from-pink-500 to-rose-500 rounded-[1.5rem] flex items-center justify-center relative overflow-hidden">
+               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
+              <span className="text-7xl group-hover:scale-110 transition-transform duration-500 ease-out drop-shadow-md">🏪</span>
             </div>
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">I'm a Seller</h2>
-              <p className="text-sm text-gray-600 mb-4">Designer, tailor, or boutique owner</p>
+            <div className="p-8">
+              <h2 className="font-heading text-2xl font-bold text-gray-800 mb-2">I'm a Seller</h2>
+              <p className="text-sm text-gray-500 mb-6 font-light">Designer, tailor, or boutique owner</p>
               
-              <div className="space-y-2 mb-6">
-                <div className="flex items-start gap-3">
-                  <span className="text-pink-500 font-bold mt-0.5">✓</span>
-                  <span className="text-sm text-gray-600">Upload & manage products</span>
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-bold shadow-sm">✓</div>
+                  <span className="text-sm text-gray-600 font-medium">Upload & manage products</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-pink-500 font-bold mt-0.5">✓</span>
-                  <span className="text-sm text-gray-600">Smart price range suggestions</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-bold shadow-sm">✓</div>
+                  <span className="text-sm text-gray-600 font-medium">Smart price range suggestions</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-pink-500 font-bold mt-0.5">✓</span>
-                  <span className="text-sm text-gray-600">Dashboard & analytics</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-bold shadow-sm">✓</div>
+                  <span className="text-sm text-gray-600 font-medium">Dashboard & analytics</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-pink-500 font-bold mt-0.5">✓</span>
-                  <span className="text-sm text-gray-600">Financial projections & reports</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xs font-bold shadow-sm">✓</div>
+                  <span className="text-sm text-gray-600 font-medium">Financial projections & reports</span>
                 </div>
               </div>
 
               <button
-                className="w-full px-4 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 transition-all shadow-md group-hover:shadow-lg"
+                className="w-full px-4 py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2"
               >
-                Continue as Seller →
+                Continue as Seller 
+                <span className="group-hover:translate-x-1 transition-transform">→</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8 text-sm text-gray-400">
+        <div className="text-center mt-12 text-sm text-gray-400 font-medium">
           <p>ShaadiSahulat © 2026 | FYP | NUCES Chiniot-Faisalabad</p>
-          <p className="mt-2">Both roles can use all features. Choose your primary role above.</p>
+          <p className="mt-2 text-xs opacity-75">Both roles can use all features. Choose your primary role above.</p>
         </div>
       </div>
     </div>

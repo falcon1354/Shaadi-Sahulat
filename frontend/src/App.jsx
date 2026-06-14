@@ -388,36 +388,36 @@ function AppContent() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex">
 
       {/* ── SIDEBAR ──────────────────────────────────────────────────────── */}
-      <aside className={`fixed md:static w-64 h-screen bg-white border-r border-gray-200 overflow-y-auto z-40 transform transition-transform md:translate-x-0 ${
+      <aside className={`fixed md:static w-64 h-screen bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-y-auto z-40 transform transition-transform md:translate-x-0 ${
         isLoggedIn ? 'translate-x-0' : 'translate-x-0'
       }`}>
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-2 mb-4">
-            <div className={`w-10 h-10 bg-gradient-to-br ${userRole === 'buyer' ? 'from-purple-600 to-pink-500' : 'from-pink-600 to-red-500'} rounded-lg flex items-center justify-center text-white font-bold`}>
+        <div className="p-5 border-b border-gray-100/50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-12 h-12 bg-gradient-to-br ${userRole === 'buyer' ? 'from-violet-500 to-fuchsia-500' : 'from-pink-500 to-rose-500'} rounded-[1rem] shadow-sm flex items-center justify-center text-white font-bold text-xl`}>
               {userRole === 'buyer' ? '👰' : '🏪'}
             </div>
             <div>
-              <h1 className="font-bold text-gray-800 text-sm leading-tight">ShaadiSahulat</h1>
-              <p className="text-xs text-gray-400">{userRole === 'buyer' ? 'Buyer' : 'Seller'}</p>
+              <h1 className="font-heading font-bold text-gray-800 text-base leading-tight tracking-tight">ShaadiSahulat</h1>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-0.5">{userRole === 'buyer' ? 'Buyer Portal' : 'Seller Portal'}</p>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="p-3 space-y-1">
+        <nav className="p-3 space-y-1.5 mt-2">
           {VIEWS.map((v) => (
             <button
               key={v.id}
               onClick={() => setView(v.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
                 view === v.id
                   ? userRole === 'buyer'
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'bg-pink-100 text-pink-700'
-                  : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-violet-50 to-fuchsia-50 text-violet-700 shadow-sm border border-violet-100/50'
+                    : 'bg-gradient-to-r from-pink-50 to-rose-50 text-pink-700 shadow-sm border border-pink-100/50'
+                  : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-gray-800'
               }`}
             >
-              <span className="text-base">{v.icon}</span>
+              <span className={`text-lg transition-transform duration-300 ${view === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
               <span>{v.label}</span>
             </button>
           ))}
@@ -425,23 +425,23 @@ function AppContent() {
 
         {/* User Info */}
         {isLoggedIn && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-lg ${
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100/50 bg-white/40 backdrop-blur-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-sm ${
                 userRole === 'buyer'
-                  ? 'bg-gradient-to-br from-purple-500 to-pink-500'
-                  : 'bg-gradient-to-br from-pink-500 to-red-500'
+                  ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500'
+                  : 'bg-gradient-to-br from-pink-500 to-rose-500'
               }`}>
-                {userRole === 'buyer' ? isLoggedIn?.name?.[0] : isLoggedIn?.name?.[0]}
+                {isLoggedIn?.name?.[0]?.toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-gray-800 truncate">{isLoggedIn?.name}</p>
+                <p className="text-sm font-bold text-gray-800 truncate">{isLoggedIn?.name}</p>
                 <p className="text-xs text-gray-500 truncate">{isLoggedIn?.email}</p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="w-full px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+              className="w-full px-4 py-2.5 text-sm font-medium text-red-600 bg-white border border-red-100 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all shadow-sm flex items-center justify-center gap-2"
             >
               Sign Out
             </button>
