@@ -12,7 +12,6 @@ const dowryTrainingSchema = new mongoose.Schema({
     wedding_dress: { type: Number, default: 0 },
     furniture:     { type: Number, default: 0 },
     electronics:   { type: Number, default: 0 },
-    jewelry:       { type: Number, default: 0 },
     kitchen_items: { type: Number, default: 0 },
     decoration:    { type: Number, default: 0 },
     miscellaneous: { type: Number, default: 0 },

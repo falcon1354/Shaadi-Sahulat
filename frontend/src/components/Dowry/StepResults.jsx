@@ -108,7 +108,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
       <div>
         <h2 className="text-xl font-bold text-gray-800 mb-1">Results Dashboard</h2>
         <p className="text-sm text-gray-500">
-          Personalized estimate from Hybrid Engine (Rule + Market Prices + ML). Adjust sliders below.
+          Personalized estimate from Hybrid Engine (Rule + Market Prices). Adjust sliders below.
         </p>
       </div>
 
@@ -134,7 +134,6 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
         <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white">
           <p className="text-xs opacity-80">Responsibility Score</p>
           <p className="text-xl font-bold mt-1">{(result.responsibility_score * 100).toFixed(0)}%</p>
-          <p className="text-xs opacity-70 mt-1">ML: {(result.ml_adjustment_factor * 100).toFixed(1)}%</p>
         </div>
       </div>
 
@@ -175,8 +174,9 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
                 </div>
                 <input
                   type="range" min={0} max={maxVal} step={step} value={current}
-                  onChange={(e) => onAdjust(key, Number(e.target.value))}
-                  className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                  onChange={(e) => onAdjust && onAdjust(key, Number(e.target.value))}
+                  disabled={!onAdjust}
+                  className={`w-full h-2 rounded-full appearance-none ${onAdjust ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                   style={{
                     background: `linear-gradient(to right, ${color} ${(current / maxVal) * 100}%, #e5e7eb ${(current / maxVal) * 100}%)`,
                   }}
@@ -284,21 +284,8 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
         </div>
       )}
 
-      {/* ML Metadata */}
-      {result.ml_metadata && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-blue-800 mb-2">ML Analysis Details</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div><span className="text-blue-500">Cluster ID</span><p className="font-bold text-blue-800">{result.ml_metadata.cluster_id}</p></div>
-            <div><span className="text-blue-500">Similar Users</span><p className="font-bold text-blue-800">{result.ml_metadata.similar_users_count}</p></div>
-            <div><span className="text-blue-500">Adjustment</span><p className="font-bold text-blue-800">{(result.ml_metadata.adjustment_factor * 100).toFixed(1)}%</p></div>
-            <div><span className="text-blue-500">Cluster Deviation</span><p className="font-bold text-blue-800">{(result.ml_metadata.cluster_mean_deviation * 100).toFixed(1)}%</p></div>
-          </div>
-        </div>
-      )}
 
-      {/* Saved + budget management */}
-      {saved && <BudgetManageSection categories={categories} buyerId={buyerId} />}
+
     </div>
   );
 }
@@ -355,110 +342,4 @@ function CommunityInsights({ matches, myBudget }) {
 }
 
 // ── Budget Shift Section ──────────────────────────────────────────────────────
-function BudgetManageSection({ categories = [], buyerId }) {
-  const [open,    setOpen]    = useState(false);
-  const [fromCat, setFromCat] = useState('');
-  const [toCat,   setToCat]   = useState('');
-  const [amount,  setAmount]  = useState('');
-  const [msg,     setMsg]     = useState('');
-  const [dowry,   setDowry]   = useState(() => readDowry(buyerId));
-
-  // Re-read whenever localStorage changes (e.g. after cart checkout updates it)
-  useEffect(() => {
-    setDowry(readDowry(buyerId));
-  }, [buyerId, open]);
-
-  const budgets   = dowry?.category_budgets || {};
-  const dbCatIds  = categories.map(c => c.category_id);
-  const cats      = Object.entries(budgets).filter(([key, v]) =>
-    v.active !== false && (dbCatIds.length === 0 || dbCatIds.includes(key))
-  );
-
-  const getLabel  = (key) => categories.find(c => c.category_id === key)?.label || key.replace(/_/g, ' ');
-  const fromAvail = fromCat ? (budgets[fromCat]?.remaining ?? budgets[fromCat]?.estimated ?? 0) : 0;
-
-  const handleShift = async () => {
-    const amt = Number(amount);
-    if (!fromCat || !toCat)  return setMsg('Select both categories.');
-    if (fromCat === toCat)   return setMsg('Cannot shift to the same category.');
-    if (!amt || amt <= 0)    return setMsg('Enter a valid amount.');
-    if (amt > fromAvail)     return setMsg(`Max available: PKR ${fromAvail.toLocaleString()}`);
-
-    try {
-      const d = readDowry(buyerId);
-      if (!d?.category_budgets) return setMsg('No estimation found.');
-      const b = { ...d.category_budgets };
-      if (!b[fromCat] || !b[toCat]) return setMsg('Category not found in budget.');
-      b[fromCat] = { ...b[fromCat], estimated: (b[fromCat].estimated || 0) - amt, remaining: (b[fromCat].remaining ?? b[fromCat].estimated) - amt };
-      b[toCat]   = { ...b[toCat],   estimated: (b[toCat].estimated   || 0) + amt, remaining: (b[toCat].remaining   ?? b[toCat].estimated) + amt };
-      const updated = { ...d, category_budgets: b };
-      writeDowry(updated, buyerId);
-      setDowry(updated);  // update local state so dropdowns refresh
-      // Persist to MongoDB
-      if (buyerId) patchDowryBudgets(buyerId, b).catch(() => {});
-      setMsg(`Shifted PKR ${amt.toLocaleString()} from ${getLabel(fromCat)} to ${getLabel(toCat)}.`);
-      setAmount('');
-      setTimeout(() => setMsg(''), 4000);
-    } catch { setMsg('Shift failed.'); }
-  };
-
-  return (
-    <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-green-700 font-semibold">Estimation saved! Your data has been added to the ML dataset.</p>
-        <button onClick={() => setOpen(v => !v)}
-          className="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium">
-          {open ? 'Close' : 'Manage Budget'}
-        </button>
-      </div>
-
-      {open && (
-        <div className="bg-white border border-purple-100 rounded-xl p-4 space-y-3">
-          <h4 className="text-sm font-bold text-gray-800">Budget Shift</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">From Category</label>
-              <select value={fromCat} onChange={e => { setFromCat(e.target.value); setMsg(''); }}
-                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
-                <option value="">Select…</option>
-                {cats.map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {getLabel(k)} — PKR {(v.remaining ?? v.estimated ?? 0).toLocaleString()} left
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Amount (PKR)</label>
-              <input type="number" value={amount} min="1" max={fromAvail}
-                onChange={e => { setAmount(e.target.value); setMsg(''); }}
-                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                placeholder="0" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">To Category</label>
-              <select value={toCat} onChange={e => { setToCat(e.target.value); setMsg(''); }}
-                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
-                <option value="">Select…</option>
-                {cats.filter(([k]) => k !== fromCat).map(([k]) => (
-                  <option key={k} value={k}>{getLabel(k)}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          {msg && (
-            <p className={`text-xs px-3 py-2 rounded-lg ${msg.startsWith('Shifted') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
-              {msg}
-            </p>
-          )}
-          <button onClick={handleShift}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold">
-            Confirm Shift
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default StepResults;

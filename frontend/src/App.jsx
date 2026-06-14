@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import VisualRecPage       from './components/VisualRec/VisualRecPage';
 import SellerPage          from './components/Seller/SellerPage';
+import SellerAuthPage      from './components/Seller/SellerAuthPage';
 import SellerDashboard     from './components/Seller/SellerDashboard';
+import ProductList         from './components/Seller/ProductList';
 import SellerFinancialProj from './components/Seller/SellerFinancialProjection';
 import MarketplacePage     from './components/Marketplace/MarketplacePage';
+import ProductDetailPage   from './components/Marketplace/ProductDetailPage';
 import DowryPage           from './components/Dowry/DowryPage';
 import BuyerAuthPage       from './components/Buyer/BuyerAuthPage';
 import BuyerDashboard      from './components/Buyer/BuyerDashboard';
@@ -217,12 +220,17 @@ const BUYER_VIEWS = [
   { id: 'account',         label: 'My Account',      icon: '👤' },
 ];
 
-const SELLER_VIEWS = [
+const SELLER_VIEWS_AUTH = [
   { id: 'seller-dashboard', label: 'Dashboard',            icon: '📊' },
   { id: 'upload',           label: 'Upload Product',       icon: '➕' },
   { id: 'my-products',      label: 'My Products',          icon: '📦' },
   { id: 'fin-projection',   label: 'Financial Projection', icon: '💹' },
   { id: 'seller-account',   label: 'My Account',           icon: '👤' },
+];
+
+// Shown only when seller is not yet authenticated
+const SELLER_VIEWS_GUEST = [
+  { id: 'seller-dashboard', label: 'Login / Register', icon: '🔐' },
 ];
 
 function AppContent() {
@@ -243,6 +251,10 @@ function AppContent() {
 
   // cross-module navigation
   const [highlightProductId, setHighlightProductId] = useState(null);
+
+  // product-detail page state
+  const [detailProduct, setDetailProduct] = useState(null);
+  const [detailFromView, setDetailFromView] = useState('marketplace');
 
   const { totalItems, setBuyerId } = useCart();
 
@@ -304,6 +316,14 @@ function AppContent() {
     setView(null);
   };
 
+  // Navigate to a full product detail page
+  const navigateToProductPage = (product, fromView = 'marketplace') => {
+    setDetailProduct(product);
+    setDetailFromView(fromView);
+    setView('product-detail');
+  };
+
+  // Legacy: from VisualRec, navigate to marketplace and highlight
   const navigateToProduct = (productId) => {
     setHighlightProductId(productId);
     setView('marketplace');
@@ -359,8 +379,10 @@ function AppContent() {
   }
 
   // Determine which view list to use
-  const VIEWS = userRole === 'buyer' ? BUYER_VIEWS : SELLER_VIEWS;
   const isLoggedIn = userRole === 'buyer' ? buyer : seller;
+  const VIEWS = userRole === 'buyer'
+    ? BUYER_VIEWS
+    : (isLoggedIn ? SELLER_VIEWS_AUTH : SELLER_VIEWS_GUEST);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex">
@@ -471,13 +493,22 @@ function AppContent() {
               <BuyerAuthPage onLogin={handleBuyerLogin} />
             )}
             {userRole === 'buyer' && isLoggedIn && view === 'buyer-dashboard' && (
-              <BuyerDashboard buyer={buyer} />
+              <BuyerDashboard buyer={buyer} onViewProduct={(p) => navigateToProductPage(p, 'buyer-dashboard')} />
             )}
             {userRole === 'buyer' && isLoggedIn && view === 'marketplace' && (
               <MarketplacePage
                 highlightProductId={highlightProductId}
                 onHighlightCleared={() => setHighlightProductId(null)}
                 buyer={buyer}
+                onViewProduct={(p) => navigateToProductPage(p, 'marketplace')}
+              />
+            )}
+            {userRole === 'buyer' && isLoggedIn && view === 'product-detail' && (
+              <ProductDetailPage
+                product={detailProduct}
+                productId={detailProduct?.product_id}
+                buyer={buyer}
+                onBack={() => setView(detailFromView)}
               />
             )}
             {userRole === 'buyer' && isLoggedIn && view === 'visual' && (
@@ -497,17 +528,18 @@ function AppContent() {
             )}
 
             {/* SELLER VIEWS */}
-            {userRole === 'seller' && !isLoggedIn && view === 'seller-dashboard' && (
-              <SellerPage onLogin={handleSellerLogin} />
+            {/* If not logged in, any seller view shows the auth page */}
+            {userRole === 'seller' && !isLoggedIn && (
+              <SellerAuthPage onLogin={handleSellerLogin} />
             )}
             {userRole === 'seller' && isLoggedIn && view === 'seller-dashboard' && (
               <SellerDashboard seller={seller} />
             )}
             {userRole === 'seller' && isLoggedIn && view === 'upload' && (
-              <SellerPage defaultTab={1} />
+              <SellerPage />
             )}
             {userRole === 'seller' && isLoggedIn && view === 'my-products' && (
-              <SellerPage defaultTab={2} />
+              <ProductList sellerId={seller?.seller_id} />
             )}
             {userRole === 'seller' && isLoggedIn && view === 'fin-projection' && (
               <SellerFinancialProj seller={seller} />

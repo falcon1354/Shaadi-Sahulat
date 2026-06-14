@@ -11,7 +11,7 @@ const SORT_OPTIONS = [
 ];
 
 const CONDITIONS = ['', 'New', 'Like New', 'Used', 'Thrift'];
-const BIG_CATS   = ['furniture', 'electronics', 'wedding_dress', 'jewelry'];
+const BIG_CATS   = ['furniture', 'electronics', 'wedding_dress'];
 const SMALL_CATS = ['miscellaneous', 'decoration', 'kitchen_items'];
 
 // ── localStorage helpers ──────────────────────────────────────────────────
@@ -346,6 +346,16 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
                 + Cart
               </button>
             )}
+            <a
+              href={`http://localhost:3000/products/${product.product_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="px-2 py-1.5 text-xs text-gray-400 border border-gray-200 rounded-lg hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors"
+              title="Share product page"
+            >
+              🔗
+            </a>
           </div>
         </div>
       </div>
@@ -473,7 +483,7 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
 
 // ── Main MarketplacePage ──────────────────────────────────────────────────
 
-export default function MarketplacePage({ highlightProductId, onHighlightCleared, buyer, isAdminView = false }) {
+export default function MarketplacePage({ highlightProductId, onHighlightCleared, buyer, isAdminView = false, onViewProduct }) {
   const cartCtx = useCart();
   const addItem = cartCtx?.addItem || (() => {});
   const { categories } = useCategories();
@@ -549,10 +559,17 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
   useEffect(() => {
     if (!highlightProductId) return;
     const found = products.find(p => p.product_id === highlightProductId);
-    if (found) { setViewProduct(found); onHighlightCleared?.(); }
+    if (found) {
+      if (onViewProduct && !isAdminView) {
+        onViewProduct(found);
+      } else {
+        setViewProduct(found);
+      }
+      onHighlightCleared?.();
+    }
   }, [highlightProductId, products, onHighlightCleared]);
 
-  // Save recently viewed when product modal opens
+  // Save recently viewed when product detail opens (modal path for admin)
   useEffect(() => {
     if (viewProduct) {
       saveRecentlyViewed(viewProduct, buyerId);
@@ -562,6 +579,15 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
       });
     }
   }, [viewProduct]);
+
+  // Handler for clicking a product card
+  const handleViewProduct = (product) => {
+    if (onViewProduct && !isAdminView) {
+      onViewProduct(product);
+    } else {
+      setViewProduct(product);
+    }
+  };
 
   // Debounced search
   useEffect(() => {
@@ -817,7 +843,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
             <ProductCard
               key={p.product_id}
               product={p}
-              onView={setViewProduct}
+              onView={handleViewProduct}
               highlight={highlightProductId === p.product_id}
               onAddToCart={handleAddToCart}
               isWishlisted={wishlist.some(w => w.product_id === p.product_id)}
