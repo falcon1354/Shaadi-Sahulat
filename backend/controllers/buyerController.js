@@ -115,4 +115,59 @@ async function addRecentlyViewed(req, res) {
   }
 }
 
-module.exports = { registerBuyer, loginBuyer, getBuyerProfile, toggleWishlist, addRecentlyViewed };
+// Sync full cart — replaces buyer's stored cart_items with client cart
+async function syncCart(req, res) {
+  try {
+    const { buyer_id } = req.params;
+    const { cart_items } = req.body;
+    if (!Array.isArray(cart_items)) return res.status(400).json({ success: false, error: "cart_items must be an array" });
+
+    const buyer = await Buyer.findOneAndUpdate(
+      { buyer_id },
+      { $set: { cart_items } },
+      { new: true }
+    );
+    if (!buyer) return res.status(404).json({ success: false, error: "Buyer not found" });
+    return res.json({ success: true, cart_items: buyer.cart_items });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+// Full buyer data — profile + latest dowry + cart (for admin view and seeding)
+async function getFullBuyerData(req, res) {
+  try {
+    const { buyer_id } = req.params;
+    const buyer = await Buyer.findOne({ buyer_id }).lean();
+    if (!buyer) return res.status(404).json({ success: false, error: "Buyer not found" });
+    delete buyer.password_hash;
+
+    const DowryEstimation = require("../models/DowryEstimation");
+    let estimation = await DowryEstimation.findOne({ user_id: buyer_id }).sort({ created_at: -1 }).lean();
+
+    // Fallback for old estimations saved with wrong/anonymous user_id:
+    // if Buyer doc has dowry_estimation_id, fetch directly and fix the stale user_id.
+    if (!estimation && buyer.dowry_estimation_id) {
+      try {
+        estimation = await DowryEstimation.findById(buyer.dowry_estimation_id).lean();
+        if (estimation) {
+          await DowryEstimation.updateOne({ _id: estimation._id }, { $set: { user_id: buyer_id } });
+          estimation.user_id = buyer_id;
+        }
+      } catch (_) {}
+    }
+
+    return res.json({
+      success: true,
+      buyer,
+      dowry_estimation: estimation || null,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+module.exports = {
+  registerBuyer, loginBuyer, getBuyerProfile,
+  toggleWishlist, addRecentlyViewed, syncCart, getFullBuyerData,
+};

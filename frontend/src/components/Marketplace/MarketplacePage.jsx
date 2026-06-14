@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Heart, MapPin, Link2, ShoppingBag, Package, Shirt, Sofa, Monitor, Utensils, Sparkles, Gift } from 'lucide-react';
 import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
 import { useCategories } from '../../hooks/useCategories';
-import { toggleWishlistItem, recordRecentlyViewed } from '../../api/buyerApi';
+import { toggleWishlistItem, recordRecentlyViewed, patchDowryBudgets } from '../../api/buyerApi';
 
 const SORT_OPTIONS = [
   { value: 'newest',     label: 'Newest First' },
@@ -77,15 +77,23 @@ function shiftBudget(fromCat, toCat, amount, buyerId) {
     const src = budgets[fromCat];
     const dst = budgets[toCat];
     if (!src || !dst) return false;
-    const available = src.remaining ?? src.estimated ?? 0;
-    if (amount > available) return false;
-    src.estimated  = (src.estimated  || 0) - amount;
-    src.remaining  = (src.remaining  ?? src.estimated) - amount;
-    dst.estimated  = (dst.estimated  || 0) + amount;
-    dst.remaining  = (dst.remaining  ?? dst.estimated) + amount;
+    const srcEst  = src.estimated || 0;
+    const srcLeft = src.remaining ?? srcEst;
+    if (amount > srcLeft) return false;
+    const dstEst  = dst.estimated || 0;
+    const dstLeft = dst.remaining ?? dstEst;
+    src.estimated = srcEst  - amount;
+    src.remaining = srcLeft - amount;
+    dst.estimated = dstEst  + amount;
+    dst.remaining = dstLeft + amount;
     const updated  = JSON.stringify({ ...dowry, category_budgets: budgets });
     localStorage.setItem('ss_dowry_latest', updated);
-    if (buyerId) localStorage.setItem(`ss_dowry_${buyerId}`, updated);
+    if (buyerId) {
+      localStorage.setItem(`ss_dowry_${buyerId}`, updated);
+      // Persist to MongoDB + notify other components
+      patchDowryBudgets(buyerId, budgets).catch(() => {});
+      window.dispatchEvent(new CustomEvent('dowry-updated', { detail: { buyerId } }));
+    }
     return true;
   } catch { return false; }
 }
@@ -538,9 +546,42 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
   const [shiftToast, setShiftToast] = useState('');
 
+  // Increment to force re-read of dowry from localStorage after budget shifts
+  const [budgetRefresh, setBudgetRefresh] = useState(0);
+
   const LIMIT = 12;
 
-  const budgetInfo = (!isAdminView && activeCat) ? getBudgetForCategory(activeCat, buyerId) : null;
+  // Reactive dowry — re-reads when budgetRefresh increments
+  const currentDowry = useMemo(() => {
+    if (isAdminView) return null;
+    return readDowry(buyerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buyerId, isAdminView, budgetRefresh]);
+
+  const hasDowry  = !!currentDowry;
+  const budgetInfo = (hasDowry && activeCat)
+    ? (currentDowry.category_budgets?.[activeCat] || null)
+    : null;
+
+  // Merge new admin-added categories into buyer's existing estimation with 0 values
+  useEffect(() => {
+    if (!buyerId || !categories.length || !hasDowry) return;
+    const dowry   = readDowry(buyerId);
+    if (!dowry?.category_budgets) return;
+    const budgets = { ...dowry.category_budgets };
+    let changed   = false;
+    categories.forEach(c => {
+      if (!(c.category_id in budgets)) {
+        budgets[c.category_id] = { estimated: 0, spent: 0, remaining: 0 };
+        changed = true;
+      }
+    });
+    if (changed) {
+      const updated = JSON.stringify({ ...dowry, category_budgets: budgets });
+      localStorage.setItem(`ss_dowry_${buyerId}`, updated);
+      setBudgetRefresh(v => v + 1);
+    }
+  }, [categories, buyerId, hasDowry]);
 
   const load = useCallback(async () => {
     if (searchResults !== null) return;
@@ -692,6 +733,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
     setTimeout(() => setShiftToast(''), 3000);
     setOvershootState(null);
     setPendingCallback(null);
+    setBudgetRefresh(v => v + 1); // re-read dowry → banner updates
   };
 
   const displayProducts = searchResults !== null ? searchResults : products;
@@ -741,22 +783,32 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
         ))}
       </div>
 
-      {/* Budget banner (§4.4) — hidden for admin */}
-      {!isAdminView && activeCat && budgetInfo && (
-        <div className="mb-4 p-3 bg-purple-50 border border-purple-100 rounded-xl flex items-center gap-4 text-sm flex-wrap">
-          <span className="font-semibold text-purple-700 capitalize">
-            {MAJOR_CATS.find(c => c.id === activeCat)?.label || activeCat} Budget
-          </span>
-          <span className="text-gray-600">
-            Estimated: <strong>PKR {budgetInfo.estimated?.toLocaleString()}</strong>
-          </span>
-          <span className="text-gray-600">
-            Spent: <strong>PKR {(budgetInfo.spent || 0).toLocaleString()}</strong>
-          </span>
-          <span className={budgetInfo.remaining < 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>
-            Remaining: PKR {(budgetInfo.remaining ?? budgetInfo.estimated ?? 0).toLocaleString()}
-          </span>
-        </div>
+      {/* Budget banner — hidden for admin and when buyer has no estimation */}
+      {!isAdminView && activeCat && hasDowry && (
+        budgetInfo ? (
+          <div className="mb-4 p-3 bg-purple-50 border border-purple-100 rounded-xl flex items-center gap-4 text-sm flex-wrap">
+            <span className="font-semibold text-purple-700 capitalize">
+              {MAJOR_CATS.find(c => c.id === activeCat)?.label || activeCat} Budget
+            </span>
+            <span className="text-gray-600">
+              Estimated: <strong>PKR {(budgetInfo.estimated || 0).toLocaleString()}</strong>
+            </span>
+            <span className="text-gray-600">
+              Spent: <strong>PKR {(budgetInfo.spent || 0).toLocaleString()}</strong>
+            </span>
+            <span className={budgetInfo.remaining < 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>
+              Remaining: PKR {(budgetInfo.remaining ?? budgetInfo.estimated ?? 0).toLocaleString()}
+            </span>
+          </div>
+        ) : (
+          <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-3 text-sm">
+            <span className="text-gray-400">📋</span>
+            <span className="text-gray-500 capitalize">
+              {MAJOR_CATS.find(c => c.id === activeCat)?.label || activeCat}:
+            </span>
+            <span className="font-medium text-gray-400 italic">Not budgeted</span>
+          </div>
+        )
       )}
 
       {/* Search results header */}

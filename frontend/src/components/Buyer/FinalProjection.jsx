@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCategories } from '../../hooks/useCategories';
+import { getFullBuyerData } from '../../api/buyerApi';
 
 function readDowry(buyerId) {
   try {
@@ -17,7 +18,41 @@ export default function FinalProjection({ buyer }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [dowry, setDowry]         = useState(null);
 
-  useEffect(() => { setDowry(readDowry(buyerId)); }, [buyerId]);
+  // Mount: load from localStorage, seed from MongoDB if empty
+  useEffect(() => {
+    const local = readDowry(buyerId);
+    if (local) { setDowry(local); return; }
+    if (!buyerId) return;
+
+    getFullBuyerData(buyerId).then(res => {
+      if (!res?.success || !res.dowry_estimation) return;
+      const est     = res.dowry_estimation;
+      const budgets = est.category_budgets;
+      if (!budgets || !Object.keys(budgets).length) return;
+      const total   = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
+      const payload = {
+        estimation_id:    est._id,
+        total_budget:     total || est.total_recommended_budget,
+        category_budgets: budgets,
+        saved_at:         est.updated_at || est.created_at || new Date().toISOString(),
+      };
+      const s = JSON.stringify(payload);
+      localStorage.setItem(`ss_dowry_${buyerId}`, s);
+      localStorage.setItem('ss_dowry_latest', s);
+      setDowry(payload);
+    }).catch(() => {});
+  }, [buyerId]);
+
+  // Re-read when any component shifts budget
+  useEffect(() => {
+    const handler = (e) => {
+      if (!e.detail?.buyerId || e.detail.buyerId === buyerId) {
+        setDowry(readDowry(buyerId));
+      }
+    };
+    window.addEventListener('dowry-updated', handler);
+    return () => window.removeEventListener('dowry-updated', handler);
+  }, [buyerId]);
 
   if (!dowry?.category_budgets) {
     return (
@@ -36,7 +71,11 @@ export default function FinalProjection({ buyer }) {
   }
 
   const catBudgets  = dowry.category_budgets;
-  const activeCats  = Object.entries(catBudgets).filter(([, v]) => v.active !== false);
+  const dbCatIds    = categories.map(c => c.category_id);
+  // Filter out orphaned categories (not in DB) and inactive (Not_Wanted) ones
+  const activeCats  = Object.entries(catBudgets).filter(
+    ([key, v]) => v.active !== false && (dbCatIds.length === 0 || dbCatIds.includes(key))
+  );
 
   const totalEst    = activeCats.reduce((s, [, v]) => s + (v.estimated || 0), 0);
   const totalSpent  = activeCats.reduce((s, [, v]) => s + (v.spent || 0), 0);

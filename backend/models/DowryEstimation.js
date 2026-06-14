@@ -38,14 +38,16 @@ const dowryEstimationSchema = new mongoose.Schema(
       miscellaneous: { type: Number, default: 0 },
     },
 
-    // Full budget tracking object (Contract 1) — used by Spending Analytics
-    category_budgets: {
-      wedding_dress: { type: categoryBudgetSchema, default: () => ({}) },
-      furniture:     { type: categoryBudgetSchema, default: () => ({}) },
-      electronics:   { type: categoryBudgetSchema, default: () => ({}) },
-      kitchen_items: { type: categoryBudgetSchema, default: () => ({}) },
-      decoration:    { type: categoryBudgetSchema, default: () => ({}) },
-      miscellaneous: { type: categoryBudgetSchema, default: () => ({}) },
+    // Full budget tracking object (Contract 1) — Mixed to support dynamic admin-added categories
+    category_budgets: { type: mongoose.Schema.Types.Mixed, default: {} },
+
+    // Budget source split (income vs savings) — used by Result Dashboard cards
+    budget_sources: {
+      from_income:        { type: Number, default: 0 },
+      from_savings:       { type: Number, default: 0 },
+      from_contribution:  { type: Number, default: 0 },
+      income_percentage:  { type: Number, default: 0 },
+      savings_percentage: { type: Number, default: 0 },
     },
 
     // Buyer's manually adjusted amounts (post slider — §2.4)

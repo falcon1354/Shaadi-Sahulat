@@ -32,9 +32,9 @@ DOWRY_CATEGORIES_FALLBACK = [
 
 
 def _get_active_categories(db):
-    """Fetch active category IDs from admin_categories. Falls back to static list."""
+    """Fetch active category IDs from admincategories (Mongoose collection). Falls back to static list."""
     try:
-        cats = [c["category_id"] for c in db["admin_categories"].find(
+        cats = [c["category_id"] for c in db["admincategories"].find(
             {"is_active": {"$ne": False}}, {"category_id": 1, "_id": 0})]
         return cats if cats else DOWRY_CATEGORIES_FALLBACK
     except Exception:

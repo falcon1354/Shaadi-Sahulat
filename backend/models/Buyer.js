@@ -34,6 +34,20 @@ const buyerSchema = new mongoose.Schema(
       }],
       default: [],
     },
+    // Cart items — persisted per buyer so data survives logout/device switch
+    cart_items: {
+      type: [{
+        product_id:     { type: String, required: true },
+        title:          { type: String, default: "" },
+        price:          { type: Number, default: 0 },
+        discount_price: { type: Number, default: null },
+        major_category: { type: String, default: "" },
+        image_url:      { type: String, default: "" },
+        qty:            { type: Number, default: 1 },
+        added_at:       { type: Date,   default: Date.now },
+      }],
+      default: [],
+    },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );

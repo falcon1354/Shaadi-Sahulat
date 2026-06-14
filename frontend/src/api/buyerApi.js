@@ -45,6 +45,25 @@ export async function recordRecentlyViewed(buyerId, item) {
   } catch { /* non-critical, ignore */ }
 }
 
+/** Sync full cart to MongoDB (called on checkout or when cart changes). */
+export async function syncCart(buyerId, cart_items) {
+  try {
+    await fetch(`${BASE}/${buyerId}/cart-sync`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ cart_items }),
+    });
+  } catch { /* non-critical */ }
+}
+
+/** Fetch buyer profile + latest dowry + cart from MongoDB. */
+export async function getFullBuyerData(buyerId) {
+  try {
+    const res = await fetch(`${BASE}/${buyerId}/full-data`);
+    return res.json();
+  } catch { return { success: false }; }
+}
+
 /** Persist updated category_budgets to MongoDB after shift or checkout. */
 export async function patchDowryBudgets(buyerId, category_budgets) {
   try {
@@ -73,7 +92,7 @@ export function clearBuyerFromStorage() {
 }
 
 export default {
-  registerBuyer, loginBuyer, getBuyerProfile,
-  toggleWishlistItem, recordRecentlyViewed, patchDowryBudgets,
+  registerBuyer, loginBuyer, getBuyerProfile, getFullBuyerData,
+  toggleWishlistItem, recordRecentlyViewed, patchDowryBudgets, syncCart,
   getBuyerFromStorage, saveBuyerToStorage, clearBuyerFromStorage,
 };
