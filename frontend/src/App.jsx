@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import {
+  Routes, Route, Navigate, useNavigate, useLocation, Outlet, useParams
+} from 'react-router-dom';
+
+// ── Page component imports ────────────────────────────────────────────────────
 import VisualRecPage       from './components/VisualRec/VisualRecPage';
 import SellerPage          from './components/Seller/SellerPage';
 import SellerAuthPage      from './components/Seller/SellerAuthPage';
@@ -15,20 +20,116 @@ import CartDrawer          from './components/Cart/CartDrawer';
 import LandingPage         from './components/LandingPage';
 import AdminLogin          from './components/Admin/AdminLogin';
 import AdminLayout         from './components/Admin/AdminLayout';
+import FinancialDashboard  from './components/Admin/FinancialDashboard';
+import SellerManagement    from './components/Admin/SellerManagement';
+import BuyerManagement     from './components/Admin/BuyerManagement';
+import CategoryManager     from './components/Admin/CategoryManager';
+import OrdersPage          from './components/Admin/OrdersPage';
 import { CartProvider, useCart } from './context/CartContext';
-import { getBuyerFromStorage, saveBuyerToStorage, clearBuyerFromStorage, getFullBuyerData } from './api/buyerApi';
-import { 
-  LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User, 
-  ShoppingCart, PlusCircle, Package, LineChart, Lock, Store 
+import {
+  getBuyerFromStorage, saveBuyerToStorage,
+  clearBuyerFromStorage, getFullBuyerData
+} from './api/buyerApi';
+import {
+  LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User,
+  ShoppingCart, PlusCircle, Package, LineChart
 } from 'lucide-react';
 import logo from './assets/ShaadiSahulat Logo PNG.png';
 
-// ── Level helpers ─────────────────────────────────────────────────────────
+// ── Auth Context ──────────────────────────────────────────────────────────────
+
+const AuthContext = createContext(null);
+function useAuth() { return useContext(AuthContext); }
+
+function AuthProvider({ children }) {
+  const [buyer, setBuyerState] = useState(() => getBuyerFromStorage());
+  const [seller, setSellerState] = useState(() => {
+    const s = localStorage.getItem('ss_seller');
+    return s ? JSON.parse(s) : null;
+  });
+  const [admin, setAdminState] = useState(() => {
+    const s = localStorage.getItem('ss_admin');
+    return s ? JSON.parse(s) : null;
+  });
+
+  const loginBuyer = (b) => {
+    saveBuyerToStorage(b);
+    setBuyerState(b);
+    if (b?.buyer_id) {
+      if (Array.isArray(b.wishlist_items)) {
+        localStorage.setItem(`ss_wishlist_${b.buyer_id}`, JSON.stringify(b.wishlist_items));
+      }
+      if (Array.isArray(b.recently_viewed_items)) {
+        localStorage.setItem(`ss_recently_viewed_${b.buyer_id}`, JSON.stringify(b.recently_viewed_items));
+      }
+      if (Array.isArray(b.cart_items) && b.cart_items.length > 0) {
+        const existing = localStorage.getItem(`ss_cart_${b.buyer_id}`);
+        if (!existing || existing === '[]') {
+          localStorage.setItem(`ss_cart_${b.buyer_id}`, JSON.stringify(b.cart_items));
+        }
+      }
+      if (!localStorage.getItem(`ss_dowry_${b.buyer_id}`)) {
+        getFullBuyerData(b.buyer_id).then(res => {
+          if (!res?.success || !res.dowry_estimation) return;
+          const est     = res.dowry_estimation;
+          const budgets = est.category_budgets;
+          if (!budgets || !Object.keys(budgets).length) return;
+          const total   = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
+          const payload = JSON.stringify({
+            estimation_id:    est._id,
+            total_budget:     total || est.total_recommended_budget,
+            category_budgets: budgets,
+            saved_at:         est.updated_at || est.created_at || new Date().toISOString(),
+          });
+          localStorage.setItem(`ss_dowry_${b.buyer_id}`, payload);
+          localStorage.setItem('ss_dowry_latest', payload);
+        }).catch(() => {});
+      }
+    }
+  };
+
+  const loginSeller = (s) => {
+    localStorage.setItem('ss_seller', JSON.stringify(s));
+    setSellerState(s);
+  };
+
+  const loginAdmin = (a) => {
+    setAdminState(a);
+    // AdminLogin.jsx already saves to localStorage
+  };
+
+  const logoutBuyer = () => {
+    clearBuyerFromStorage();
+    setBuyerState(null);
+  };
+
+  const logoutSeller = () => {
+    localStorage.removeItem('ss_seller');
+    setSellerState(null);
+  };
+
+  const logoutAdmin = () => {
+    localStorage.removeItem('ss_admin');
+    setAdminState(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{
+      buyer, seller, admin,
+      loginBuyer, loginSeller, loginAdmin,
+      logoutBuyer, logoutSeller, logoutAdmin,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+// ── Level helpers ─────────────────────────────────────────────────────────────
 
 function getBuyerLevel(orders = 0) {
-  if (orders >= 7)  return { level: 3, label: 'Loyal Buyer',  color: 'from-teal-500 to-green-500',   next: null,  nextAt: null };
-  if (orders >= 3)  return { level: 2, label: 'Active Buyer', color: 'from-[#a37b3d] to-[#ECD4A8]',  next: 3,     nextAt: 7,   progress: (orders - 3) / 4 };
-  return             { level: 1, label: 'New Buyer',    color: 'from-[#c09858] to-[#ECD4A8]',  next: 2,     nextAt: 3,   progress: orders / 3 };
+  if (orders >= 7) return { level: 3, label: 'Loyal Buyer',  color: 'from-teal-500 to-green-500',  next: null, nextAt: null };
+  if (orders >= 3) return { level: 2, label: 'Active Buyer', color: 'from-[#a37b3d] to-[#ECD4A8]', next: 3,    nextAt: 7,   progress: (orders - 3) / 4 };
+  return            { level: 1, label: 'New Buyer',    color: 'from-[#c09858] to-[#ECD4A8]', next: 2,    nextAt: 3,   progress: orders / 3 };
 }
 
 function getSellerLevel(orders = 0) {
@@ -46,9 +147,7 @@ function LevelBadge({ level, label, colorClass }) {
 }
 
 function LevelProgress({ info, ordersLabel }) {
-  if (!info.next) {
-    return <p className="text-xs text-gray-400 mt-1">Max level achieved</p>;
-  }
+  if (!info.next) return <p className="text-xs text-gray-400 mt-1">Max level achieved</p>;
   const pct = Math.round((info.progress || 0) * 100);
   return (
     <div className="mt-3">
@@ -57,14 +156,13 @@ function LevelProgress({ info, ordersLabel }) {
         <span>{pct}% ({info.nextAt} needed)</span>
       </div>
       <div className="w-full bg-gray-100 rounded-full h-2">
-        <div
-          className={`h-2 rounded-full bg-gradient-to-r ${info.color}`}
-          style={{ width: `${pct}%` }}
-        />
+        <div className={`h-2 rounded-full bg-gradient-to-r ${info.color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
 }
+
+// ── Account views ─────────────────────────────────────────────────────────────
 
 function BuyerAccountView({ buyer }) {
   const orders    = buyer?.orders_count || 0;
@@ -75,7 +173,6 @@ function BuyerAccountView({ buyer }) {
 
   return (
     <div className="animate-fade-in max-w-lg mx-auto space-y-4">
-      {/* Profile card */}
       <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         <div className="flex items-center gap-4 mb-5">
           <div className="w-16 h-16 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
@@ -86,7 +183,6 @@ function BuyerAccountView({ buyer }) {
             <p className="text-sm text-gray-400 truncate">{buyer?.email}</p>
           </div>
         </div>
-
         <div className="grid grid-cols-2 gap-3 text-sm">
           {buyer?.phone && (
             <div className="bg-gray-50 rounded-xl p-3">
@@ -110,8 +206,6 @@ function BuyerAccountView({ buyer }) {
           </div>
         </div>
       </div>
-
-      {/* Level card */}
       <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         <h3 className="text-sm font-semibold text-gray-600 mb-3">Buyer Level</h3>
         <LevelBadge level={levelInfo.level} label={levelInfo.label} colorClass={levelInfo.color} />
@@ -144,7 +238,6 @@ function SellerAccountView({ seller }) {
 
   return (
     <div className="animate-fade-in max-w-lg mx-auto space-y-4">
-      {/* Profile card */}
       <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         <div className="flex items-center gap-4 mb-5">
           <div className="w-16 h-16 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
@@ -158,7 +251,6 @@ function SellerAccountView({ seller }) {
             )}
           </div>
         </div>
-
         <div className="grid grid-cols-2 gap-3 text-sm">
           {seller?.phone && (
             <div className="bg-gray-50 rounded-xl p-3">
@@ -190,17 +282,15 @@ function SellerAccountView({ seller }) {
           </div>
         </div>
       </div>
-
-      {/* Level card */}
       <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
         <h3 className="text-sm font-semibold text-gray-600 mb-3">Seller Level</h3>
         <LevelBadge level={levelInfo.level} label={levelInfo.label} colorClass={levelInfo.color} />
         <LevelProgress info={levelInfo} ordersLabel={`${orders} completed order${orders !== 1 ? 's' : ''}`} />
         <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-center">
           {[
-            { l: 1, label: 'Starter Seller',  at: 'On registration' },
-            { l: 2, label: 'Trusted Seller',  at: '10+ orders' },
-            { l: 3, label: 'Elite Seller',    at: '50+ orders' },
+            { l: 1, label: 'Starter Seller', at: 'On registration' },
+            { l: 2, label: 'Trusted Seller', at: '10+ orders' },
+            { l: 3, label: 'Elite Seller',   at: '50+ orders' },
           ].map(({ l, label, at }) => (
             <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-[#FFF5F8] border-[#ECD4A8] text-[#a37b3d]' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
               <p className="font-bold">L{l}</p>
@@ -214,386 +304,471 @@ function SellerAccountView({ seller }) {
   );
 }
 
-// ── App Views ──────────────────────────────────────────────────────────────
+// ── Nav view lists ────────────────────────────────────────────────────────────
 
 const BUYER_VIEWS = [
-  { id: 'buyer-dashboard', label: 'Dashboard',       icon: <LayoutDashboard size={20} /> },
-  { id: 'marketplace',     label: 'Marketplace',     icon: <ShoppingBag size={20} /> },
-  { id: 'visual',          label: 'Find by Photo',   icon: <Camera size={20} /> },
-  { id: 'dowry',           label: 'Budget Estimator',icon: <Calculator size={20} /> },
-  { id: 'projection',      label: 'Final Projection',icon: <TrendingUp size={20} /> },
-  { id: 'account',         label: 'My Account',      icon: <User size={20} /> },
+  { id: 'dashboard',   label: 'Dashboard',        icon: <LayoutDashboard size={20} /> },
+  { id: 'marketplace', label: 'Marketplace',       icon: <ShoppingBag size={20} /> },
+  { id: 'visual',      label: 'Find by Photo',     icon: <Camera size={20} /> },
+  { id: 'dowry',       label: 'Budget Estimator',  icon: <Calculator size={20} /> },
+  { id: 'projection',  label: 'Final Projection',  icon: <TrendingUp size={20} /> },
+  { id: 'account',     label: 'My Account',        icon: <User size={20} /> },
 ];
 
-const SELLER_VIEWS_AUTH = [
-  { id: 'seller-dashboard', label: 'Dashboard',            icon: <LayoutDashboard size={20} /> },
-  { id: 'upload',           label: 'Upload Product',       icon: <PlusCircle size={20} /> },
-  { id: 'my-products',      label: 'My Products',          icon: <Package size={20} /> },
-  { id: 'fin-projection',   label: 'Financial Projection', icon: <LineChart size={20} /> },
-  { id: 'seller-account',   label: 'My Account',           icon: <User size={20} /> },
+const SELLER_VIEWS = [
+  { id: 'dashboard', label: 'Dashboard',            icon: <LayoutDashboard size={20} /> },
+  { id: 'upload',    label: 'Upload Product',       icon: <PlusCircle size={20} /> },
+  { id: 'products',  label: 'My Products',          icon: <Package size={20} /> },
+  { id: 'finance',   label: 'Financial Projection', icon: <LineChart size={20} /> },
+  { id: 'account',   label: 'My Account',           icon: <User size={20} /> },
 ];
 
-// Shown only when seller is not yet authenticated
-const SELLER_VIEWS_GUEST = [
-  { id: 'seller-dashboard', label: 'Login / Register', icon: <Lock size={20} /> },
-];
+// Maps old view IDs (used by SellerDashboard's onNavigate) to new URL segments
+const SELLER_NAV_MAP = {
+  'upload': 'upload',
+  'my-products': 'products',
+  'fin-projection': 'finance',
+  'seller-account': 'account',
+  'seller-dashboard': 'dashboard',
+};
 
-function AppContent() {
-  const [showLanding, setShowLanding] = useState(true);
-  const [userRole, setUserRole] = useState(null); // 'buyer' or 'seller'
-  const [view, setView]       = useState(null);
-  const [cartOpen, setCart]   = useState(false);
-  const [buyer, setBuyer]     = useState(() => getBuyerFromStorage());
-  const [seller, setSeller]   = useState(() => {
-    const stored = localStorage.getItem('ss_seller');
-    return stored ? JSON.parse(stored) : null;
-  });
-  const [admin, setAdmin]           = useState(() => {
-    const s = localStorage.getItem('ss_admin');
-    return s ? JSON.parse(s) : null;
-  });
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
+// ── Route guards ──────────────────────────────────────────────────────────────
 
-  // cross-module navigation
-  const [highlightProductId, setHighlightProductId] = useState(null);
+function RequireBuyer() {
+  const { buyer } = useAuth();
+  return buyer ? <Outlet /> : <Navigate to="/buyer/login" replace />;
+}
 
-  // product-detail page state
-  const [detailProduct, setDetailProduct] = useState(null);
-  const [detailFromView, setDetailFromView] = useState('marketplace');
+function RequireSeller() {
+  const { seller } = useAuth();
+  return seller ? <Outlet /> : <Navigate to="/seller/login" replace />;
+}
 
+function RequireAdmin() {
+  const { admin } = useAuth();
+  return admin ? <Outlet /> : <Navigate to="/admin/login" replace />;
+}
+
+// ── Buyer Layout ──────────────────────────────────────────────────────────────
+
+function BuyerLayout() {
+  const { buyer, logoutBuyer } = useAuth();
+  const navigate   = useNavigate();
+  const location   = useLocation();
   const { totalItems, setBuyerId } = useCart();
+  const [cartOpen, setCart] = useState(false);
 
-  // Isolate cart per buyer — switch storage key on login/logout
   useEffect(() => {
     setBuyerId(buyer?.buyer_id || null);
   }, [buyer?.buyer_id, setBuyerId]);
 
-  const handleSelectBuyer = () => {
-    setUserRole('buyer');
-    setView('buyer-dashboard');
-    setShowLanding(false);
-  };
-
-  const handleSelectSeller = () => {
-    setUserRole('seller');
-    setView('seller-dashboard');
-    setShowLanding(false);
-  };
-
-  const handleBuyerLogin = (b) => {
-    setBuyer(b);
-    saveBuyerToStorage(b);
-    setUserRole('buyer');
-    setView('buyer-dashboard');
-    setShowLanding(false);
-
-    // Seed buyer-isolated localStorage from DB so all components read correct data
-    if (b?.buyer_id) {
-      // Wishlist — use rich items from DB
-      if (Array.isArray(b.wishlist_items)) {
-        localStorage.setItem(`ss_wishlist_${b.buyer_id}`, JSON.stringify(b.wishlist_items));
-      }
-      // Recently viewed from DB
-      if (Array.isArray(b.recently_viewed_items)) {
-        localStorage.setItem(`ss_recently_viewed_${b.buyer_id}`, JSON.stringify(b.recently_viewed_items));
-      }
-      // Cart — seed from DB cart_items before CartContext reads the key
-      if (Array.isArray(b.cart_items) && b.cart_items.length > 0) {
-        const existing = localStorage.getItem(`ss_cart_${b.buyer_id}`);
-        if (!existing || existing === '[]') {
-          localStorage.setItem(`ss_cart_${b.buyer_id}`, JSON.stringify(b.cart_items));
-        }
-      }
-      // Dowry — seed from MongoDB if not already in localStorage
-      if (!localStorage.getItem(`ss_dowry_${b.buyer_id}`)) {
-        getFullBuyerData(b.buyer_id).then(res => {
-          if (!res?.success || !res.dowry_estimation) return;
-          const est     = res.dowry_estimation;
-          const budgets = est.category_budgets;
-          if (!budgets || !Object.keys(budgets).length) return;
-          const total   = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
-          const payload = JSON.stringify({
-            estimation_id:    est._id,
-            total_budget:     total || est.total_recommended_budget,
-            category_budgets: budgets,
-            saved_at:         est.updated_at || est.created_at || new Date().toISOString(),
-          });
-          localStorage.setItem(`ss_dowry_${b.buyer_id}`, payload);
-          localStorage.setItem('ss_dowry_latest', payload);
-        }).catch(() => {});
-      }
-    }
-  };
-
-  const handleSellerLogin = (s) => {
-    setSeller(s);
-    localStorage.setItem('ss_seller', JSON.stringify(s));
-    setUserRole('seller');
-    setView('seller-dashboard');
-    setShowLanding(false);
-  };
+  const seg = location.pathname.split('/')[2] || 'dashboard';
 
   const handleLogout = () => {
-    if (userRole === 'buyer') {
-      clearBuyerFromStorage();
-      setBuyer(null);
-    } else {
-      localStorage.removeItem('ss_seller');
-      setSeller(null);
-    }
-    setShowLanding(true);
-    setUserRole(null);
-    setView(null);
+    logoutBuyer();
+    navigate('/');
   };
-
-  // Navigate to a full product detail page
-  const navigateToProductPage = (product, fromView = 'marketplace') => {
-    setDetailProduct(product);
-    setDetailFromView(fromView);
-    setView('product-detail');
-  };
-
-  // Legacy: from VisualRec, navigate to marketplace and highlight
-  const navigateToProduct = (productId) => {
-    setHighlightProductId(productId);
-    setView('marketplace');
-  };
-
-  const handleAdminLogin = (a) => {
-    setAdmin(a);
-    setShowAdminLogin(false);
-  };
-
-  const handleAdminLogout = () => {
-    localStorage.removeItem('ss_admin');
-    setAdmin(null);
-  };
-
-  // Admin portal
-  if (admin) {
-    return <AdminLayout admin={admin} onLogout={handleAdminLogout} />;
-  }
-
-  if (showAdminLogin) {
-    return <AdminLogin onLogin={handleAdminLogin} onBack={() => setShowAdminLogin(false)} />;
-  }
-
-  // If landing page should be shown
-  if (showLanding) {
-    return (
-    <div className="min-h-screen bg-[#FCFBFB] relative">
-        {buyer ? (
-          <LandingPage
-            onSelectBuyer={() => handleBuyerLogin(buyer)}
-            onSelectSeller={handleSelectSeller}
-          />
-        ) : seller ? (
-          <LandingPage
-            onSelectBuyer={handleSelectBuyer}
-            onSelectSeller={() => handleSellerLogin(seller)}
-          />
-        ) : (
-          <LandingPage
-            onSelectBuyer={handleSelectBuyer}
-            onSelectSeller={handleSelectSeller}
-          />
-        )}
-        <button
-          onClick={() => setShowAdminLogin(true)}
-          className="fixed bottom-4 right-4 text-xs text-gray-400 hover:text-gray-600 bg-white/80 border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm transition-colors"
-        >
-          Admin Portal
-        </button>
-      </div>
-    );
-  }
-
-  // Determine which view list to use
-  const isLoggedIn = userRole === 'buyer' ? buyer : seller;
-  const VIEWS = userRole === 'buyer'
-    ? BUYER_VIEWS
-    : (isLoggedIn ? SELLER_VIEWS_AUTH : SELLER_VIEWS_GUEST);
 
   return (
     <div className="min-h-screen bg-[#FCFBFB] flex">
-
-      {/* ── SIDEBAR ──────────────────────────────────────────────────────── */}
-      <aside className={`fixed md:static w-64 h-screen bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-y-auto z-40 transform transition-transform md:translate-x-0 ${
-        isLoggedIn ? 'translate-x-0' : 'translate-x-0'
-      }`}>
+      {/* Sidebar */}
+      <aside className="fixed md:static w-64 h-screen bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-y-auto z-40">
         <div className="p-5 border-b border-gray-100/50">
           <div className="flex items-center gap-3 mb-4">
             <img src={logo} alt="ShaadiSahulat" className="w-10 h-10 object-contain flex-shrink-0" />
             <div>
               <h1 className="font-heading font-bold text-gray-800 text-base leading-tight tracking-tight">ShaadiSahulat</h1>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-0.5">{userRole === 'buyer' ? 'Buyer Portal' : 'Seller Portal'}</p>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-0.5">Buyer Portal</p>
             </div>
           </div>
         </div>
-
-        {/* Navigation */}
         <nav className="p-3 space-y-1.5 mt-2">
-          {VIEWS.map((v) => (
+          {BUYER_VIEWS.map((v) => (
             <button
               key={v.id}
-              onClick={() => setView(v.id)}
+              onClick={() => navigate(`/buyer/${v.id}`)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
-                view === v.id
-                  ? userRole === 'buyer'
-                    ? 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
-                    : 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
+                seg === v.id
+                  ? 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
                   : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-gray-800'
               }`}
             >
-              <span className={`text-lg transition-transform duration-300 ${view === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
+              <span className={`text-lg transition-transform duration-300 ${seg === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
               <span>{v.label}</span>
             </button>
           ))}
         </nav>
-
-        {/* User Info */}
-        {isLoggedIn && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100/50 bg-white/40 backdrop-blur-md">
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-sm ${
-                userRole === 'buyer'
-                  ? 'bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8]'
-                  : 'bg-gradient-to-br from-[#c09858] to-[#a37b3d]'
-              }`}>
-                {isLoggedIn?.name?.[0]?.toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800 truncate">{isLoggedIn?.name}</p>
-                <p className="text-xs text-gray-500 truncate">{isLoggedIn?.email}</p>
-              </div>
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100/50 bg-white/40 backdrop-blur-md">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-sm bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8]">
+              {buyer?.name?.[0]?.toUpperCase()}
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full px-4 py-2.5 text-sm font-medium text-red-600 bg-white border border-red-100 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all shadow-sm flex items-center justify-center gap-2"
-            >
-              Sign Out
-            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-800 truncate">{buyer?.name}</p>
+              <p className="text-xs text-gray-500 truncate">{buyer?.email}</p>
+            </div>
           </div>
-        )}
+          <button
+            onClick={handleLogout}
+            className="w-full px-4 py-2.5 text-sm font-medium text-red-600 bg-white border border-red-100 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all shadow-sm flex items-center justify-center gap-2"
+          >
+            Sign Out
+          </button>
+        </div>
       </aside>
 
-      {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
+      {/* Main */}
       <main className="flex-1 flex flex-col">
-        {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="md:hidden flex items-center gap-3">
-              <div className={`w-8 h-8 bg-gradient-to-br ${userRole === 'buyer' ? 'from-[#a37b3d] to-[#ECD4A8]' : 'from-[#c09858] to-[#a37b3d]'} rounded-lg flex items-center justify-center text-white font-bold text-sm`}>
-                S
-              </div>
+              <div className="w-8 h-8 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
               <h1 className="font-bold text-gray-800">ShaadiSahulat</h1>
             </div>
-
             <div className="flex items-center gap-2 ml-auto">
-              {isLoggedIn && (
-                <span className="hidden sm:block text-xs text-gray-500">
-                  Hi, {isLoggedIn.name?.split(' ')[0]}
-                </span>
-              )}
-              
-              {userRole === 'buyer' && (
-                <button
-                  onClick={() => setCart(true)}
-                  className="relative flex items-center gap-2 px-3 py-1.5 bg-[#a37b3d] text-white rounded-xl text-sm font-medium hover:bg-[#8a6633] transition-colors shadow-sm"
-                >
-                  <ShoppingCart size={16} />
-                  {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                      {totalItems > 9 ? '9+' : totalItems}
-                    </span>
-                  )}
-                </button>
-              )}
+              <span className="hidden sm:block text-xs text-gray-500">Hi, {buyer?.name?.split(' ')[0]}</span>
+              <button
+                onClick={() => setCart(true)}
+                className="relative flex items-center gap-2 px-3 py-1.5 bg-[#a37b3d] text-white rounded-xl text-sm font-medium hover:bg-[#8a6633] transition-colors shadow-sm"
+              >
+                <ShoppingCart size={16} />
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {totalItems > 9 ? '9+' : totalItems}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </header>
-
-        {/* Page Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 py-6">
-            {/* BUYER VIEWS */}
-            {userRole === 'buyer' && !isLoggedIn && view === 'buyer-dashboard' && (
-              <BuyerAuthPage onLogin={handleBuyerLogin} />
-            )}
-            {userRole === 'buyer' && isLoggedIn && view === 'buyer-dashboard' && (
-              <BuyerDashboard buyer={buyer} onViewProduct={(p) => navigateToProductPage(p, 'buyer-dashboard')} />
-            )}
-            {userRole === 'buyer' && isLoggedIn && view === 'marketplace' && (
-              <MarketplacePage
-                highlightProductId={highlightProductId}
-                onHighlightCleared={() => setHighlightProductId(null)}
-                buyer={buyer}
-                onViewProduct={(p) => navigateToProductPage(p, 'marketplace')}
-              />
-            )}
-            {userRole === 'buyer' && isLoggedIn && view === 'product-detail' && (
-              <ProductDetailPage
-                product={detailProduct}
-                productId={detailProduct?.product_id}
-                buyer={buyer}
-                onBack={() => setView(detailFromView)}
-              />
-            )}
-            {userRole === 'buyer' && isLoggedIn && view === 'visual' && (
-              <VisualRecPage
-                userId={buyer?.buyer_id}
-                onNavigateToProduct={navigateToProduct}
-              />
-            )}
-            {userRole === 'buyer' && isLoggedIn && view === 'dowry' && (
-              <DowryPage userId={buyer?.buyer_id} />
-            )}
-            {userRole === 'buyer' && isLoggedIn && view === 'projection' && (
-              <FinalProjection buyer={buyer} />
-            )}
-            {userRole === 'buyer' && isLoggedIn && view === 'account' && (
-              <BuyerAccountView buyer={buyer} />
-            )}
-
-            {/* SELLER VIEWS */}
-            {/* If not logged in, any seller view shows the auth page */}
-            {userRole === 'seller' && !isLoggedIn && (
-              <SellerAuthPage onLogin={handleSellerLogin} />
-            )}
-            {userRole === 'seller' && isLoggedIn && view === 'seller-dashboard' && (
-              <SellerDashboard seller={seller} onNavigate={setView} />
-            )}
-            {userRole === 'seller' && isLoggedIn && view === 'upload' && (
-              <SellerPage />
-            )}
-            {userRole === 'seller' && isLoggedIn && view === 'my-products' && (
-              <ProductList sellerId={seller?.seller_id} />
-            )}
-            {userRole === 'seller' && isLoggedIn && view === 'fin-projection' && (
-              <SellerFinancialProj seller={seller} />
-            )}
-            {userRole === 'seller' && isLoggedIn && view === 'seller-account' && (
-              <SellerAccountView seller={seller} />
-            )}
+            <Outlet />
           </div>
         </div>
-
-        {/* Footer */}
         <footer className="text-center py-3 text-xs text-gray-400 border-t border-gray-200 bg-white">
           ShaadiSahulat — FYP 2026 | NUCES Chiniot-Faisalabad
         </footer>
       </main>
 
-      {/* ── CART DRAWER ──────────────────────────────────────────────────── */}
       <CartDrawer open={cartOpen} onClose={() => setCart(false)} buyerId={buyer?.buyer_id} />
     </div>
   );
 }
 
+// ── Seller Layout ─────────────────────────────────────────────────────────────
+
+function SellerLayout() {
+  const { seller, logoutSeller } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const seg = location.pathname.split('/')[2] || 'dashboard';
+
+  const handleLogout = () => {
+    logoutSeller();
+    navigate('/');
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FCFBFB] flex">
+      {/* Sidebar */}
+      <aside className="fixed md:static w-64 h-screen bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-y-auto z-40">
+        <div className="p-5 border-b border-gray-100/50">
+          <div className="flex items-center gap-3 mb-4">
+            <img src={logo} alt="ShaadiSahulat" className="w-10 h-10 object-contain flex-shrink-0" />
+            <div>
+              <h1 className="font-heading font-bold text-gray-800 text-base leading-tight tracking-tight">ShaadiSahulat</h1>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-0.5">Seller Portal</p>
+            </div>
+          </div>
+        </div>
+        <nav className="p-3 space-y-1.5 mt-2">
+          {SELLER_VIEWS.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => navigate(`/seller/${v.id}`)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
+                seg === v.id
+                  ? 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
+                  : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-gray-800'
+              }`}
+            >
+              <span className={`text-lg transition-transform duration-300 ${seg === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
+              <span>{v.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100/50 bg-white/40 backdrop-blur-md">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-sm bg-gradient-to-br from-[#c09858] to-[#a37b3d]">
+              {seller?.name?.[0]?.toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-800 truncate">{seller?.name}</p>
+              <p className="text-xs text-gray-500 truncate">{seller?.email}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full px-4 py-2.5 text-sm font-medium text-red-600 bg-white border border-red-100 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all shadow-sm flex items-center justify-center gap-2"
+          >
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main className="flex-1 flex flex-col">
+        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="md:hidden flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#c09858] to-[#a37b3d] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
+              <h1 className="font-bold text-gray-800">ShaadiSahulat</h1>
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="hidden sm:block text-xs text-gray-500">Hi, {seller?.name?.split(' ')[0]}</span>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <Outlet />
+          </div>
+        </div>
+        <footer className="text-center py-3 text-xs text-gray-400 border-t border-gray-200 bg-white">
+          ShaadiSahulat — FYP 2026 | NUCES Chiniot-Faisalabad
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+// ── Admin layout wrapper (passes auth props) ──────────────────────────────────
+
+function AdminLayoutWrapper() {
+  const { admin, logoutAdmin } = useAuth();
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    logoutAdmin();
+    navigate('/');
+  };
+  return <AdminLayout admin={admin} onLogout={handleLogout} />;
+}
+
+// ── Buyer page components ─────────────────────────────────────────────────────
+
+function BuyerDashboardPage() {
+  const { buyer } = useAuth();
+  const navigate = useNavigate();
+  return (
+    <BuyerDashboard
+      buyer={buyer}
+      onViewProduct={(p) => navigate(`/buyer/product/${p.product_id}`, { state: { product: p, from: 'dashboard' } })}
+    />
+  );
+}
+
+function BuyerMarketplacePage() {
+  const { buyer } = useAuth();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const [highlightId, setHighlightId] = useState(location.state?.highlightProductId || null);
+
+  return (
+    <MarketplacePage
+      highlightProductId={highlightId}
+      onHighlightCleared={() => setHighlightId(null)}
+      buyer={buyer}
+      onViewProduct={(p) => navigate(`/buyer/product/${p.product_id}`, { state: { product: p, from: 'marketplace' } })}
+    />
+  );
+}
+
+function BuyerVisualPage() {
+  const { buyer } = useAuth();
+  const navigate  = useNavigate();
+  return (
+    <VisualRecPage
+      userId={buyer?.buyer_id}
+      onNavigateToProduct={(productId) =>
+        navigate('/buyer/marketplace', { state: { highlightProductId: productId } })
+      }
+    />
+  );
+}
+
+function BuyerDowryPage() {
+  const { buyer } = useAuth();
+  return <DowryPage userId={buyer?.buyer_id} />;
+}
+
+function BuyerProjectionPage() {
+  const { buyer } = useAuth();
+  return <FinalProjection buyer={buyer} />;
+}
+
+function BuyerAccountPage() {
+  const { buyer } = useAuth();
+  return <BuyerAccountView buyer={buyer} />;
+}
+
+function BuyerProductDetailPage() {
+  const { buyer }    = useAuth();
+  const navigate     = useNavigate();
+  const { productId } = useParams();
+  const location     = useLocation();
+  const product      = location.state?.product || null;
+  const from         = location.state?.from || 'marketplace';
+
+  return (
+    <ProductDetailPage
+      product={product}
+      productId={productId}
+      buyer={buyer}
+      onBack={() => navigate(`/buyer/${from}`)}
+    />
+  );
+}
+
+// ── Seller page components ────────────────────────────────────────────────────
+
+function SellerDashboardPage() {
+  const { seller } = useAuth();
+  const navigate   = useNavigate();
+  return (
+    <SellerDashboard
+      seller={seller}
+      onNavigate={(id) => navigate(`/seller/${SELLER_NAV_MAP[id] || id}`)}
+    />
+  );
+}
+
+function SellerUploadPage() {
+  return <SellerPage />;
+}
+
+function SellerProductsPage() {
+  const { seller } = useAuth();
+  return <ProductList sellerId={seller?.seller_id} />;
+}
+
+function SellerFinancePage() {
+  const { seller } = useAuth();
+  return <SellerFinancialProj seller={seller} />;
+}
+
+function SellerAccountPage() {
+  const { seller } = useAuth();
+  return <SellerAccountView seller={seller} />;
+}
+
+// ── Login pages ───────────────────────────────────────────────────────────────
+
+function BuyerLoginPage() {
+  const { buyer, loginBuyer } = useAuth();
+  const navigate = useNavigate();
+  if (buyer) return <Navigate to="/buyer/dashboard" replace />;
+  return <BuyerAuthPage onLogin={(b) => { loginBuyer(b); navigate('/buyer/dashboard'); }} />;
+}
+
+function SellerLoginPage() {
+  const { seller, loginSeller } = useAuth();
+  const navigate = useNavigate();
+  if (seller) return <Navigate to="/seller/dashboard" replace />;
+  return <SellerAuthPage onLogin={(s) => { loginSeller(s); navigate('/seller/dashboard'); }} />;
+}
+
+function AdminLoginPage() {
+  const { admin, loginAdmin } = useAuth();
+  const navigate = useNavigate();
+  if (admin) return <Navigate to="/admin/dashboard" replace />;
+  return (
+    <AdminLogin
+      onLogin={(a) => { loginAdmin(a); navigate('/admin/dashboard'); }}
+      onBack={() => navigate('/')}
+    />
+  );
+}
+
+// ── Landing ───────────────────────────────────────────────────────────────────
+
+function Landing() {
+  const { buyer, seller } = useAuth();
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen bg-[#FCFBFB] relative">
+      <LandingPage
+        onSelectBuyer={() => navigate(buyer ? '/buyer/dashboard' : '/buyer/login')}
+        onSelectSeller={() => navigate(seller ? '/seller/dashboard' : '/seller/login')}
+      />
+      <button
+        onClick={() => navigate('/admin/login')}
+        className="fixed bottom-4 right-4 text-xs text-gray-400 hover:text-gray-600 bg-white/80 border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm transition-colors"
+      >
+        Admin Portal
+      </button>
+    </div>
+  );
+}
+
+// ── Root App ──────────────────────────────────────────────────────────────────
+
 export default function App() {
   return (
     <CartProvider>
-      <AppContent />
+      <AuthProvider>
+        <Routes>
+          {/* Landing */}
+          <Route path="/" element={<Landing />} />
+
+          {/* Buyer */}
+          <Route path="/buyer/login" element={<BuyerLoginPage />} />
+          <Route path="/buyer" element={<RequireBuyer />}>
+            <Route element={<BuyerLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard"           element={<BuyerDashboardPage />} />
+              <Route path="marketplace"         element={<BuyerMarketplacePage />} />
+              <Route path="visual"              element={<BuyerVisualPage />} />
+              <Route path="dowry"               element={<BuyerDowryPage />} />
+              <Route path="projection"          element={<BuyerProjectionPage />} />
+              <Route path="account"             element={<BuyerAccountPage />} />
+              <Route path="product/:productId"  element={<BuyerProductDetailPage />} />
+            </Route>
+          </Route>
+
+          {/* Seller */}
+          <Route path="/seller/login" element={<SellerLoginPage />} />
+          <Route path="/seller" element={<RequireSeller />}>
+            <Route element={<SellerLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<SellerDashboardPage />} />
+              <Route path="upload"    element={<SellerUploadPage />} />
+              <Route path="products"  element={<SellerProductsPage />} />
+              <Route path="finance"   element={<SellerFinancePage />} />
+              <Route path="account"   element={<SellerAccountPage />} />
+            </Route>
+          </Route>
+
+          {/* Admin */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={<RequireAdmin />}>
+            <Route element={<AdminLayoutWrapper />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard"   element={<FinancialDashboard />} />
+              <Route path="sellers"     element={<SellerManagement />} />
+              <Route path="buyers"      element={<BuyerManagement />} />
+              <Route path="marketplace" element={<MarketplacePage isAdminView={true} />} />
+              <Route path="categories"  element={<CategoryManager />} />
+              <Route path="orders"      element={<OrdersPage />} />
+            </Route>
+          </Route>
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
     </CartProvider>
   );
 }
