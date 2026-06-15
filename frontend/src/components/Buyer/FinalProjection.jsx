@@ -75,12 +75,15 @@ export default function FinalProjection({ buyer }) {
   if (!dowry?.category_budgets) {
     return (
       <div className="animate-fade-in space-y-6 max-w-5xl mx-auto">
-        <div className="bg-gradient-to-br from-[#a37b3d] via-[#ECD4A8] to-[#FFF5F8] rounded-3xl p-8 text-[#3d2c12] shadow-xl shadow-[#ECD4A8]/20 relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-white/20 rounded-full blur-2xl pointer-events-none" />
-          <h1 className="text-3xl font-black mb-2 flex items-center gap-2">
-            <BarChart3 size={32} /> Spending Projection
+        <div className="bg-gradient-to-tr from-[#1a0a1e] via-[#2d2d44] to-[#3d3455] rounded-3xl p-8 text-white shadow-xl relative overflow-hidden border border-white/10">
+          <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-slate-300 text-xs font-bold tracking-wide mb-3">
+            <span>👰</span> Buyer Portal · Financial Projection
+          </div>
+          <h1 className="text-3xl font-black mb-2 flex items-center gap-2 bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent">
+            <BarChart3 size={32} className="text-white" /> Spending Projection
           </h1>
-          <p className="text-[#5c4724] font-light max-w-xl">
+          <p className="bg-gradient-to-r from-slate-300 via-purple-200 to-pink-200 bg-clip-text text-transparent font-light max-w-xl">
             Live budget forecasting, historical comparison, and real-time tracking metrics.
           </p>
         </div>
@@ -119,31 +122,36 @@ export default function FinalProjection({ buyer }) {
 
   const projections = {
     optimistic:  { label: 'Optimistic Track',   total: Math.round(totalEst * 0.70), pct: 70, desc: 'Calculated minimal requirements', color: 'from-emerald-500 to-teal-500' },
-    realistic:   { label: 'Realistic Path',    total: Math.round(totalEst * 0.85), pct: 85, desc: 'Standard shopping trajectory', color: 'from-[#a37b3d] to-[#ECD4A8]' },
+    realistic:   { label: 'Realistic Path',    total: Math.round(totalEst * 0.85), pct: 85, desc: 'Standard shopping trajectory', color: 'from-violet-600 to-purple-400' },
     pessimistic: { label: 'Maximum Limit', total: totalEst,                    pct: 100, desc: 'Complete category consumption', color: 'from-rose-400 to-rose-500' },
   };
 
   return (
     <div className="animate-fade-in space-y-8 max-w-5xl mx-auto pb-12">
       {/* Header Banner */}
-      <div className="bg-gradient-to-br from-[#a37b3d] via-[#ECD4A8] to-[#FFF5F8] rounded-3xl p-6 sm:p-8 text-[#3d2c12] shadow-xl shadow-[#ECD4A8]/20 relative overflow-hidden">
-        <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-white/20 rounded-full blur-2xl pointer-events-none" />
+      <div className="bg-gradient-to-tr from-[#1a0a1e] via-[#2d2d44] to-[#3d3455] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-white/10">
+        <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-slate-300 text-xs font-bold tracking-wide mb-3">
+              <span>👰</span> Buyer Portal · Financial Projection
+            </div>
             <h1 className="text-3xl font-black mb-1.5 flex items-center gap-2 tracking-tight">
-              <BarChart3 size={32} /> Spending Projection
+              <span className="bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+                <BarChart3 size={32} className="text-white" /> Spending Projection
+              </span>
             </h1>
-            <p className="text-[#5c4724] font-light text-sm sm:text-base">
+            <p className="bg-gradient-to-r from-slate-300 via-purple-200 to-pink-200 bg-clip-text text-transparent font-light text-sm sm:text-base">
               Synchronized with your real-time Dowry Estimator data.
             </p>
           </div>
-          <div className="bg-white/30 backdrop-blur-md border border-white/40 rounded-2xl px-5 py-3 shrink-0 flex items-center gap-3">
-            <div className="p-2 bg-white rounded-xl text-[#a37b3d] shadow-sm">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 shrink-0 flex items-center gap-3">
+            <div className="p-2 bg-white/15 rounded-xl text-white shadow-sm">
               <Sparkles size={18} />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-bold tracking-wider text-[#7c6031]">Active Budget</p>
-              <p className="text-sm font-black text-[#3d2c12]">{formatPKRFull(totalEst)}</p>
+              <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Active Budget</p>
+              <p className="text-sm font-black text-white">{formatPKRFull(totalEst)}</p>
             </div>
           </div>
         </div>
@@ -248,7 +256,7 @@ export default function FinalProjection({ buyer }) {
               </div>
               <div className="w-full bg-gray-200/60 rounded-full h-3 overflow-hidden p-0.5">
                 <div
-                  className="bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] h-2 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-violet-600 to-purple-400 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, spentPct)}%` }}
                 />
               </div>
@@ -330,7 +338,7 @@ export default function FinalProjection({ buyer }) {
                   
                   <div className="w-full bg-gray-200/60 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className={`h-1.5 rounded-full ${isOver ? 'bg-rose-500' : 'bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8]'}`}
+                      className={`h-1.5 rounded-full ${isOver ? 'bg-rose-500' : 'bg-gradient-to-r from-violet-600 to-purple-400'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>

@@ -70,9 +70,12 @@ export default function SellerFinancialProjection({ seller }) {
   return (
     <div className="animate-fade-in space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] rounded-2xl p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold mb-1">💹 Financial Projections</h1>
-        <p className="text-[#FBEFF1]">Revenue, expenses, and profit analysis</p>
+      <div className="bg-gradient-to-tr from-[#1a0a1e]/90 via-[#2d2d44]/90 to-[#3d3455]/90 rounded-2xl p-6 text-white shadow-lg border border-white/10">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-slate-300 text-xs font-bold tracking-wide mb-3">
+          <span>🏪</span> Seller Portal · Financial Projections
+        </div>
+        <h1 className="text-3xl font-bold mb-1 bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent">💹 Financial Projections</h1>
+        <p className="text-slate-400">Revenue, expenses, and profit analysis</p>
       </div>
 
       {/* Key Metrics */}
@@ -222,7 +225,7 @@ export default function SellerFinancialProjection({ seller }) {
                   <div className="flex items-center justify-between">
                     <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
                       <div
-                        className="bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] h-2 rounded-full"
+                        className="bg-gradient-to-r from-violet-600 to-indigo-400 h-2 rounded-full"
                         style={{ width: `${item.percentage}%` }}
                       />
                     </div>
@@ -258,7 +261,7 @@ export default function SellerFinancialProjection({ seller }) {
                   <div className="flex items-center justify-between">
                     <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
                       <div
-                        className="bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] h-2 rounded-full"
+                        className="bg-gradient-to-r from-violet-600 to-indigo-400 h-2 rounded-full"
                         style={{ width: `${exp.percentage}%` }}
                       />
                     </div>
