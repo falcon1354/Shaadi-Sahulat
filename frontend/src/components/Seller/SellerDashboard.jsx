@@ -48,24 +48,30 @@ export default function SellerDashboard({ seller, onNavigate }) {
   return (
     <div className="animate-fade-in space-y-8 max-w-5xl mx-auto pb-12">
       {/* Header - Premium Dynamic Gradient */}
-      <div className="bg-gradient-to-tr from-[#a37b3d] via-[#ECD4A8] to-[#FFF5F8] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-[#ECD4A8]/20 relative overflow-hidden">
-        <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+      <div className="bg-gradient-to-tr from-[#1a0a1e]/80 via-[#2d2d44]/80 to-[#3d3455]/80 rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden border border-white/10 backdrop-blur-sm">
+        <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-slate-300 text-xs font-bold tracking-wide backdrop-blur-sm mb-3">
+              <span>🏪</span> Seller Portal
+            </div>
             <h1 className="text-3xl font-black mb-1.5 flex items-center gap-2.5 tracking-tight">
-              Welcome back, {seller?.name?.split(' ')[0]}! <Sparkles className="text-yellow-300 animate-pulse" size={28} />
+              <span className="bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent">
+                Welcome back, {seller?.name?.split(' ')[0]}!
+              </span>
+              <Sparkles className="text-yellow-400 animate-pulse" size={28} />
             </h1>
-            <p className="text-primary-100 font-light text-sm sm:text-base">
+            <p className="bg-gradient-to-r from-slate-300 via-purple-200 to-pink-200 bg-clip-text text-transparent font-light text-sm sm:text-base">
               Manage your business catalog, track revenue metrics, and inspect system orders.
             </p>
           </div>
           <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 shrink-0 flex items-center gap-3">
-            <div className="p-2.5 bg-white rounded-xl text-primary-900 shadow-sm">
-              <Store size={20} />
+            <div className="p-2.5 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl shadow-sm">
+              <Store size={20} className="text-white" />
             </div>
             <div>
-              <p className="text-[10px] uppercase font-bold tracking-wider text-primary-200">Merchant Store</p>
-              <p className="text-sm font-black tracking-tight">{seller?.name || 'Seller Account'}</p>
+              <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Merchant Store</p>
+              <p className="text-sm font-black tracking-tight text-white">{seller?.name || 'Seller Account'}</p>
             </div>
           </div>
         </div>
@@ -175,7 +181,7 @@ export default function SellerDashboard({ seller, onNavigate }) {
                   <span className="text-[9px] text-gray-500 font-mono font-bold">
                     {m.sales >= 1000 ? `${(m.sales / 1000).toFixed(0)}K` : m.sales}
                   </span>
-                  <div className="w-full rounded-t-xl bg-gradient-to-t from-[#a37b3d] to-[#ECD4A8] transition-all duration-500 hover:opacity-90"
+                  <div className="w-full rounded-t-xl bg-gradient-to-t from-violet-700 to-indigo-400 transition-all duration-500 hover:opacity-90"
                     style={{ height: `${pct}%` }} />
                   <span className="text-xs text-gray-500 font-bold">{m.month}</span>
                 </div>
@@ -208,7 +214,7 @@ export default function SellerDashboard({ seller, onNavigate }) {
                       <span className="text-gray-500">{cnt} product{cnt !== 1 ? 's' : ''} ({pct}%)</span>
                     </div>
                     <div className="w-full bg-gray-100/80 rounded-full h-2 overflow-hidden">
-                      <div className="h-2 rounded-full bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] transition-all duration-500" style={{ width: `${pct}%` }} />
+                      <div className="h-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-400 transition-all duration-500" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );

@@ -16,7 +16,7 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
           <div className="w-32 h-32 mx-auto mb-6 flex items-center justify-center">
             <img src={logo} alt="ShaadiSahulat Logo" className="w-full h-full object-contain drop-shadow-md" />
           </div>
-          <h1 className="font-heading text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#a37b3d] via-[#ECD4A8] to-rose-400 mb-4 tracking-tight">
+          <h1 className="font-heading text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-700 via-pink-500 to-rose-400 mb-4 tracking-tight">
             ShaadiSahulat
           </h1>
           <p className="text-xl text-gray-600 font-light mb-2">Your Complete Wedding Planning Platform</p>
@@ -30,9 +30,9 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
             onClick={onSelectBuyer}
             className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative border border-[#FBEFF1]"
           >
-            <div className="h-40 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
-              <ShoppingBag size={64} color="white" strokeWidth={1} className="group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md" />
+            <div className="h-40 bg-gradient-to-br from-[#1a0a1e] via-[#2d2044] to-[#3d3060] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden border border-white/10">
+              <div className="absolute inset-0 bg-purple-500/10 rounded-[1.5rem]" />
+              <ShoppingBag size={64} color="white" strokeWidth={1} className="group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md relative z-10" />
             </div>
             <div className="p-8">
               <h2 className="font-heading text-2xl font-bold text-gray-800 mb-2">I'm a Buyer</h2>
@@ -46,14 +46,14 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
                   "Track spending & analytics"
                 ].map((text, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <CheckCircle2 size={18} className="text-[#a37b3d] flex-shrink-0" />
+                    <CheckCircle2 size={18} className="text-purple-600 flex-shrink-0" />
                     <span className="text-sm text-gray-600 font-medium">{text}</span>
                   </div>
                 ))}
               </div>
 
               <button
-                className="w-full px-4 py-3.5 bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] text-gray-900 font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full px-4 py-3.5 bg-gradient-to-r from-purple-700 to-pink-500 text-white font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 Continue as Buyer 
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
@@ -66,9 +66,9 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
             onClick={onSelectSeller}
             className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative border border-[#FBEFF1]"
           >
-            <div className="h-40 bg-gradient-to-br from-[#c09858] via-[#ECD4A8] to-[#FFF5F8] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden">
-               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
-               <Store size={64} className="text-gray-900 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md" strokeWidth={1} />
+            <div className="h-40 bg-gradient-to-br from-[#0a1020] via-[#1a2040] to-[#252d55] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden border border-white/10">
+               <div className="absolute inset-0 bg-indigo-500/10 rounded-[1.5rem]" />
+               <Store size={64} className="text-white group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md relative z-10" strokeWidth={1} />
             </div>
             <div className="p-8">
               <h2 className="font-heading text-2xl font-bold text-gray-800 mb-2">I'm a Seller</h2>
@@ -82,14 +82,14 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
                   "Financial projections & reports"
                 ].map((text, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <CheckCircle2 size={18} className="text-[#a37b3d] flex-shrink-0" />
+                    <CheckCircle2 size={18} className="text-indigo-600 flex-shrink-0" />
                     <span className="text-sm text-gray-600 font-medium">{text}</span>
                   </div>
                 ))}
               </div>
 
               <button
-                className="w-full px-4 py-3.5 bg-gradient-to-r from-[#c09858] to-[#ECD4A8] text-gray-900 font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full px-4 py-3.5 bg-gradient-to-r from-indigo-700 to-violet-500 text-white font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 Continue as Seller 
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />

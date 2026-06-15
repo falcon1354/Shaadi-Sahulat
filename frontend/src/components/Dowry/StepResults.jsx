@@ -8,8 +8,8 @@ import { Sparkles, ArrowRight, TrendingUp, Info, HelpCircle, Save, CheckCircle2 
 
 // 10-colour palette — repeats for more than 10 categories
 const PALETTE = [
-  '#a37b3d','#ECD4A8','#dfc08d','#d0ac72','#c09858',
-  '#8a6633','#FDF2F3','#FBEFF1','#FEF4F7','#FFF5F8',
+  '#7C3AED','#2563EB','#0891B2','#059669','#D97706',
+  '#DC2626','#C026D3','#0D9488','#EA580C','#4F46E5',
 ];
 
 const formatPKR = (v) => {

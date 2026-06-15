@@ -4,7 +4,7 @@ import adminApi from '../../api/adminApi';
 import { resolveImageUrl } from '../../api/sellerApi';
 import { useCategories } from '../../hooks/useCategories';
 
-const CAT_COLORS = ['#7c3aed','#db2777','#ea580c','#16a34a','#0891b2','#d97706','#dc2626','#059669','#7c3aed','#f59e0b'];
+const CAT_COLORS = ['#7C3AED','#2563EB','#0891B2','#059669','#D97706','#DC2626','#C026D3','#0D9488','#EA580C','#4F46E5'];
 
 export default function FinancialDashboard() {
   const { categories } = useCategories();
@@ -44,6 +44,9 @@ export default function FinancialDashboard() {
   return (
     <div className="space-y-6">
       <div>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-xs font-bold tracking-wide mb-3">
+          <span>⚙</span> Admin Portal
+        </div>
         <h1 className="text-2xl font-bold text-gray-800">Financial Dashboard</h1>
         <p className="text-sm text-gray-500 mt-1">Platform overview and product analytics</p>
       </div>
@@ -67,10 +70,11 @@ export default function FinancialDashboard() {
       </div>
 
       {/* Revenue banner */}
-      <div className="bg-gradient-to-r from-[#a37b3d] to-[#a37b3d] rounded-2xl p-6 text-white">
-        <p className="text-[#FDF2F3] text-sm font-medium">Simulated Total Revenue</p>
-        <h3 className="text-3xl font-bold mt-1">PKR {(stats?.revenue_simulated || 0).toLocaleString()}</h3>
-        <p className="text-[#FDF2F3] text-xs mt-2">Based on listed product prices × available inventory</p>
+      <div className="bg-gradient-to-tr from-[#1a0a1e] via-[#2d2d44] to-[#3d3455] rounded-2xl p-6 text-white border border-white/10 relative overflow-hidden">
+        <div className="absolute right-0 bottom-0 translate-y-8 translate-x-8 w-40 h-40 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
+        <p className="text-slate-400 text-sm font-medium relative z-10">Simulated Total Revenue</p>
+        <h3 className="text-3xl font-bold mt-1 bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent relative z-10">PKR {(stats?.revenue_simulated || 0).toLocaleString()}</h3>
+        <p className="text-slate-400 text-xs mt-2 relative z-10">Based on listed product prices × available inventory</p>
       </div>
 
       {/* Charts */}

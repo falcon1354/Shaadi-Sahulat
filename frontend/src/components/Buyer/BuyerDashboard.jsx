@@ -130,31 +130,38 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
 
   return (
     <div className="animate-fade-in space-y-8 pb-12">
-      {/* Premium Gradient Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#a37b3d] via-[#ECD4A8] to-[#FFF5F8] rounded-3xl p-8 md:p-10 text-[#3d2c12] shadow-xl shadow-[#ECD4A8]/10 border border-[#ECD4A8]/20">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-white/20 rounded-full blur-2xl" />
-        <div className="absolute bottom-0 left-1/3 -mb-10 w-72 h-72 bg-[#FFF5F8]/30 rounded-full blur-3xl" />
-        
+      {/* Premium Dark Hero Header */}
+      <div className="relative overflow-hidden bg-gradient-to-tr from-[#1a0a1e] via-[#2d2d44] to-[#3d3455] rounded-3xl p-8 md:p-10 text-white shadow-xl border border-white/10">
+        <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/60 text-[#a37b3d] text-xs font-semibold tracking-wide backdrop-blur-sm border border-[#ECD4A8]/20 mb-4">
-              <Sparkles size={12} className="text-[#a37b3d]" />
-              <span>Smart Wedding Planner</span>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-slate-300 text-xs font-bold tracking-wide backdrop-blur-sm">
+                <Sparkles size={12} className="text-slate-300" />
+                <span>Buyer Portal</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-slate-400 text-xs font-semibold tracking-wide backdrop-blur-sm">
+                <span>Smart Wedding Planner</span>
+              </div>
             </div>
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2 flex items-center gap-3">
-              Welcome back, {buyer?.name?.split(' ')[0]}! <Hand className="text-[#a37b3d] animate-bounce" size={32} />
+              <span className="bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent">
+                Welcome back, {buyer?.name?.split(' ')[0]}!
+              </span>
+              <Hand className="text-white animate-bounce" size={32} />
             </h1>
-            <p className="text-[#5c4724] max-w-xl text-sm md:text-base font-light">
+            <p className="bg-gradient-to-r from-slate-300 via-purple-200 to-pink-200 bg-clip-text text-transparent max-w-xl text-sm md:text-base font-light">
               Here is an overview of your wedding budget, wishlist, and recommendations. Take charge of your wedding preparations with ease!
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <div className="h-12 w-12 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center border border-white/80 shadow-inner">
-              <Clock size={20} className="text-[#a37b3d]" />
+            <div className="h-12 w-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner">
+              <Clock size={20} className="text-slate-300" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-[#7c6031]">System Time</p>
-              <p className="text-sm font-semibold text-[#3d2c12]">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+              <p className="text-[10px] uppercase tracking-wider text-slate-400">System Time</p>
+              <p className="text-sm font-semibold text-white">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
             </div>
           </div>
         </div>
@@ -332,7 +339,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                       {/* Individual Category progress bar */}
                       <div className="w-full bg-gray-200/80 rounded-full h-1.5 overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-rose-500' : itemPct > 80 ? 'bg-amber-400' : 'bg-[#ECD4A8]'}`}
+                          className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-rose-500' : itemPct > 80 ? 'bg-amber-400' : 'bg-violet-500'}`}
                           style={{ width: `${itemPct}%` }}
                         />
                       </div>
@@ -350,7 +357,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
               </div>
               <div className="w-full bg-gray-100 rounded-full h-3 p-0.5 border border-[#FBEFF1]">
                 <div
-                  className="bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] h-2 rounded-full transition-all duration-500 shadow-md"
+                  className="bg-gradient-to-r from-violet-600 to-purple-400 h-2 rounded-full transition-all duration-500 shadow-md"
                   style={{ width: `${Math.min(100, spentPct)}%` }}
                 />
               </div>
@@ -427,7 +434,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                           <span className="text-gray-400">PKR {spent.toLocaleString()} / PKR {est.toLocaleString()}</span>
                         </div>
                         <div className="w-full bg-gray-100 rounded-full h-2">
-                          <div className={`h-2 rounded-full transition-all duration-300 ${pct > 90 ? 'bg-rose-500' : pct > 70 ? 'bg-amber-400' : 'bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8]'}`}
+                          <div className={`h-2 rounded-full transition-all duration-300 ${pct > 90 ? 'bg-rose-500' : pct > 70 ? 'bg-amber-400' : 'bg-gradient-to-r from-violet-600 to-purple-400'}`}
                             style={{ width: `${pct}%` }} />
                         </div>
                       </div>
