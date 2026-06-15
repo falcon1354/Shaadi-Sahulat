@@ -1,14 +1,13 @@
 import React, { useState, useCallback } from 'react';
-import { Shirt, Users, User, AlertCircle, Ban, Search, Camera } from 'lucide-react';
+import { Shirt, User, AlertCircle, Ban, Search, Camera } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import ResultsGrid from './ResultsGrid';
 import ServiceStatus from './ServiceStatus';
 import visualApi from '../../api/visualApi';
 
-// Only Bridal / Groom — map to a valid ML category for the backend
+// Bridal only — map to a valid ML category for the backend
 const HINT_OPTIONS = [
   { id: 'bridal', label: 'Bridal', icon: <User size={20} className="text-[#a37b3d]" />, backendCat: 'bridal_lehenga' },
-  { id: 'groom',  label: 'Groom',  icon: <Users size={20} className="text-blue-500" />, backendCat: null },          // no dedicated model class; TF-IDF handles it
 ];
 
 // Error stage → display config
@@ -109,7 +108,7 @@ export default function VisualRecPage({ userId, onNavigateToProduct }) {
           {/* Image Upload */}
           <ImageUpload onFileSelect={handleFileSelect} preview={preview} loading={loading} />
 
-          {/* Dress Type Hint — Bridal / Groom only */}
+          {/* Dress Type Hint */}
           <div className="bg-white rounded-xl shadow-sm border border-primary-200 p-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">
               Dress Type
