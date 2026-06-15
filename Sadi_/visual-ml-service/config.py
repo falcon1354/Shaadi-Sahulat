@@ -80,7 +80,7 @@ MAX_RESULTS_DEFAULT = 3     # Return up to 3 recommendations via cascade
 MAX_RESULTS_LIMIT   = 20
 
 # ── Validation Thresholds ──────────────────────────────────────────────────
-CATEGORY_CONFIDENCE_THRESHOLD = 0.50
+CATEGORY_CONFIDENCE_THRESHOLD = 0.30
 SAFETY_SIMILARITY_THRESHOLD   = 0.70
 MAX_UPLOAD_SIZE_MB            = 5
 

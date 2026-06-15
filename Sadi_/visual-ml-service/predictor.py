@@ -44,7 +44,7 @@ from embedding_index import hybrid_search
 
 # Minimum quality gate: if even the best result scores below this in ALL
 # similarity dimensions, we consider the uploaded image non-matching.
-_GATE_THRESHOLD = 0.40
+_GATE_THRESHOLD = 0.30
 
 
 class VisualPredictor:

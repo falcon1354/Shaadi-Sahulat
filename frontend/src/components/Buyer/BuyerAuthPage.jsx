@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { registerBuyer, loginBuyer, saveBuyerToStorage } from '../../api/buyerApi';
 
 export default function BuyerAuthPage({ onLogin }) {
+  const navigate = useNavigate();
   const [mode,    setMode]    = useState('login');   // 'login' | 'register'
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
@@ -155,6 +157,15 @@ export default function BuyerAuthPage({ onLogin }) {
             {mode === 'login' ? 'Register' : 'Sign in'}
           </button>
         </p>
+      </div>
+
+      <div className="text-center mt-5">
+        <button
+          onClick={() => navigate('/')}
+          className="text-sm text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1.5 mx-auto"
+        >
+          ← Back to Home
+        </button>
       </div>
     </div>
   );
