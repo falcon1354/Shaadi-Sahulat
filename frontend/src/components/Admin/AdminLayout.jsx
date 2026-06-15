@@ -1,22 +1,19 @@
-import React, { useState } from 'react';
-import FinancialDashboard from './FinancialDashboard';
-import SellerManagement  from './SellerManagement';
-import BuyerManagement   from './BuyerManagement';
-import CategoryManager   from './CategoryManager';
-import OrdersPage        from './OrdersPage';
-import MarketplacePage   from '../Marketplace/MarketplacePage';
+import React from 'react';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 
-const VIEWS = [
-  { id: 'dashboard',  label: 'Dashboard',        icon: '📊' },
-  { id: 'sellers',    label: 'Sellers',           icon: '🏪' },
-  { id: 'buyers',     label: 'Buyers',            icon: '👰' },
-  { id: 'marketplace',label: 'Marketplace',       icon: '🛍️' },
-  { id: 'categories', label: 'Category Manager',  icon: '🗂️' },
-  { id: 'orders',     label: 'Orders',            icon: '📦' },
+const ADMIN_VIEWS = [
+  { id: 'dashboard',   label: 'Dashboard',        icon: '📊' },
+  { id: 'sellers',     label: 'Sellers',           icon: '🏪' },
+  { id: 'buyers',      label: 'Buyers',            icon: '👰' },
+  { id: 'marketplace', label: 'Marketplace',       icon: '🛍️' },
+  { id: 'categories',  label: 'Category Manager',  icon: '🗂️' },
+  { id: 'orders',      label: 'Orders',            icon: '📦' },
 ];
 
 export default function AdminLayout({ admin, onLogout }) {
-  const [view, setView] = useState('dashboard');
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const currentSeg = location.pathname.split('/')[2] || 'dashboard';
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -42,12 +39,12 @@ export default function AdminLayout({ admin, onLogout }) {
 
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {VIEWS.map(v => (
+          {ADMIN_VIEWS.map(v => (
             <button
               key={v.id}
-              onClick={() => setView(v.id)}
+              onClick={() => navigate(`/admin/${v.id}`)}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                view === v.id
+                currentSeg === v.id
                   ? 'bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-lg'
                   : 'text-gray-400 hover:bg-gray-800 hover:text-white'
               }`}
@@ -69,14 +66,9 @@ export default function AdminLayout({ admin, onLogout }) {
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Main — page content injected by nested routes */}
       <main className="ml-64 flex-1 p-8 overflow-y-auto min-h-screen">
-        {view === 'dashboard'   && <FinancialDashboard />}
-        {view === 'sellers'     && <SellerManagement />}
-        {view === 'buyers'      && <BuyerManagement />}
-        {view === 'marketplace' && <MarketplacePage isAdminView={true} />}
-        {view === 'categories'  && <CategoryManager />}
-        {view === 'orders'      && <OrdersPage />}
+        <Outlet />
       </main>
     </div>
   );
