@@ -8,14 +8,8 @@ const dowryTrainingSchema = new mongoose.Schema({
   total_family_members:     { type: Number, default: 4 },
   total_recommended_budget: { type: Number, required: true },
   responsibility_score:     { type: Number, default: 0.5 },
-  category_breakdown: {
-    wedding_dress: { type: Number, default: 0 },
-    furniture:     { type: Number, default: 0 },
-    electronics:   { type: Number, default: 0 },
-    kitchen_items: { type: Number, default: 0 },
-    decoration:    { type: Number, default: 0 },
-    miscellaneous: { type: Number, default: 0 },
-  },
+  // Mixed type so it accepts dynamically added admin categories
+  category_breakdown: { type: mongoose.Schema.Types.Mixed, default: {} },
   created_at: { type: Date, default: Date.now },
 });
 

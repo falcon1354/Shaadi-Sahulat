@@ -29,14 +29,8 @@ const dowryEstimationSchema = new mongoose.Schema(
     responsibility_score:     { type: Number, required: true },
 
     // Per-category breakdown (raw amounts from hybrid engine)
-    category_breakdown: {
-      wedding_dress: { type: Number, default: 0 },
-      furniture:     { type: Number, default: 0 },
-      electronics:   { type: Number, default: 0 },
-      kitchen_items: { type: Number, default: 0 },
-      decoration:    { type: Number, default: 0 },
-      miscellaneous: { type: Number, default: 0 },
-    },
+    // Mixed type so it accepts dynamically added admin categories
+    category_breakdown: { type: mongoose.Schema.Types.Mixed, default: {} },
 
     // Full budget tracking object (Contract 1) — Mixed to support dynamic admin-added categories
     category_budgets: { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -76,14 +70,8 @@ const dowryEstimationSchema = new mongoose.Schema(
     youngest_unmarried_age:{ type: Number },
 
     // Priority settings (§2.2 — 4 options)
-    priorities: {
-      priority_wedding_dress: { type: String, enum: priorityEnum, default: "Medium" },
-      priority_furniture:     { type: String, enum: priorityEnum, default: "Medium" },
-      priority_electronics:   { type: String, enum: priorityEnum, default: "Medium" },
-      priority_kitchen_items: { type: String, enum: priorityEnum, default: "Medium" },
-      priority_decoration:    { type: String, enum: priorityEnum, default: "Medium" },
-      priority_miscellaneous: { type: String, enum: priorityEnum, default: "Medium" },
-    },
+    // Mixed type so it accepts dynamically added admin categories
+    priorities: { type: mongoose.Schema.Types.Mixed, default: {} },
 
     // Which Not_Wanted categories chose NOT to redistribute
     redistributions: { type: Map, of: Boolean, default: {} },

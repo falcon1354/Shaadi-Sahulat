@@ -42,12 +42,34 @@ async function findSimilarTrainingProfiles(income, myBudget) {
 async function estimateDowry(req, res) {
   try {
     const inputs  = validateAndNormalizeInputs(req.body);
+
+    // Validation: if fewer than 5 categories selected (priority != Not_Wanted), return error
+    const activeCount = Object.values(inputs.priorities || {})
+      .filter(p => p !== "Not_Wanted")
+      .length;
+    if (activeCount < 5) {
+      return res.status(400).json({ success: false, error: "At least 5 categories must be selected (priority not Not_Wanted)" });
+    }
+
     const result  = await hybridEstimate(inputs, true);
     // Append top-5 similar training profiles (BUYER 7)
     result.training_matches = await findSimilarTrainingProfiles(
       inputs.monthly_household_income,
       result.total_recommended_budget
     );
+    // Filter results: only show categories where priority is not Not_Wanted AND was actively set by user
+    if (result.category_breakdown) {
+      const filteredBreakdown = {};
+      for (const [cat, val] of Object.entries(result.category_breakdown)) {
+        const priKey = `priority_${cat}`;
+        const pri = inputs.priorities[priKey];
+        if (pri && pri !== "Not_Wanted") {
+          filteredBreakdown[cat] = val;
+        }
+      }
+      result.category_breakdown = filteredBreakdown;
+    }
+
     return res.json({ success: true, data: result });
   } catch (error) {
     console.error("[dowryController] Estimate error:", error.message);
@@ -60,6 +82,14 @@ async function saveEstimation(req, res) {
   try {
     const inputs  = validateAndNormalizeInputs(req.body);
     const user_id = req.body.user_id || "anonymous";
+
+    // Validation: if fewer than 5 categories selected (priority != Not_Wanted), return error
+    const activeCount = Object.values(inputs.priorities || {})
+      .filter(p => p !== "Not_Wanted")
+      .length;
+    if (activeCount < 5) {
+      return res.status(400).json({ success: false, error: "At least 5 categories must be selected (priority not Not_Wanted)" });
+    }
 
     const result = await hybridEstimate(inputs, true);
 
@@ -546,6 +576,8 @@ async function migrateBuyerDowryStatus(req, res) {
 
 // ── PATCH /api/dowry/budgets/:user_id ─────────────────────────────────────
 // Persist updated category_budgets (after shift or checkout) to MongoDB.
+// After saving, recalculate total_recommended_budget = sum of all active category estimated values.
+// Update adjusted_estimates and category_breakdown. Sync to Flask profile via async axios call.
 async function patchCategoryBudgets(req, res) {
   try {
     const { user_id } = req.params;
@@ -554,14 +586,45 @@ async function patchCategoryBudgets(req, res) {
       return res.status(400).json({ success: false, error: "category_budgets object required" });
     }
 
+    // Recalculate total_recommended_budget = sum of all active category estimated values
+    const newTotal = Object.values(category_budgets)
+      .filter(cat => cat.active)
+      .reduce((sum, cat) => sum + (cat.estimated || 0), 0);
+
+    // Rebuild adjusted_estimates and category_breakdown from the budgets
+    const adjusted_estimates = {};
+    const category_breakdown = {};
+    for (const [catKey, catObj] of Object.entries(category_budgets)) {
+      adjusted_estimates[catKey] = catObj.estimated || 0;
+      category_breakdown[catKey] = catObj.estimated || 0;
+    }
+
     const updated = await DowryEstimation.findOneAndUpdate(
       { user_id },
-      { $set: { category_budgets } },
+      {
+        $set: {
+          category_budgets,
+          total_recommended_budget: newTotal,
+          adjusted_estimates,
+          category_breakdown,
+        },
+      },
       { sort: { created_at: -1 }, new: true }
     );
     if (!updated) return res.status(404).json({ success: false, error: "No estimation found for this user" });
 
-    return res.json({ success: true, category_budgets: updated.category_budgets });
+    // Async: sync to Flask profile
+    axios.post(`${VISUAL_ML_URL}/dowry/save-profile`, {
+      profile_id: updated._id.toString(),
+      user_id,
+      budget: newTotal,
+      category_budgets,
+      category_breakdown,
+      adjusted_estimates,
+    }, { timeout: 8000 })
+      .catch((err) => console.warn("[dowryController] Flask profile sync failed:", err.message));
+
+    return res.json({ success: true, category_budgets: updated.category_budgets, total_recommended_budget: newTotal });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

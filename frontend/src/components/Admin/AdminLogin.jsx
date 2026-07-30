@@ -13,7 +13,11 @@ export default function AdminLogin({ onLogin, onBack }) {
     try {
       const res = await adminApi.loginAdmin(form);
       if (res.success) {
+        // v3.2: Save admin to localStorage AND fire ss_auth_changed event
+        // so the SocketContext picks up the new identity immediately
+        // (the previous polling-based approach took up to 1.5s).
         localStorage.setItem('ss_admin', JSON.stringify(res.admin));
+        try { window.dispatchEvent(new Event('ss_auth_changed')); } catch {}
         onLogin(res.admin);
       } else {
         setError(res.error || 'Invalid credentials');

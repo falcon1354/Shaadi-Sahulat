@@ -26,12 +26,12 @@ const INITIAL_FORM = {
   youngest_sibling_age:       '',
   wedding_dress_type: 'bridal',          // bridal | groom
   priorities: {
-    priority_wedding_dress: 'Medium',
-    priority_furniture:     'Medium',
-    priority_electronics:   'Medium',
-    priority_kitchen_items: 'Medium',
-    priority_decoration:    'Medium',
-    priority_miscellaneous: 'Medium',
+    priority_wedding_dress: null,
+    priority_furniture:     null,
+    priority_electronics:   null,
+    priority_kitchen_items: null,
+    priority_decoration:    null,
+    priority_miscellaneous: null,
   },
   redistributions: {},                   // { priority_furniture: false }
 };
@@ -45,6 +45,7 @@ function Wizard({ userId }) {
         key:             `priority_${c.category_id}`,
         label:           c.label,
         icon:            c.icon || '📦',
+        iconPng:         c.icon_png || c.icon_url || null,
         hasTypeSelector: c.category_id === 'wedding_dress',
       }))
     : [
@@ -65,7 +66,7 @@ function Wizard({ userId }) {
   const [error,             setError]              = useState('');
   const [isLocked,          setIsLocked]           = useState(false); // existing estimation — read-only
 
-  // When DB categories load, merge any new category keys into priorities with 'Medium' default
+  // When DB categories load, merge any new category keys into priorities with null default
   useEffect(() => {
     if (!dbCats.length) return;
     setFormData(prev => {
@@ -73,7 +74,7 @@ function Wizard({ userId }) {
       let changed = false;
       for (const cat of dbCats) {
         const key = `priority_${cat.category_id}`;
-        if (!(key in merged)) { merged[key] = 'Medium'; changed = true; }
+        if (!(key in merged)) { merged[key] = null; changed = true; }
       }
       return changed ? { ...prev, priorities: merged } : prev;
     });
@@ -185,6 +186,13 @@ function Wizard({ userId }) {
     if (currentStep === 2) {
       if (formData.total_siblings === '' || formData.total_siblings === undefined) {
         setError('Total siblings count is required (enter 0 if none)');
+        return;
+      }
+    }
+    if (currentStep === 3) {
+      const selectedCount = Object.values(formData.priorities).filter(v => v && v !== 'Not_Wanted').length;
+      if (selectedCount < 5) {
+        setError(`You must select at least 5 categories. Currently selected: ${selectedCount}`);
         return;
       }
     }

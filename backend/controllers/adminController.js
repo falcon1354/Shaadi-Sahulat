@@ -304,4 +304,72 @@ module.exports = {
   addCustomField,
   removeCustomField,
   updateSubcategoryPrices,
+  updateCategoryIcon,
+  editCategory,
 };
+
+// ── Category Icon Upload ───────────────────────────────────────────────────
+
+async function updateCategoryIcon(req, res) {
+  try {
+    const { category_id } = req.params;
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "Icon file is required" });
+    }
+
+    const ext = path.extname(req.file.originalname) || ".png";
+    const filename = `${category_id}${ext}`;
+    const { saveCategoryIcon, publicUrl } = require("../lib/storage");
+    const relPath = saveCategoryIcon(filename, req.file.buffer);
+
+    const cat = await AdminCategory.findOneAndUpdate(
+      { category_id },
+      { $set: { icon: relPath } },
+      { new: true }
+    );
+    if (!cat) return res.status(404).json({ success: false, error: "Category not found" });
+
+    return res.json({
+      success: true,
+      message: "Category icon updated",
+      category: { ...cat.toObject(), icon_url: publicUrl(relPath) },
+    });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+// ── Edit Category (PUT) ──────────────────────────────────────────────────
+
+async function editCategory(req, res) {
+  try {
+    const { category_id } = req.params;
+    const { label, price_min, price_max, icon, is_active } = req.body || {};
+
+    const updateFields = {};
+    if (label !== undefined) updateFields.label = label;
+    if (price_min !== undefined) updateFields.price_min = Number(price_min);
+    if (price_max !== undefined) updateFields.price_max = Number(price_max);
+    if (icon !== undefined) updateFields.icon = icon;
+    if (is_active !== undefined) updateFields.is_active = String(is_active) === "true";
+
+    // If a file was uploaded via multipart, handle icon
+    if (req.file) {
+      const ext = path.extname(req.file.originalname) || ".png";
+      const filename = `${category_id}${ext}`;
+      const { saveCategoryIcon, publicUrl } = require("../lib/storage");
+      updateFields.icon = saveCategoryIcon(filename, req.file.buffer);
+    }
+
+    const cat = await AdminCategory.findOneAndUpdate(
+      { category_id },
+      { $set: updateFields },
+      { new: true }
+    );
+    if (!cat) return res.status(404).json({ success: false, error: "Category not found" });
+
+    return res.json({ success: true, category: cat });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+}

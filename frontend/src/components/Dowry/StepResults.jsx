@@ -90,7 +90,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
   const adjustedTotal = Object.values(displayBreakdown).reduce((a, b) => a + b, 0);
 
   const sortedEntries = Object.entries(displayBreakdown)
-    .filter(([key, v]) => v > 0 && (priorities ? priorities[`priority_${key}`] !== 'Not_Wanted' : true))
+    .filter(([key, v]) => v > 0 && (priorities ? (priorities[`priority_${key}`] !== null && priorities[`priority_${key}`] !== 'Not_Wanted') : true))
     .sort(([, a], [, b]) => b - a);
 
   const pieData = sortedEntries.map(([key, value]) => ({
@@ -261,7 +261,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
           </thead>
           <tbody className="divide-y divide-gray-50">
             {Object.entries(result.category_breakdown || {})
-              .filter(([key]) => priorities ? priorities[`priority_${key}`] !== 'Not_Wanted' : true)
+              .filter(([key]) => priorities ? (priorities[`priority_${key}`] !== null && priorities[`priority_${key}`] !== 'Not_Wanted') : true)
               .map(([key, sysAmt]) => {
                 const adjusted = displayBreakdown[key] ?? sysAmt;
                 const pct      = adjustedTotal > 0 ? ((adjusted / adjustedTotal) * 100).toFixed(1) : 0;

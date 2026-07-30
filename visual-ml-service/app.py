@@ -43,6 +43,7 @@ from data_loader import validate_dataset, print_dataset_report
 from embedding_index import build_index, add_single_product, get_index_stats
 from seller_routes import seller_bp
 from dowry_routes import dowry_bp
+from review_ai import review_ai_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -50,6 +51,7 @@ CORS(app)
 # Register blueprints
 app.register_blueprint(seller_bp)
 app.register_blueprint(dowry_bp)
+app.register_blueprint(review_ai_bp)
 
 
 # ── Catalog image serving ─────────────────────────────────────────────────

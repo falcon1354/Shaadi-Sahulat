@@ -40,8 +40,9 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {categories.map((cat) => {
-          const currentPriority  = formData.priorities[cat.key] || 'Medium';
+          const currentPriority  = formData.priorities[cat.key] || null;
           const isNotWanted      = currentPriority === 'Not_Wanted';
+          const isUnselected      = currentPriority === null || currentPriority === '';
           const showPrompt       = isNotWanted && promptShown[cat.key];
           const redistribution   = formData.redistributions[cat.key];
 
@@ -57,13 +58,13 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
               {/* Category header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
-                  <span className={`text-xl p-2 bg-gray-50 rounded-xl shrink-0 ${isNotWanted ? 'opacity-30' : ''}`}>{cat.icon}</span>
+                  <span className={`text-xl p-2 bg-gray-50 rounded-xl shrink-0 ${isNotWanted ? 'opacity-30' : ''}`}>{cat.iconPng ? <img src={cat.iconPng} alt={cat.label} className="w-6 h-6 object-contain" /> : cat.icon}</span>
                   <span className={`text-sm font-bold capitalize ${isNotWanted ? 'text-gray-400 line-through' : 'text-gray-950'}`}>
                     {cat.label}
                   </span>
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${PRIORITY_BADGE_COLOR[currentPriority]}`}>
-                  {currentPriority === 'Not_Wanted' ? 'Excluded' : currentPriority}
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${currentPriority && PRIORITY_BADGE_COLOR[currentPriority] ? PRIORITY_BADGE_COLOR[currentPriority] : 'bg-gray-50 text-gray-300 border-gray-100'}`}>
+                  {currentPriority === 'Not_Wanted' ? 'Excluded' : currentPriority || 'Select'}
                 </span>
               </div>
 
@@ -169,6 +170,16 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
         <p className="text-xs text-primary-900/90 leading-relaxed font-medium">
           Categories are normalized so the total matches your calculated budget. Excluded categories receive zero budget, which is either redistributed to boost remaining items or saved as surplus cash.
         </p>
+      </div>
+
+      {/* Selection counter */}
+      <div className="bg-amber-50/60 border border-amber-200/50 rounded-3xl p-4 text-center">
+        <p className="text-sm font-bold text-amber-900">
+          Selected: {Object.values(formData.priorities).filter(v => v && v !== 'Not_Wanted').length} / Minimum 5 required
+        </p>
+        {Object.values(formData.priorities).filter(v => v && v !== 'Not_Wanted').length < 5 && (
+          <p className="text-xs text-red-600 mt-1 font-semibold">⚠ You must select at least 5 categories to proceed.</p>
+        )}
       </div>
 
       <div className="text-center py-2">

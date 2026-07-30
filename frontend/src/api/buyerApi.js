@@ -85,14 +85,34 @@ export function getBuyerFromStorage() {
 
 export function saveBuyerToStorage(buyer) {
   localStorage.setItem(BUYER_KEY, JSON.stringify(buyer));
+  // v3.2: notify SocketContext immediately (no 1.5s wait)
+  try { window.dispatchEvent(new Event('ss_auth_changed')); } catch {}
 }
 
 export function clearBuyerFromStorage() {
   localStorage.removeItem(BUYER_KEY);
+  try { window.dispatchEvent(new Event('ss_auth_changed')); } catch {}
+}
+
+// ── Saved Addresses ──────────────────────────────────────────────────────────
+
+export async function saveAddress(buyerId, address) {
+  const res = await fetch(`${BASE}/${buyerId}/addresses`, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(address),
+  });
+  return res.json();
+}
+
+export async function getSavedAddresses(buyerId) {
+  const res = await fetch(`${BASE}/${buyerId}/addresses`);
+  return res.json();
 }
 
 export default {
   registerBuyer, loginBuyer, getBuyerProfile, getFullBuyerData,
   toggleWishlistItem, recordRecentlyViewed, patchDowryBudgets, syncCart,
   getBuyerFromStorage, saveBuyerToStorage, clearBuyerFromStorage,
+  saveAddress, getSavedAddresses,
 };

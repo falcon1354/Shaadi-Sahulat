@@ -19,20 +19,38 @@ import FinalProjection     from './components/Buyer/FinalProjection';
 import CartDrawer          from './components/Cart/CartDrawer';
 import LandingPage         from './components/LandingPage';
 import AdminLogin          from './components/Admin/AdminLogin';
+import BannerManager       from './components/Admin/BannerManager';
 import AdminLayout         from './components/Admin/AdminLayout';
 import FinancialDashboard  from './components/Admin/FinancialDashboard';
 import SellerManagement    from './components/Admin/SellerManagement';
 import BuyerManagement     from './components/Admin/BuyerManagement';
 import CategoryManager     from './components/Admin/CategoryManager';
 import OrdersPage          from './components/Admin/OrdersPage';
+import AdminDisputesPage    from './components/Admin/AdminDisputesPage';
+import AdminWalletPage      from './components/Admin/AdminWalletPage';
+import CheckoutPage         from './components/Cart/CheckoutPage';
+import BuyerOrdersPage      from './components/Orders/BuyerOrdersPage';
+import BuyerOrderDetailPage from './components/Orders/BuyerOrderDetailPage';
+import BNPLApplyPage        from './components/BNPL/BNPLApplyPage';
+import BNPLStatusPage       from './components/BNPL/BNPLStatusPage';
+import SellerOrdersPage     from './components/Seller/SellerOrdersPage';
+import BankLoginPage        from './components/Bank/BankLoginPage';
+import BankDashboardPage    from './components/Bank/BankDashboardPage';
+import DisputeChatPage      from './components/Disputes/DisputeChatPage';
+import SellerReviewsPage    from './components/Seller/SellerReviewsPage';
+import AdminReviewsPage     from './components/Admin/AdminReviewsPage';
+import NotificationBell     from './components/Common/NotificationBell';
+import { useNavbarScroll } from './hooks/useNavbarScroll';
+import { listBuyerOrders } from './api/orderApi';
 import { CartProvider, useCart } from './context/CartContext';
+import { SocketProvider } from './context/SocketContext';
 import {
   getBuyerFromStorage, saveBuyerToStorage,
   clearBuyerFromStorage, getFullBuyerData
 } from './api/buyerApi';
 import {
   LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User,
-  ShoppingCart, PlusCircle, Package, LineChart
+  ShoppingCart, PlusCircle, Package, LineChart, Star
 } from 'lucide-react';
 import logo from './assets/ShaadiSahulat Logo PNG.png';
 
@@ -51,6 +69,13 @@ function AuthProvider({ children }) {
     const s = localStorage.getItem('ss_admin');
     return s ? JSON.parse(s) : null;
   });
+
+  // Fire a custom event whenever auth changes so the SocketContext can
+  // rebuild its socket without polling localStorage every 1.5s.
+  // (v3.2 fix — the old polling caused re-renders + intermittent flakiness.)
+  const fireAuthChanged = () => {
+    try { window.dispatchEvent(new Event('ss_auth_changed')); } catch {}
+  };
 
   const loginBuyer = (b) => {
     saveBuyerToStorage(b);
@@ -86,31 +111,37 @@ function AuthProvider({ children }) {
         }).catch(() => {});
       }
     }
+    fireAuthChanged();
   };
 
   const loginSeller = (s) => {
     localStorage.setItem('ss_seller', JSON.stringify(s));
     setSellerState(s);
+    fireAuthChanged();
   };
 
   const loginAdmin = (a) => {
+    localStorage.setItem('ss_admin', JSON.stringify(a));
     setAdminState(a);
-    // AdminLogin.jsx already saves to localStorage
+    fireAuthChanged();
   };
 
   const logoutBuyer = () => {
     clearBuyerFromStorage();
     setBuyerState(null);
+    fireAuthChanged();
   };
 
   const logoutSeller = () => {
     localStorage.removeItem('ss_seller');
     setSellerState(null);
+    fireAuthChanged();
   };
 
   const logoutAdmin = () => {
     localStorage.removeItem('ss_admin');
     setAdminState(null);
+    fireAuthChanged();
   };
 
   return (
@@ -165,61 +196,81 @@ function LevelProgress({ info, ordersLabel }) {
 // ── Account views ─────────────────────────────────────────────────────────────
 
 function BuyerAccountView({ buyer }) {
-  const orders    = buyer?.orders_count || 0;
-  const levelInfo = getBuyerLevel(orders);
-  const joined    = buyer?.created_at
+  const [realOrderCount, setRealOrderCount] = useState(buyer?.orders_count || 0);
+
+  useEffect(() => {
+    if (buyer?.buyer_id) {
+      listBuyerOrders(buyer.buyer_id)
+        .then(res => {
+          if (res?.success && Array.isArray(res.orders)) {
+            setRealOrderCount(res.orders.length);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [buyer?.buyer_id]);
+
+  const levelInfo = getBuyerLevel(realOrderCount);
+  const joined = buyer?.created_at
     ? new Date(buyer.created_at).toLocaleDateString('en-PK', { year: 'numeric', month: 'short' })
     : 'Recently';
 
   return (
-    <div className="animate-fade-in max-w-lg mx-auto space-y-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
-        <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
+    <div className="animate-fade-in max-w-2xl mx-auto space-y-6">
+      {/* Profile Card */}
+      <div className="bg-white rounded-3xl shadow-sm border border-[#FBEFF1] p-6 sm:p-8">
+        <div className="flex items-center gap-5 mb-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-2xl flex items-center justify-center text-white text-3xl font-extrabold shrink-0 shadow-md">
             {buyer?.name?.[0]?.toUpperCase() || '?'}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-gray-800 truncate">{buyer?.name}</h2>
+            <h2 className="text-2xl font-extrabold text-gray-900 truncate">{buyer?.name}</h2>
             <p className="text-sm text-gray-400 truncate">{buyer?.email}</p>
+            <span className="inline-block mt-2 px-3 py-1 bg-[#FFF5F8] text-[#a37b3d] font-bold text-xs rounded-full border border-[#ECD4A8]">
+              {levelInfo.label}
+            </span>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 text-sm">
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
           {buyer?.phone && (
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Phone</p>
-              <p className="font-semibold text-gray-700">{buyer.phone}</p>
+            <div className="bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">Phone</p>
+              <p className="font-semibold text-gray-800">{buyer.phone}</p>
             </div>
           )}
           {buyer?.city && (
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">City</p>
-              <p className="font-semibold text-gray-700">📍 {buyer.city}</p>
+            <div className="bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">City</p>
+              <p className="font-semibold text-gray-800">📍 {buyer.city}</p>
             </div>
           )}
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Member Since</p>
-            <p className="font-semibold text-gray-700">{joined}</p>
+          <div className="bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">Member Since</p>
+            <p className="font-semibold text-gray-800">{joined}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Orders</p>
-            <p className="font-semibold text-gray-700">{orders}</p>
+          <div className="bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">Total Orders</p>
+            <p className="font-extrabold text-[#a37b3d] text-base">{realOrderCount}</p>
           </div>
         </div>
       </div>
-      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
-        <h3 className="text-sm font-semibold text-gray-600 mb-3">Buyer Level</h3>
+
+      {/* Buyer Level Card */}
+      <div className="bg-white rounded-3xl shadow-sm border border-[#FBEFF1] p-6 sm:p-8">
+        <h3 className="text-base font-extrabold text-gray-900 mb-3">Buyer Level & Tier Status</h3>
         <LevelBadge level={levelInfo.level} label={levelInfo.label} colorClass={levelInfo.color} />
-        <LevelProgress info={levelInfo} ordersLabel={`${orders} order${orders !== 1 ? 's' : ''}`} />
-        <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-center">
+        <LevelProgress info={levelInfo} ordersLabel={`${realOrderCount} order${realOrderCount !== 1 ? 's' : ''}`} />
+        <div className="mt-5 grid grid-cols-3 gap-3 text-xs text-center">
           {[
             { l: 1, label: 'New Buyer',    at: 'On registration' },
             { l: 2, label: 'Active Buyer', at: '3+ orders' },
             { l: 3, label: 'Loyal Buyer',  at: '7+ orders' },
           ].map(({ l, label, at }) => (
-            <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-[#FFF5F8] border-[#ECD4A8] text-[#a37b3d]' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
-              <p className="font-bold">L{l}</p>
-              <p className="font-medium text-[10px]">{label}</p>
-              <p className="text-[9px] mt-0.5">{at}</p>
+            <div key={l} className={`rounded-2xl p-3 border transition-all ${levelInfo.level >= l ? 'bg-[#FFF5F8] border-[#ECD4A8] text-[#a37b3d] font-bold shadow-sm' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+              <p className="text-sm font-extrabold">L{l}</p>
+              <p className="font-medium text-xs mt-0.5">{label}</p>
+              <p className="text-[10px] text-gray-400 mt-1">{at}</p>
             </div>
           ))}
         </div>
@@ -311,7 +362,8 @@ const BUYER_VIEWS = [
   { id: 'marketplace', label: 'Marketplace',       icon: <ShoppingBag size={20} /> },
   { id: 'visual',      label: 'Find by Photo',     icon: <Camera size={20} /> },
   { id: 'dowry',       label: 'Budget Estimator',  icon: <Calculator size={20} /> },
-  { id: 'projection',  label: 'Final Projection',  icon: <TrendingUp size={20} /> },
+  { id: 'orders',      label: 'My Orders',         icon: <Package size={20} /> },
+  { id: 'bnpl',        label: 'My BNPL',           icon: <ShoppingCart size={20} /> },
   { id: 'account',     label: 'My Account',        icon: <User size={20} /> },
 ];
 
@@ -319,6 +371,8 @@ const SELLER_VIEWS = [
   { id: 'dashboard', label: 'Dashboard',            icon: <LayoutDashboard size={20} /> },
   { id: 'upload',    label: 'Upload Product',       icon: <PlusCircle size={20} /> },
   { id: 'products',  label: 'My Products',          icon: <Package size={20} /> },
+  { id: 'orders',    label: 'Orders to Fulfill',    icon: <ShoppingCart size={20} /> },
+  { id: 'reviews',   label: 'Reviews',              icon: <Star size={20} /> },
   { id: 'finance',   label: 'Financial Projection', icon: <LineChart size={20} /> },
   { id: 'account',   label: 'My Account',           icon: <User size={20} /> },
 ];
@@ -357,6 +411,7 @@ function BuyerLayout() {
   const location   = useLocation();
   const { totalItems, setBuyerId } = useCart();
   const [cartOpen, setCart] = useState(false);
+  const { visible: navVisible, scrollRef } = useNavbarScroll();
 
   useEffect(() => {
     setBuyerId(buyer?.buyer_id || null);
@@ -418,8 +473,8 @@ function BuyerLayout() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col">
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+      <main className="flex-1 flex flex-col min-h-screen">
+        <header className={`bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 transition-transform duration-300 ${navVisible ? 'translate-y-0' : '-translate-y-full'}`}>
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="md:hidden flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
@@ -427,6 +482,11 @@ function BuyerLayout() {
             </div>
             <div className="flex items-center gap-2 ml-auto">
               <span className="hidden sm:block text-xs text-gray-500">Hi, {buyer?.name?.split(' ')[0]}</span>
+              <NotificationBell
+                userId={buyer?.buyer_id}
+                role="buyer"
+                onNavigate={(path) => navigate(path)}
+              />
               <button
                 onClick={() => setCart(true)}
                 className="relative flex items-center gap-2 px-3 py-1.5 bg-[#a37b3d] text-white rounded-xl text-sm font-medium hover:bg-[#8a6633] transition-colors shadow-sm"
@@ -441,7 +501,9 @@ function BuyerLayout() {
             </div>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto">
+        {/* Spacer to prevent content jump when navbar is fixed */}
+        {!navVisible && <div className="h-[52px]" />}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 py-6">
             <Outlet />
           </div>
@@ -462,6 +524,7 @@ function SellerLayout() {
   const { seller, logoutSeller } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { visible: navVisible } = useNavbarScroll();
 
   const seg = location.pathname.split('/')[2] || 'dashboard';
 
@@ -520,7 +583,7 @@ function SellerLayout() {
 
       {/* Main */}
       <main className="flex-1 flex flex-col">
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+        <header className={`bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 transition-transform duration-300 ${navVisible ? 'translate-y-0' : '-translate-y-full'}`}>
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="md:hidden flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-[#c09858] to-[#a37b3d] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
@@ -528,9 +591,16 @@ function SellerLayout() {
             </div>
             <div className="flex items-center gap-2 ml-auto">
               <span className="hidden sm:block text-xs text-gray-500">Hi, {seller?.name?.split(' ')[0]}</span>
+              <NotificationBell
+                userId={seller?.seller_id}
+                role="seller"
+                onNavigate={(path) => navigate(path)}
+              />
             </div>
           </div>
         </header>
+        {/* Spacer to prevent content jump when navbar is fixed */}
+        {!navVisible && <div className="h-[52px]" />}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 py-6">
             <Outlet />
@@ -560,13 +630,15 @@ function AdminLayoutWrapper() {
 
 function BuyerDashboardPage() {
   const { buyer } = useAuth();
-  const navigate = useNavigate();
   return (
-    <BuyerDashboard
+    <FinalProjection
       buyer={buyer}
-      onViewProduct={(p) => navigate(`/buyer/product/${p.product_id}`, { state: { product: p, from: 'dashboard' } })}
     />
   );
+}
+
+function AdminBannerManagerWrapper() {
+  return <BannerManager />;
 }
 
 function BuyerMarketplacePage() {
@@ -663,6 +735,70 @@ function SellerAccountPage() {
   return <SellerAccountView seller={seller} />;
 }
 
+// ── Wrapper pages for new modules (inject auth from context) ──────────────────
+
+function BuyerOrdersPageWrapper() {
+  const { buyer } = useAuth();
+  return <BuyerOrdersPage buyer={buyer} />;
+}
+function BuyerOrderDetailPageWrapper() {
+  const { buyer } = useAuth();
+  return <BuyerOrderDetailPage buyer={buyer} />;
+}
+function BNPLStatusPageWrapper() {
+  const { buyer } = useAuth();
+  return <BNPLStatusPage buyer={buyer} />;
+}
+function BNPLApplyPageWrapper() {
+  const { buyer } = useAuth();
+  return <BNPLApplyPage buyer={buyer} />;
+}
+function CheckoutPageWrapper() {
+  const { buyer } = useAuth();
+  const { items, clearCart } = useCart();
+  const navigate = useNavigate();
+  return (
+    <CheckoutPage
+      buyer={buyer}
+      items={items}
+      onClose={() => navigate('/buyer/marketplace')}
+      onSuccess={() => { clearCart(); }}
+    />
+  );
+}
+function SellerOrdersPageWrapper() {
+  const { seller } = useAuth();
+  return <SellerOrdersPage seller={seller} />;
+}
+function AdminOrdersPageWrapper() {
+  const { admin } = useAuth();
+  return <OrdersPage admin={admin} />;
+}
+function AdminDisputesPageWrapper() {
+  const { admin } = useAuth();
+  return <AdminDisputesPage admin={admin} />;
+}
+function AdminWalletPageWrapper() {
+  const { admin } = useAuth();
+  return <AdminWalletPage admin={admin} />;
+}
+function SellerReviewsPageWrapper() {
+  const { seller } = useAuth();
+  return <SellerReviewsPage seller={seller} />;
+}
+function AdminReviewsPageWrapper() {
+  const { admin } = useAuth();
+  return <AdminReviewsPage admin={admin} />;
+}
+function DisputeChatWrapper() {
+  const { buyer, seller, admin } = useAuth();
+  // Pick whichever role is logged in (buyer first, then seller, then admin)
+  if (buyer)  return <DisputeChatPage user={{ id: buyer.buyer_id,  role: 'buyer',  name: buyer.name }} />;
+  if (seller) return <DisputeChatPage user={{ id: seller.seller_id, role: 'seller', name: seller.name }} />;
+  if (admin)  return <DisputeChatPage user={{ id: admin.admin_id || admin._id, role: 'admin', name: admin.name || 'Admin' }} />;
+  return <Navigate to="/" replace />;
+}
+
 // ── Login pages ───────────────────────────────────────────────────────────────
 
 function BuyerLoginPage() {
@@ -719,56 +855,81 @@ export default function App() {
   return (
     <CartProvider>
       <AuthProvider>
-        <Routes>
-          {/* Landing */}
-          <Route path="/" element={<Landing />} />
+        <SocketProvider>
+          <Routes>
+            {/* Landing */}
+            <Route path="/" element={<Landing />} />
 
-          {/* Buyer */}
-          <Route path="/buyer/login" element={<BuyerLoginPage />} />
-          <Route path="/buyer" element={<RequireBuyer />}>
-            <Route element={<BuyerLayout />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard"           element={<BuyerDashboardPage />} />
-              <Route path="marketplace"         element={<BuyerMarketplacePage />} />
-              <Route path="visual"              element={<BuyerVisualPage />} />
-              <Route path="dowry"               element={<BuyerDowryPage />} />
-              <Route path="projection"          element={<BuyerProjectionPage />} />
-              <Route path="account"             element={<BuyerAccountPage />} />
-              <Route path="product/:productId"  element={<BuyerProductDetailPage />} />
+            {/* Buyer */}
+            <Route path="/buyer/login" element={<BuyerLoginPage />} />
+            <Route path="/buyer" element={<RequireBuyer />}>
+              <Route element={<BuyerLayout />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard"           element={<BuyerDashboardPage />} />
+                <Route path="marketplace"         element={<BuyerMarketplacePage />} />
+                <Route path="visual"              element={<BuyerVisualPage />} />
+                <Route path="dowry"               element={<BuyerDowryPage />} />
+                <Route path="projection"          element={<Navigate to="/buyer/dashboard" replace />} />
+                <Route path="account"             element={<BuyerAccountPage />} />
+                <Route path="product/:productId"  element={<BuyerProductDetailPage />} />
+                <Route path="orders"              element={<BuyerOrdersPageWrapper />} />
+                <Route path="orders/:orderId"     element={<BuyerOrderDetailPageWrapper />} />
+                <Route path="bnpl"                element={<BNPLStatusPageWrapper />} />
+                <Route path="checkout"            element={<CheckoutPageWrapper />} />
+              </Route>
             </Route>
-          </Route>
 
-          {/* Seller */}
-          <Route path="/seller/login" element={<SellerLoginPage />} />
-          <Route path="/seller" element={<RequireSeller />}>
-            <Route element={<SellerLayout />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<SellerDashboardPage />} />
-              <Route path="upload"    element={<SellerUploadPage />} />
-              <Route path="products"  element={<SellerProductsPage />} />
-              <Route path="finance"   element={<SellerFinancePage />} />
-              <Route path="account"   element={<SellerAccountPage />} />
+            {/* BNPL apply flow — same buyer auth, no sidebar layout */}
+            <Route path="/bnpl/apply/:orderId" element={<RequireBuyer />}>
+              <Route index element={<BNPLApplyPageWrapper />} />
             </Route>
-          </Route>
 
-          {/* Admin */}
-          <Route path="/admin/login" element={<AdminLoginPage />} />
-          <Route path="/admin" element={<RequireAdmin />}>
-            <Route element={<AdminLayoutWrapper />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard"   element={<FinancialDashboard />} />
-              <Route path="sellers"     element={<SellerManagement />} />
-              <Route path="buyers"      element={<BuyerManagement />} />
-              <Route path="marketplace" element={<MarketplacePage isAdminView={true} />} />
-              <Route path="categories"  element={<CategoryManager />} />
-              <Route path="orders"      element={<OrdersPage />} />
+            {/* Dispute chat — accessible to buyer/seller/admin */}
+            <Route path="/disputes/:disputeId" element={<DisputeChatWrapper />} />
+
+            {/* Bank officer portal — fully standalone */}
+            <Route path="/bank/login"     element={<BankLoginPage />} />
+            <Route path="/bank/dashboard" element={<BankDashboardPage />} />
+
+            {/* Seller */}
+            <Route path="/seller/login" element={<SellerLoginPage />} />
+            <Route path="/seller" element={<RequireSeller />}>
+              <Route element={<SellerLayout />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<SellerDashboardPage />} />
+                <Route path="upload"    element={<SellerUploadPage />} />
+                <Route path="products"  element={<SellerProductsPage />} />
+                <Route path="finance"   element={<SellerFinancePage />} />
+                <Route path="orders"    element={<SellerOrdersPageWrapper />} />
+                <Route path="reviews"   element={<SellerReviewsPageWrapper />} />
+                <Route path="account"   element={<SellerAccountPage />} />
+              </Route>
             </Route>
-          </Route>
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Admin */}
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route path="/admin" element={<RequireAdmin />}>
+              <Route element={<AdminLayoutWrapper />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard"   element={<FinancialDashboard />} />
+                <Route path="sellers"     element={<SellerManagement />} />
+                <Route path="buyers"      element={<BuyerManagement />} />
+                <Route path="marketplace" element={<MarketplacePage isAdminView={true} />} />
+                <Route path="categories"  element={<CategoryManager />} />
+                <Route path="banners"     element={<AdminBannerManagerWrapper />} />
+                <Route path="orders"      element={<AdminOrdersPageWrapper />} />
+                <Route path="disputes"    element={<AdminDisputesPageWrapper />} />
+                <Route path="reviews"     element={<AdminReviewsPageWrapper />} />
+                <Route path="wallet"      element={<AdminWalletPageWrapper />} />
+              </Route>
+            </Route>
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SocketProvider>
       </AuthProvider>
     </CartProvider>
   );
 }
+

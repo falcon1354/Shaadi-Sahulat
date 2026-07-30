@@ -1,0 +1,75 @@
+{
+  "profile_id": "6a2d4b900e48b4ae172492c0",
+  "user_id": "buyer_63c08435c8104d54",
+  "budget": 492003,
+  "category_budgets": {
+    "wedding_dress": {
+      "estimated": 160000,
+      "spent": 2136351,
+      "remaining": -1976351,
+      "active": true
+    },
+    "furniture": {
+      "estimated": 175000,
+      "spent": 0,
+      "remaining": 175000,
+      "active": true
+    },
+    "electronics": {
+      "estimated": 76158,
+      "spent": 0,
+      "remaining": 76158,
+      "active": true
+    },
+    "jewelry": {
+      "estimated": 0,
+      "spent": 0,
+      "remaining": 0,
+      "active": false
+    },
+    "kitchen_items": {
+      "estimated": 40677,
+      "spent": 6500,
+      "remaining": 34177,
+      "active": true
+    },
+    "decoration": {
+      "estimated": 19087,
+      "spent": 7500,
+      "remaining": 11587,
+      "active": true
+    },
+    "miscellaneous": {
+      "estimated": 21081,
+      "spent": 19600,
+      "remaining": 1481,
+      "active": true
+    },
+    "Accessaries": {
+      "estimated": 10000,
+      "spent": 0,
+      "remaining": 10000
+    }
+  },
+  "category_breakdown": {
+    "wedding_dress": 160000,
+    "furniture": 175000,
+    "electronics": 76158,
+    "jewelry": 0,
+    "kitchen_items": 40677,
+    "decoration": 19087,
+    "miscellaneous": 21081,
+    "Accessaries": 10000
+  },
+  "adjusted_estimates": {
+    "wedding_dress": 160000,
+    "furniture": 175000,
+    "electronics": 76158,
+    "jewelry": 0,
+    "kitchen_items": 40677,
+    "decoration": 19087,
+    "miscellaneous": 21081,
+    "Accessaries": 10000
+  },
+  "saved_at": "2026-07-23T15:26:55.932027+00:00"
+}

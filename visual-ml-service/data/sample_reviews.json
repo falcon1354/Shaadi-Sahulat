@@ -1,0 +1,104 @@
+{
+  "_comment": "Sample reviews dataset for the ShaadiSahulat AI Review module. Used as a reference corpus for sentiment calibration and as inspiration for the review generator. Not strictly required at runtime (VADER is rule-based) but kept here so the module can be upgraded to a learned model without changing the API.",
+  "version": "1.0",
+  "rating_scale": [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
+  "samples": [
+    {
+      "rating": 5,
+      "sentiment": "positive",
+      "text": "The dress quality was excellent, delivery was fast, and the stitching was amazing.",
+      "product_title": "Bridal Embroidered Lehenga",
+      "is_relevant": true
+    },
+    {
+      "rating": 5,
+      "sentiment": "positive",
+      "text": "Excellent quality and beautiful embroidery. The dress looked exactly as shown and exceeded my expectations.",
+      "product_title": "Bridal Embroidered Lehenga",
+      "is_relevant": true
+    },
+    {
+      "rating": 4.5,
+      "sentiment": "positive",
+      "text": "The fabric quality is outstanding, and the embroidery is very elegant. Highly recommended for wedding events.",
+      "product_title": "Bridal Embroidered Lehenga",
+      "is_relevant": true
+    },
+    {
+      "rating": 4,
+      "sentiment": "positive",
+      "text": "Good product overall. Stitching is neat and the colour matches the picture. Delivery was on time.",
+      "product_title": "Embroidered Kurta Pajama",
+      "is_relevant": true
+    },
+    {
+      "rating": 3.5,
+      "sentiment": "mildly_positive",
+      "text": "Nice dress but the fitting was slightly off. Had to get it altered locally. Fabric quality is good though.",
+      "product_title": "Satin Wedding Gown",
+      "is_relevant": true
+    },
+    {
+      "rating": 3,
+      "sentiment": "neutral",
+      "text": "Average product. Nothing exceptional but nothing wrong either. Okay for the price.",
+      "product_title": "Cotton Casual Kurta",
+      "is_relevant": true
+    },
+    {
+      "rating": 2.5,
+      "sentiment": "mildly_negative",
+      "text": "Decent but could be better. The colour was lighter than shown in the picture.",
+      "product_title": "Velvet Sherwani",
+      "is_relevant": true
+    },
+    {
+      "rating": 2,
+      "sentiment": "negative",
+      "text": "Not what I expected. The fabric feels cheap and the stitching is loose in places.",
+      "product_title": "Silk Saree",
+      "is_relevant": true
+    },
+    {
+      "rating": 1,
+      "sentiment": "negative",
+      "text": "Very disappointing. The product arrived late and the quality is poor. Would not recommend.",
+      "product_title": "Embroidered Clutch",
+      "is_relevant": true
+    },
+    {
+      "rating": 0.5,
+      "sentiment": "very_negative",
+      "text": "Worst purchase ever. The dress was damaged on arrival and the seller did not respond to my messages.",
+      "product_title": "Bridal Set with Jewelry",
+      "is_relevant": true
+    },
+    {
+      "rating": 2,
+      "sentiment": "neutral",
+      "text": "asdfgh jkl random text not related to the product",
+      "product_title": "Bridal Lehenga",
+      "is_relevant": false,
+      "_comment": "Irrelevant / random text → 2 stars per spec"
+    },
+    {
+      "rating": 2,
+      "sentiment": "neutral",
+      "text": "lol ipsum dolor",
+      "product_title": "Wedding Sherwani",
+      "is_relevant": false
+    },
+    {
+      "rating": 5,
+      "sentiment": "positive",
+      "text": "Premium fabric with heavy embroidery, suitable for weddings and formal events. Loved it.",
+      "product_title": "Bridal Embroidered Lehenga",
+      "is_relevant": true
+    }
+  ],
+  "generation_templates": {
+    "short": "15-30 words, 1 sentence",
+    "medium": "35-50 words, 2 sentences",
+    "long": "50-60 words, 3 sentences (capped per spec)"
+  }
+}

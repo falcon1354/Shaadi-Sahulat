@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
 import { toggleWishlistItem, recordRecentlyViewed } from '../../api/buyerApi';
+import { getProductReviews } from '../../api/reviewNotificationApi';
+import { submitReview } from '../../api/orderApi';
+import ReviewList from '../Reviews/ReviewList';
+import ReviewForm from '../Reviews/ReviewForm';
+import StarRating from '../Reviews/StarRating';
 
 // ── localStorage helpers ──────────────────────────────────────────────────
 
@@ -74,6 +79,13 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
   const [toastVisible, setToast]  = useState(false);
   const [wishlist, setWishlist]   = useState(() => readWishlist(buyerId));
 
+  // Reviews state
+  const [reviews, setReviews]       = useState([]);
+  const [avgRating, setAvgRating]   = useState(0);
+  const [reviewsLoading, setRL]     = useState(false);
+  const [showReviewForm, setSRF]    = useState(false);
+  const [submittingReview, setSR]   = useState(false);
+
   // Load product from API if not passed directly
   useEffect(() => {
     if (initialProduct) {
@@ -104,6 +116,48 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
     }
   }, [product]);
 
+  // ── Load reviews for this product ────────────────────────────────────────
+  const loadReviews = async () => {
+    if (!product?.product_id) return;
+    setRL(true);
+    try {
+      const res = await getProductReviews(product.product_id);
+      if (res?.success) {
+        setReviews(res.reviews || []);
+        setAvgRating(res.average_rating || 0);
+      }
+    } catch (e) {
+      // silent
+    } finally {
+      setRL(false);
+    }
+  };
+
+  useEffect(() => { loadReviews(); }, [product?.product_id]);
+
+  // ── Submit review ─────────────────────────────────────────────────────────
+  // NOTE: the host project's review flow is order-gated (a buyer must have
+  // purchased the product before they can review it). The actual POST goes
+  // to /api/orders/:order_id/review, NOT a free-form product review endpoint.
+  // For the ProductDetailPage demo, we surface the form so buyers can see
+  // what writing a review looks like — but submission will fail unless the
+  // buyer has a delivered order containing this product.
+  const handleSubmitReview = async ({ rating, title, comment, ai_suggested_rating, ai_used, ai_generated }) => {
+    if (!buyerId) {
+      alert('Please log in as a buyer to leave a review.');
+      return;
+    }
+    setSR(true);
+    // We need an order_id to submit a review. The product detail page doesn't
+    // have one — the proper flow is BuyerOrdersPage → BuyerOrderDetailPage →
+    // ReviewForm. Here we surface a helpful message guiding the buyer there.
+    alert(
+      `To submit your ${rating}★ review, please go to: My Orders → open your order for this product → "Write a Review".\n\n` +
+      `Reviews are tied to a delivered order so only verified buyers can rate products.`
+    );
+    setSR(false);
+  };
+
   const isWishlisted = product ? wishlist.some(w => w.product_id === product.product_id) : false;
 
   const toggleWishlist = () => {
@@ -125,9 +179,13 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
     if (buyerId) toggleWishlistItem(buyerId, item).catch(() => {});
   };
 
+  // Stock available
+  const availableStock = typeof product.stock_quantity === 'number' ? product.stock_quantity : (product.stock_qty || 10);
+  const [selectedQty, setSelectedQty] = useState(1);
+
   const handleAddToCart = () => {
-    if (!product) return;
-    addItem(product);
+    if (!product || availableStock <= 0) return;
+    addItem(product, selectedQty);
     setToast(true);
     setTimeout(() => setToast(false), 2000);
   };
@@ -184,61 +242,81 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
     ? Math.round(((product.price - product.discount_price) / product.price) * 100)
     : (product.discount_pct ? Math.round(product.discount_pct) : 0);
 
+  const totalSold = product.completed_orders || product.orders_count || 0;
+  const ratingVal = avgRating > 0 ? avgRating.toFixed(1) : (product.rating || 0);
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in space-y-4">
 
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        className="mb-6 flex items-center gap-2 text-sm text-gray-500 hover:text-[#a37b3d] font-medium transition-colors group"
-      >
-        <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 group-hover:bg-[#FFF5F8] transition-colors text-base">←</span>
-        Back
-      </button>
+      {/* Top Breadcrumb */}
+      <div className="flex items-center gap-2 text-xs text-gray-500 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
+        <button onClick={onBack} className="hover:text-[#a37b3d] font-bold">← Back</button>
+        <span>·</span>
+        <span>🛍️ Marketplace</span>
+        <span>›</span>
+        <span className="capitalize text-[#a37b3d] font-medium">
+          {product.major_category?.replace(/_/g, ' ')}
+        </span>
+        {product.subcategory && (
+          <>
+            <span>›</span>
+            <span className="capitalize">{product.subcategory.replace(/_/g, ' ')}</span>
+          </>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-        {/* ── Left: Image ─────────────────────────────────────────────────── */}
+        {/* ── Left: Image (Enlarged + Multiple photos icon on left) ─────────── */}
         <div className="space-y-4">
-          <div className="relative rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 shadow-sm aspect-square lg:aspect-[4/3]">
+          <div className="relative rounded-3xl overflow-hidden bg-gray-50 border border-gray-100 shadow-md min-h-[420px] lg:min-h-[500px] flex items-center justify-center">
             {imageUrl ? (
               <img
                 src={imageUrl}
                 alt={product.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-3xl"
                 onError={e => { e.target.style.display = 'none'; }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-200 text-8xl">📦</div>
             )}
 
-            {/* Badges */}
-            {hasDiscount && (
-              <span className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
-                {discountPct}% OFF
-              </span>
+            {/* Multiple images indicator — conditional */}
+            {product.images?.length > 1 && (
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
+                <div className="w-10 h-10 rounded-2xl bg-white/80 backdrop-blur-md border border-white/60 shadow-lg flex items-center justify-center text-gray-700 cursor-pointer hover:scale-110 transition-transform" title="Multiple photos available">
+                  🖼️
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-white/60 backdrop-blur-sm border border-white/40 shadow flex items-center justify-center text-xs text-gray-600">
+                  +{product.images.length - 1}
+                </div>
+              </div>
             )}
-            {product.condition && product.condition !== 'New' && (
-              <span className="absolute top-4 right-16 bg-amber-100 text-amber-700 text-xs font-medium px-3 py-1 rounded-full">
-                {product.condition}
-              </span>
-            )}
-            {product.similarity_score !== undefined && (
-              <span className="absolute bottom-4 right-4 bg-[#a37b3d]/90 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow">
-                {Math.round(product.similarity_score * 100)}% match
-              </span>
-            )}
+
+            {/* Animated GIF Badges — conditional on DB flags */}
+            <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+              {product.is_hot_deal && hasDiscount && (
+                <span className="bg-red-500 text-white text-xs font-black px-3 py-1 rounded-full shadow flex items-center gap-1">
+                  <span className="animate-pulse">🔥</span> HOT DEAL ({discountPct}% OFF)
+                </span>
+              )}
+              {product.is_best_seller && totalSold > 0 && (
+                <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-extrabold px-3 py-1 rounded-full shadow flex items-center gap-1">
+                  <span className="animate-pulse">⭐</span> BEST SELLER
+                </span>
+              )}
+            </div>
 
             {/* Wishlist button */}
             {!isAdminView && (
               <button
                 onClick={toggleWishlist}
-                className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all text-lg ${
+                className={`absolute top-4 right-4 w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all text-xl ${
                   isWishlisted
-                    ? 'bg-[#FFF5F8]0 text-white scale-110'
-                    : 'bg-white/90 text-gray-400 hover:text-[#a37b3d] hover:scale-110'
+                    ? 'bg-rose-500 text-white scale-110'
+                    : 'bg-white/90 text-gray-400 hover:text-rose-500 hover:scale-110'
                 }`}
                 title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
               >
@@ -246,31 +324,23 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
               </button>
             )}
           </div>
-
-          {/* Category breadcrumb */}
-          <div className="flex items-center gap-2 text-xs text-gray-400 px-1">
-            <span>🛍️ Marketplace</span>
-            <span>›</span>
-            <span className="capitalize text-[#a37b3d] font-medium">
-              {product.major_category?.replace(/_/g, ' ')}
-            </span>
-            {product.subcategory && (
-              <>
-                <span>›</span>
-                <span className="capitalize">{product.subcategory.replace(/_/g, ' ')}</span>
-              </>
-            )}
-          </div>
         </div>
 
         {/* ── Right: Details ───────────────────────────────────────────────── */}
         <div className="space-y-5">
 
-          {/* Title & price */}
+          {/* Title, Sold Count + Avg Rating e.g. 1 (5) & price */}
           <div>
-            <p className="text-xs text-[#a37b3d] font-semibold uppercase tracking-wide mb-1 capitalize">
-              {product.major_category?.replace(/_/g, ' ')}
-            </p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-[#a37b3d] font-semibold uppercase tracking-wide capitalize">
+                {product.major_category?.replace(/_/g, ' ')}
+              </p>
+              {/* Sold Count + Avg Rating — conditional on actual sales */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-900 text-xs font-extrabold rounded-full">
+                {totalSold > 0 ? <span>Total Sold: {totalSold} ({ratingVal})</span> : <span>({ratingVal || 'No ratings'})</span>}
+              </div>
+            </div>
+
             <h1 className="text-2xl font-bold text-gray-900 leading-snug mb-3">
               {product.title}
             </h1>
@@ -318,23 +388,6 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
                   </p>
                 </div>
               </div>
-
-              {/* Budget vs. price indicator */}
-              {budgetInfo.remaining !== undefined && (
-                <div className="mt-3">
-                  {effectivePrice <= (budgetInfo.remaining ?? 0) ? (
-                    <p className="text-xs text-green-600 flex items-center gap-1.5">
-                      <span className="w-4 h-4 bg-green-100 rounded-full flex items-center justify-center text-[10px]">✓</span>
-                      Within your budget
-                    </p>
-                  ) : (
-                    <p className="text-xs text-red-500 flex items-center gap-1.5">
-                      <span className="w-4 h-4 bg-red-100 rounded-full flex items-center justify-center text-[10px]">!</span>
-                      Exceeds budget by PKR {(effectivePrice - (budgetInfo.remaining ?? 0)).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
@@ -365,7 +418,7 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
             </div>
           )}
 
-          {/* Seller info */}
+          {/* Stock & Quantity Control (Capped at available stock) */}
           <div className="flex items-center justify-between py-4 border-t border-gray-100">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] flex items-center justify-center text-white font-bold text-sm">
@@ -376,9 +429,29 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
                 <p className="text-sm font-bold text-gray-800">{product.seller_name || 'Seller'}</p>
               </div>
             </div>
-            {product.stock_quantity > 0 && (
-              <span className="text-xs bg-green-50 text-green-700 font-semibold px-3 py-1.5 rounded-full border border-green-100">
-                ✓ {product.stock_quantity} in stock
+
+            {availableStock > 0 ? (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-500 font-semibold">Qty:</span>
+                <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                  <button
+                    onClick={() => setSelectedQty(q => Math.max(1, q - 1))}
+                    className="px-3 py-1.5 text-gray-600 hover:bg-gray-200 font-bold text-sm"
+                  >-</button>
+                  <span className="px-3 py-1.5 font-bold text-sm text-gray-800">{selectedQty}</span>
+                  <button
+                    onClick={() => setSelectedQty(q => Math.min(availableStock, q + 1))}
+                    disabled={selectedQty >= availableStock}
+                    className="px-3 py-1.5 text-gray-600 hover:bg-gray-200 font-bold text-sm disabled:opacity-40"
+                  >+</button>
+                </div>
+                <span className="text-xs bg-green-50 text-green-700 font-semibold px-2.5 py-1 rounded-full border border-green-100">
+                  ✓ {availableStock} in stock
+                </span>
+              </div>
+            ) : (
+              <span className="text-xs bg-red-50 text-red-700 font-semibold px-3 py-1.5 rounded-full border border-red-100">
+                Out of Stock
               </span>
             )}
           </div>
@@ -388,9 +461,10 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
             <div className="flex gap-3 pt-1">
               <button
                 onClick={handleAddToCart}
-                className="flex-1 py-3.5 bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] hover:from-[#8a6633] hover:to-[#ECD4A8] text-white rounded-2xl text-sm font-bold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                disabled={availableStock <= 0}
+                className="flex-1 py-3.5 bg-gradient-to-r from-[#a37b3d] to-[#ECD4A8] hover:from-[#8a6633] hover:to-[#ECD4A8] text-white rounded-2xl text-sm font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
               >
-                🛒 Add to Cart
+                🛒 Add to Cart ({selectedQty})
               </button>
               <button
                 onClick={toggleWishlist}
@@ -405,32 +479,65 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
               </button>
             </div>
           )}
+        </div>
+      </div>
 
-          {/* Shareable product link */}
-          {product.product_id && (
-            <div className="flex items-center gap-2 pt-2">
-              <a
-                href={`http://localhost:3000/products/${product.product_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gray-50 text-gray-600 rounded-xl text-xs font-semibold border border-gray-200 hover:bg-[#FFF5F8] hover:border-[#FBEFF1] hover:text-[#a37b3d] transition-colors"
-              >
-                🔗 Share Product Page
-              </a>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`http://localhost:3000/products/${product.product_id}`);
-                  setToast(true);
-                  setTimeout(() => setToast(false), 2000);
-                }}
-                className="px-3 py-2.5 bg-gray-50 text-gray-500 rounded-xl text-xs font-semibold border border-gray-200 hover:bg-[#FFF5F8] hover:text-[#a37b3d] transition-colors"
-                title="Copy link"
-              >
-                📋
-              </button>
+      {/* ── Reviews section ───────────────────────────────────────────────── */}
+      <div className="mt-10 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              💬 Customer Reviews
+            </h2>
+            <div className="flex items-center gap-2 mt-1">
+              <StarRating value={avgRating} size="sm" />
+              <span className="text-sm font-semibold text-gray-700">
+                {avgRating.toFixed(1)} · {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+              </span>
             </div>
+          </div>
+
+          {!isAdminView && buyer && (
+            <button
+              onClick={() => setSRF((v) => !v)}
+              className="px-4 py-2 bg-[#a37b3d] text-white rounded-xl text-sm font-bold hover:bg-[#8a6633] transition-colors flex items-center gap-2"
+            >
+              ✨ Write a Review
+            </button>
+          )}
+          {!isAdminView && !buyer && (
+            <p className="text-xs text-gray-500">
+              Login as a buyer to write a review
+            </p>
           )}
         </div>
+
+        {/* AI-powered review form (collapsible) */}
+        {showReviewForm && buyer && (
+          <ReviewForm
+            productTitle={product.title}
+            productDescription={product.description}
+            buyerId={buyer?.buyer_id}
+            productId={product.product_id}
+            onSubmit={handleSubmitReview}
+            onCancel={() => setSRF(false)}
+            submitting={submittingReview}
+          />
+        )}
+
+        {/* Reviews list */}
+        {reviewsLoading ? (
+          <div className="text-center py-8 text-gray-400 text-sm">
+            <div className="w-6 h-6 mx-auto mb-2 border-2 border-gray-200 border-t-[#a37b3d] rounded-full animate-spin" />
+            Loading reviews…
+          </div>
+        ) : (
+          <ReviewList
+            reviews={reviews}
+            showAiBadge
+            emptyMessage="No reviews yet. Be the first to review this product!"
+          />
+        )}
       </div>
 
       <Toast message="Added to cart!" visible={toastVisible} />

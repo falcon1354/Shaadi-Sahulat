@@ -3,6 +3,7 @@ const router  = express.Router();
 const {
   registerBuyer, loginBuyer, getBuyerProfile,
   toggleWishlist, addRecentlyViewed, syncCart, getFullBuyerData,
+  saveAddress, getSavedAddresses,
 } = require("../controllers/buyerController");
 
 router.post("/register",                          registerBuyer);
@@ -12,5 +13,7 @@ router.get( "/:buyer_id/full-data",               getFullBuyerData);
 router.patch("/:buyer_id/wishlist-toggle",        toggleWishlist);
 router.post( "/:buyer_id/recently-viewed",        addRecentlyViewed);
 router.post( "/:buyer_id/cart-sync",              syncCart);
+router.post( "/:buyer_id/save-address",           saveAddress);
+router.get(  "/:buyer_id/saved-addresses",        getSavedAddresses);
 
 module.exports = router;

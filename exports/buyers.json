@@ -1,0 +1,108 @@
+[
+  {
+    "_id": "6a2c047946fc2253ea9ad4a6",
+    "buyer_id": "buyer_63c08435c8104d54",
+    "name": "ahmad",
+    "email": "abc@gmail.com",
+    "password_hash": "$2b$10$UkasofJaXUgyCbm6JE7oROW1k0WYJWHGCtOnKoUCgYc2s4ckC9p6.",
+    "phone": "",
+    "city": "",
+    "wishlist": [],
+    "cart": [],
+    "created_at": "2026-06-12T13:07:05.315Z",
+    "updated_at": "2026-06-14T06:38:55.691Z",
+    "__v": 14,
+    "dowry_done": true,
+    "dowry_estimation_id": "6a2d4b900e48b4ae172492c0",
+    "recently_viewed_items": [
+      {
+        "product_id": "sp_8ce9aa5558514b32",
+        "title": "Deep Red Bridal Saree (New)",
+        "price": 63242,
+        "major_category": "wedding_dress",
+        "viewed_at": "2026-06-13T23:20:21.286Z",
+        "_id": "6a2de5b51105f8625e5b6469"
+      },
+      {
+        "product_id": "sp_3bdf815e1e1845ac",
+        "title": "Deep Yellow Bridal Saree (New)",
+        "price": 26926,
+        "major_category": "wedding_dress",
+        "viewed_at": "2026-06-13T23:15:32.134Z",
+        "_id": "6a2de4941105f8625e5b6456"
+      },
+      {
+        "product_id": "sp_e8e29dbd96044d0a",
+        "title": "Deep Maroon Bridal Lehenga (New)",
+        "price": 70228,
+        "major_category": "wedding_dress",
+        "viewed_at": "2026-06-13T23:14:58.852Z",
+        "_id": "6a2de4721105f8625e5b642d"
+      },
+      {
+        "product_id": "sp_1264e4d52b0047d9",
+        "title": "Deep Yellow Bridal Lehenga (New)",
+        "price": 66870,
+        "major_category": "wedding_dress",
+        "viewed_at": "2026-06-13T23:08:26.870Z",
+        "_id": "6a2de2ea1105f8625e5b6408"
+      },
+      {
+        "product_id": "sp_869b943f92f44ff7",
+        "title": "Deep Black Bridal Saree (Thrift)",
+        "price": 22111,
+        "major_category": "wedding_dress",
+        "viewed_at": "2026-06-13T22:50:59.183Z",
+        "_id": "6a2dded31105f8625e5b63e7"
+      },
+      {
+        "product_id": "sp_474230d9c86b43e9",
+        "title": "Deep Blue Bridal Lehenga (Thrift)",
+        "price": 64007,
+        "major_category": "wedding_dress",
+        "viewed_at": "2026-06-13T22:50:27.650Z",
+        "_id": "6a2ddeb31105f8625e5b63d8"
+      }
+    ],
+    "wishlist_items": [
+      {
+        "product_id": "sp_e8e29dbd96044d0a",
+        "title": "Deep Maroon Bridal Lehenga (New)",
+        "price": 70228,
+        "major_category": "wedding_dress",
+        "added_at": "2026-06-13T18:30:06.641Z",
+        "_id": "6a2da1aea8e728e4db8b2e8b"
+      }
+    ]
+  },
+  {
+    "_id": "6a2d1772f7e684982661e797",
+    "buyer_id": "buyer_6a7aa4ec5cb0412f",
+    "name": "Test Buyer",
+    "email": "testtestbuyer@example.com",
+    "password_hash": "$2b$10$Q7CLtz.M8ag0l/xhT7zXB.rXKSq6k7P9rRD/A/8NAQmybjTzkSgF.",
+    "phone": "",
+    "city": "",
+    "wishlist": [],
+    "cart": [],
+    "created_at": "2026-06-13T08:40:18.152Z",
+    "updated_at": "2026-06-14T06:38:55.691Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2d44bef7e684982661e7a0",
+    "buyer_id": "buyer_32b59b99473f4a8e",
+    "name": "Falcon",
+    "email": "falcon@gmail.com",
+    "password_hash": "$2b$10$BszxbmVLHIQr47Kk.A5XXuMo0OYIDKRATRSeb9jSaO4EjQpCZAC6a",
+    "phone": "",
+    "city": "",
+    "wishlist": [],
+    "cart": [],
+    "created_at": "2026-06-13T11:53:34.501Z",
+    "updated_at": "2026-06-14T06:38:55.691Z",
+    "__v": 0,
+    "dowry_done": true,
+    "dowry_estimation_id": "6a2dedd60e48b4ae17249d00"
+  }
+]

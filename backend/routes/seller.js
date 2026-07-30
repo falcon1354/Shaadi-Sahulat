@@ -49,4 +49,7 @@ router.get("/product/:product_id",    sellerController.getProduct);
 router.put("/product/:product_id",    sellerController.updateProduct);
 router.delete("/product/:product_id", sellerController.deleteProduct);
 
+// ── BNPL + Order Processing: seller-side order management ──────────────────
+router.use("/orders", require("./sellerOrders"));
+
 module.exports = router;

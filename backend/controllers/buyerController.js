@@ -116,15 +116,40 @@ async function addRecentlyViewed(req, res) {
 }
 
 // Sync full cart — replaces buyer's stored cart_items with client cart
+// For each item, validate qty against stock (cap at stock_quantity). If stock is 0, remove item.
 async function syncCart(req, res) {
   try {
     const { buyer_id } = req.params;
     const { cart_items } = req.body;
     if (!Array.isArray(cart_items)) return res.status(400).json({ success: false, error: "cart_items must be an array" });
 
+    // Validate stock quantities — cap qty at stock_quantity, remove items with stock 0
+    const Product = require("../models/Product");
+    const validatedItems = [];
+    for (const item of cart_items) {
+      const product = await Product.findOne({ product_id: item.product_id }).lean();
+      if (!product) {
+        // Product no longer exists — skip
+        continue;
+      }
+      const stock = product.stock_quantity || 0;
+      if (stock <= 0) {
+        // Stock depleted — remove item
+        continue;
+      }
+      // Cap qty at available stock
+      const cappedQty = Math.min(Math.max(1, parseInt(item.qty, 10) || 1), stock);
+      validatedItems.push({
+        ...item,
+        qty: cappedQty,
+        stock_quantity: stock,
+        seller_id: product.seller_id || "",
+      });
+    }
+
     const buyer = await Buyer.findOneAndUpdate(
       { buyer_id },
-      { $set: { cart_items } },
+      { $set: { cart_items: validatedItems } },
       { new: true }
     );
     if (!buyer) return res.status(404).json({ success: false, error: "Buyer not found" });
@@ -167,7 +192,62 @@ async function getFullBuyerData(req, res) {
   }
 }
 
+// ── Saved Addresses ──────────────────────────────────────────────────────────
+
+// Save a new address to buyer's saved_addresses list
+async function saveAddress(req, res) {
+  try {
+    const { buyer_id } = req.params;
+    const { line1, city, province, house_number, phone, label, is_default } = req.body || {};
+
+    if (!line1 || !city) {
+      return res.status(400).json({ success: false, error: "line1 and city are required" });
+    }
+
+    const buyer = await Buyer.findOne({ buyer_id });
+    if (!buyer) return res.status(404).json({ success: false, error: "Buyer not found" });
+
+    const newAddress = {
+      line1,
+      city,
+      province: province || "",
+      house_number: house_number || "",
+      phone: phone || buyer.phone || "",
+      label: label || "Home",
+      is_default: is_default || false,
+    };
+
+    // If this is set as default, unset other defaults
+    if (newAddress.is_default) {
+      for (const addr of buyer.saved_addresses || []) {
+        addr.is_default = false;
+      }
+    }
+
+    if (!Array.isArray(buyer.saved_addresses)) buyer.saved_addresses = [];
+    buyer.saved_addresses.push(newAddress);
+    await buyer.save();
+
+    return res.json({ success: true, saved_addresses: buyer.saved_addresses });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+// Get all saved addresses for a buyer
+async function getSavedAddresses(req, res) {
+  try {
+    const { buyer_id } = req.params;
+    const buyer = await Buyer.findOne({ buyer_id }).lean();
+    if (!buyer) return res.status(404).json({ success: false, error: "Buyer not found" });
+    return res.json({ success: true, saved_addresses: buyer.saved_addresses || [] });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 module.exports = {
   registerBuyer, loginBuyer, getBuyerProfile,
   toggleWishlist, addRecentlyViewed, syncCart, getFullBuyerData,
+  saveAddress, getSavedAddresses,
 };

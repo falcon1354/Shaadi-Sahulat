@@ -118,10 +118,30 @@ export async function getSellerWithCounts() {
   return res.json();
 }
 
+export async function editCategory(category_id, data) {
+  const res = await fetch(`${BASE}/categories/${category_id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function updateCategoryIcon(category_id, iconFile) {
+  const form = new FormData();
+  form.append('icon', iconFile);
+  const res = await fetch(`${BASE}/categories/${category_id}/icon`, {
+    method: "POST",
+    body: form,
+  });
+  return res.json();
+}
+
 export default {
   loginAdmin, getAllSellers, getSellerProducts,
   removeProduct, freezeProduct, unfreezeProduct,
   getAllBuyers, getStats, getAllProducts, getSellerWithCounts,
   getAdminCategories, addCategory, addSubcategory,
   updateCategoryPrices, addCustomField, removeCustomField, updateSubcategoryPrices,
+  editCategory, updateCategoryIcon,
 };

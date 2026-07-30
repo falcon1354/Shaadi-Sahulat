@@ -49,16 +49,19 @@ export function CartProvider({ children }) {
   }, []);
 
   const addItem = (product) => {
+    const stock = product.stock_quantity || Infinity;
+    if (stock === 0) return; // Don't add if out of stock
     setItems(prev => {
       const existing = prev.find(i => i.product_id === product.product_id);
       if (existing) {
+        const newQty = Math.min(existing.qty + 1, stock);
         return prev.map(i =>
           i.product_id === product.product_id
-            ? { ...i, qty: i.qty + 1 }
+            ? { ...i, qty: newQty }
             : i
         );
       }
-      return [...prev, { ...product, qty: 1 }];
+      return [...prev, { ...product, qty: 1, stock_quantity: stock, seller_id: product.seller_id }];
     });
   };
 
@@ -69,7 +72,12 @@ export function CartProvider({ children }) {
   const updateQty = (productId, qty) => {
     if (qty <= 0) { removeItem(productId); return; }
     setItems(prev =>
-      prev.map(i => i.product_id === productId ? { ...i, qty } : i)
+      prev.map(i => {
+        if (i.product_id !== productId) return i;
+        const stock = i.stock_quantity || Infinity;
+        const cappedQty = Math.min(qty, stock);
+        return { ...i, qty: cappedQty };
+      })
     );
   };
 
