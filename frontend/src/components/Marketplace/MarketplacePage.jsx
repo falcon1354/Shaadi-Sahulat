@@ -4,6 +4,7 @@ import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
 import { useCategories } from '../../hooks/useCategories';
 import { toggleWishlistItem, recordRecentlyViewed, patchDowryBudgets } from '../../api/buyerApi';
+import DealOfTheDayBanner from '../Common/DealOfTheDayBanner';
 
 const SORT_OPTIONS = [
   { value: 'newest',     label: 'Newest First' },
@@ -302,9 +303,20 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
               {product.condition}
             </span>
           )}
-          {product.similarity_score !== undefined && (
-            <span className="absolute bottom-2 right-2 bg-[#ECD4A8]/90 text-gray-955 text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border border-white/40">
-              {Math.round(product.similarity_score * 100)}% match
+          {product.images?.length > 1 && (
+            <span className="absolute bottom-2 left-2 bg-white/90 text-gray-700 text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border border-white/40 shadow-sm">
+              🖼️ +{product.images.length - 1}
+            </span>
+          )}
+          {/* Conditional animated badges */}
+          {product.is_hot_deal && (hasDiscount || product.discount_pct) && (
+            <span className="absolute top-2 left-2 animate-pulse bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+              🔥 HOT DEAL
+            </span>
+          )}
+          {product.is_best_seller && (
+            <span className="absolute top-2 left-2 animate-pulse bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">
+              ⭐ BEST SELLER
             </span>
           )}
           {/* Wishlist heart */}
@@ -341,7 +353,11 @@ function ProductCard({ product, onView, highlight, onAddToCart, isWishlisted, on
 
           <div className="mt-1.5 flex items-center justify-between text-[10px] text-gray-400">
             <span>{product.seller_name || 'Seller'}</span>
-            {product.city && <span className="flex items-center gap-0.5"><MapPin size={10} /> {product.city}</span>}
+          {(() => {
+            const totalSold = product.completed_orders || product.orders_count || 0;
+            return totalSold > 0 ? <span className="text-green-600 font-semibold">Sold: {totalSold}</span> : null;
+          })()}
+          {product.city && <span className="flex items-center gap-0.5"><MapPin size={10} /> {product.city}</span>}
           </div>
 
           <div className="mt-3 flex gap-2">
@@ -746,6 +762,9 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
         <h2 className="text-2xl font-bold text-gray-800">Marketplace</h2>
         <p className="text-sm text-gray-500 mt-1">Browse wedding products from our verified sellers</p>
       </div>
+
+      {/* Deal of the Day Banner */}
+      <DealOfTheDayBanner categoryId={activeCat} />
 
       {/* Search bar */}
       <div className="relative mb-5">

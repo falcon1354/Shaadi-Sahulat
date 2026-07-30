@@ -1,0 +1,656 @@
+[
+  {
+    "_id": "6a2bd9a244038fa361296c36",
+    "user_id": "user-5674ccdac",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.9998,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_840a259a8bb446af",
+        "match_percentage": 65.6,
+        "_id": "6a2bd9a244038fa361296c37"
+      },
+      {
+        "product_id": "sp_e68272b13c7340f2",
+        "match_percentage": 65.6,
+        "_id": "6a2bd9a244038fa361296c38"
+      },
+      {
+        "product_id": "sp_06f45561826a4298",
+        "match_percentage": 61.1,
+        "_id": "6a2bd9a244038fa361296c39"
+      }
+    ],
+    "search_time_ms": 2738,
+    "preferred_category": null,
+    "image_size_kb": 74,
+    "createdAt": "2026-06-12T10:04:18.214Z",
+    "updatedAt": "2026-06-12T10:04:18.214Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2cd3845bc6c7d26cb33410",
+    "user_id": "user-cwp9dhd0u",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.9998,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_840a259a8bb446af",
+        "match_percentage": 65.6,
+        "_id": "6a2cd3845bc6c7d26cb33411"
+      },
+      {
+        "product_id": "sp_e68272b13c7340f2",
+        "match_percentage": 65.6,
+        "_id": "6a2cd3845bc6c7d26cb33412"
+      },
+      {
+        "product_id": "sp_06f45561826a4298",
+        "match_percentage": 61.1,
+        "_id": "6a2cd3845bc6c7d26cb33413"
+      }
+    ],
+    "search_time_ms": 1484,
+    "preferred_category": null,
+    "image_size_kb": 74,
+    "createdAt": "2026-06-13T03:50:28.924Z",
+    "updatedAt": "2026-06-13T03:50:28.924Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2cd8665bc6c7d26cb33417",
+    "user_id": "user-cwp9dhd0u",
+    "predicted_category": "bridal_sharara",
+    "confidence": 1,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_fae90194ba8c4329",
+        "match_percentage": 100,
+        "_id": "6a2cd8665bc6c7d26cb33418"
+      },
+      {
+        "product_id": "sp_99e8fe0960ff4604",
+        "match_percentage": 100,
+        "_id": "6a2cd8665bc6c7d26cb33419"
+      },
+      {
+        "product_id": "sp_be92606fe98240f8",
+        "match_percentage": 66.5,
+        "_id": "6a2cd8665bc6c7d26cb3341a"
+      }
+    ],
+    "search_time_ms": 159,
+    "preferred_category": null,
+    "image_size_kb": 175,
+    "createdAt": "2026-06-13T04:11:18.351Z",
+    "updatedAt": "2026-06-13T04:11:18.351Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2cd8995bc6c7d26cb3341c",
+    "user_id": "user-d29tkbmkd",
+    "predicted_category": "bridal_sharara",
+    "confidence": 1,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_fae90194ba8c4329",
+        "match_percentage": 100,
+        "_id": "6a2cd8995bc6c7d26cb3341d"
+      },
+      {
+        "product_id": "sp_99e8fe0960ff4604",
+        "match_percentage": 100,
+        "_id": "6a2cd8995bc6c7d26cb3341e"
+      },
+      {
+        "product_id": "sp_be92606fe98240f8",
+        "match_percentage": 66.5,
+        "_id": "6a2cd8995bc6c7d26cb3341f"
+      }
+    ],
+    "search_time_ms": 153,
+    "preferred_category": null,
+    "image_size_kb": 175,
+    "createdAt": "2026-06-13T04:12:09.563Z",
+    "updatedAt": "2026-06-13T04:12:09.563Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2cf39468cbc0ca1ad34625",
+    "user_id": "user-4oqrzfwk2",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.9998,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 707,
+    "preferred_category": null,
+    "image_size_kb": 74,
+    "createdAt": "2026-06-13T06:07:16.606Z",
+    "updatedAt": "2026-06-13T06:07:16.606Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2cf94bb1e7ba8bf847b2e0",
+    "user_id": "user-hmhu0zb7n",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.9926,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_2b787ddb9f9d4f73",
+        "match_percentage": 59.7,
+        "_id": "6a2cf94bb1e7ba8bf847b2e1"
+      },
+      {
+        "product_id": "sp_229c4a4000e54d26",
+        "match_percentage": 59.7,
+        "_id": "6a2cf94bb1e7ba8bf847b2e2"
+      },
+      {
+        "product_id": "sp_2439831a90c74cc7",
+        "match_percentage": 56.6,
+        "_id": "6a2cf94bb1e7ba8bf847b2e3"
+      }
+    ],
+    "search_time_ms": 4213,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 54,
+    "createdAt": "2026-06-13T06:31:39.659Z",
+    "updatedAt": "2026-06-13T06:31:39.659Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2d41e4418e02c7e29c4772",
+    "user_id": "buyer_63c08435c8104d54",
+    "predicted_category": "bridal_saree",
+    "confidence": 0,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "rejected",
+    "rejection_stage": "similarity_gate",
+    "rejection_reason": "No bridal dress match found. Best similarity across all dimensions was 16% (threshold 40%). Upload a clear bridal dress photo and describe it in the text box.",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 96,
+    "createdAt": "2026-06-13T11:41:24.509Z",
+    "updatedAt": "2026-06-13T11:41:24.509Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2d46adf7e684982661e7a2",
+    "user_id": "buyer_32b59b99473f4a8e",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.4272778630256653,
+    "stage1_passed": true,
+    "stage2_passed": false,
+    "status": "rejected",
+    "rejection_stage": "category_validation",
+    "rejection_reason": "Uploaded image does not clearly match any supported dress category (confidence 43% < threshold 50%).",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 51,
+    "createdAt": "2026-06-13T12:01:49.393Z",
+    "updatedAt": "2026-06-13T12:01:49.393Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2d470af7e684982661e7a4",
+    "user_id": "buyer_32b59b99473f4a8e",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.4272778630256653,
+    "stage1_passed": true,
+    "stage2_passed": false,
+    "status": "rejected",
+    "rejection_stage": "category_validation",
+    "rejection_reason": "Uploaded image does not clearly match any supported dress category (confidence 43% < threshold 50%).",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 51,
+    "createdAt": "2026-06-13T12:03:22.896Z",
+    "updatedAt": "2026-06-13T12:03:22.896Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2d470ff7e684982661e7a6",
+    "user_id": "buyer_32b59b99473f4a8e",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.4272778630256653,
+    "stage1_passed": true,
+    "stage2_passed": false,
+    "status": "rejected",
+    "rejection_stage": "category_validation",
+    "rejection_reason": "Uploaded image does not clearly match any supported dress category (confidence 43% < threshold 50%).",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 51,
+    "createdAt": "2026-06-13T12:03:27.908Z",
+    "updatedAt": "2026-06-13T12:03:27.908Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2d472bf7e684982661e7a8",
+    "user_id": "buyer_32b59b99473f4a8e",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.7194,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_4d8e8a653aad455a",
+        "match_percentage": 37,
+        "_id": "6a2d472bf7e684982661e7a9"
+      },
+      {
+        "product_id": "sp_de6bc78247234b04",
+        "match_percentage": 35.4,
+        "_id": "6a2d472bf7e684982661e7aa"
+      },
+      {
+        "product_id": "sp_f8053dcdf8e24530",
+        "match_percentage": 29.3,
+        "_id": "6a2d472bf7e684982661e7ab"
+      }
+    ],
+    "search_time_ms": 700,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 102,
+    "createdAt": "2026-06-13T12:03:55.936Z",
+    "updatedAt": "2026-06-13T12:03:55.936Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2d478bf7e684982661e7ad",
+    "user_id": "buyer_32b59b99473f4a8e",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "rejected",
+    "rejection_stage": "similarity_gate",
+    "rejection_reason": "No bridal dress match found. Best similarity across all dimensions was 34% (threshold 40%). Upload a clear bridal dress photo and describe it in the text box.",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 240,
+    "createdAt": "2026-06-13T12:05:31.395Z",
+    "updatedAt": "2026-06-13T12:05:31.395Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2d47a5f7e684982661e7af",
+    "user_id": "buyer_32b59b99473f4a8e",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "rejected",
+    "rejection_stage": "similarity_gate",
+    "rejection_reason": "No bridal dress match found. Best similarity across all dimensions was 28% (threshold 40%). Upload a clear bridal dress photo and describe it in the text box.",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 240,
+    "createdAt": "2026-06-13T12:05:57.082Z",
+    "updatedAt": "2026-06-13T12:05:57.082Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2d47bdf7e684982661e7b1",
+    "user_id": "buyer_32b59b99473f4a8e",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.7194,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_4d8e8a653aad455a",
+        "match_percentage": 35.5,
+        "_id": "6a2d47bdf7e684982661e7b2"
+      },
+      {
+        "product_id": "sp_de6bc78247234b04",
+        "match_percentage": 33.8,
+        "_id": "6a2d47bdf7e684982661e7b3"
+      },
+      {
+        "product_id": "sp_f8053dcdf8e24530",
+        "match_percentage": 27.6,
+        "_id": "6a2d47bdf7e684982661e7b4"
+      }
+    ],
+    "search_time_ms": 61,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 102,
+    "createdAt": "2026-06-13T12:06:21.551Z",
+    "updatedAt": "2026-06-13T12:06:21.551Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2e889cef27962ec75ada37",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": "bridal_sharara",
+    "confidence": 0.9073,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_48c651434bdd4c6a",
+        "match_percentage": 58.6,
+        "_id": "6a2e889cef27962ec75ada38"
+      },
+      {
+        "product_id": "sp_37201f235e214431",
+        "match_percentage": 36.6,
+        "_id": "6a2e889cef27962ec75ada39"
+      },
+      {
+        "product_id": "sp_7a4859ef305c45f2",
+        "match_percentage": 36.6,
+        "_id": "6a2e889cef27962ec75ada3a"
+      }
+    ],
+    "search_time_ms": 7700,
+    "preferred_category": null,
+    "image_size_kb": 16,
+    "createdAt": "2026-06-14T10:55:24.411Z",
+    "updatedAt": "2026-06-14T10:55:24.411Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2e8919ef27962ec75ada3c",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": "bridal_sharara",
+    "confidence": 0,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "rejected",
+    "rejection_stage": "similarity_gate",
+    "rejection_reason": "No bridal dress match found. Best similarity across all dimensions was 23% (threshold 40%). Upload a clear bridal dress photo and describe it in the text box.",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 37,
+    "createdAt": "2026-06-14T10:57:29.902Z",
+    "updatedAt": "2026-06-14T10:57:29.902Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2e892fef27962ec75ada3e",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": "bridal_sharara",
+    "confidence": 0,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "rejected",
+    "rejection_stage": "similarity_gate",
+    "rejection_reason": "No bridal dress match found. Best similarity across all dimensions was 13% (threshold 40%). Upload a clear bridal dress photo and describe it in the text box.",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 37,
+    "createdAt": "2026-06-14T10:57:51.951Z",
+    "updatedAt": "2026-06-14T10:57:51.951Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2e8960ef27962ec75ada40",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.9998,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_09aec8d735cd401a",
+        "match_percentage": 65.6,
+        "_id": "6a2e8960ef27962ec75ada41"
+      },
+      {
+        "product_id": "sp_f47a65568db64d28",
+        "match_percentage": 61.1,
+        "_id": "6a2e8960ef27962ec75ada42"
+      },
+      {
+        "product_id": "sp_82007eb056fa4c9e",
+        "match_percentage": 61.1,
+        "_id": "6a2e8960ef27962ec75ada43"
+      }
+    ],
+    "search_time_ms": 451,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 74,
+    "createdAt": "2026-06-14T10:58:40.398Z",
+    "updatedAt": "2026-06-14T10:58:40.398Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2e98b794b92683f36708b0",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0.7766,
+    "stage1_passed": true,
+    "stage2_passed": true,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 3,
+    "top_results": [
+      {
+        "product_id": "sp_474230d9c86b43e9",
+        "match_percentage": 47.5,
+        "_id": "6a2e98b794b92683f36708b1"
+      },
+      {
+        "product_id": "sp_82007eb056fa4c9e",
+        "match_percentage": 35.2,
+        "_id": "6a2e98b794b92683f36708b2"
+      },
+      {
+        "product_id": "sp_09aec8d735cd401a",
+        "match_percentage": 34.5,
+        "_id": "6a2e98b794b92683f36708b3"
+      }
+    ],
+    "search_time_ms": 1205,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 79,
+    "createdAt": "2026-06-14T12:04:07.381Z",
+    "updatedAt": "2026-06-14T12:04:07.381Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2eb8d6897d1d55d2d0d471",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": null,
+    "confidence": 0,
+    "stage1_passed": false,
+    "stage2_passed": false,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 57,
+    "createdAt": "2026-06-14T14:21:10.762Z",
+    "updatedAt": "2026-06-14T14:21:10.762Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2ebd9b7ec1b4f4d4a16580",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": null,
+    "confidence": 0,
+    "stage1_passed": false,
+    "stage2_passed": false,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": null,
+    "image_size_kb": 57,
+    "createdAt": "2026-06-14T14:41:31.204Z",
+    "updatedAt": "2026-06-14T14:41:31.204Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2ebfd62e0b52d7b3295e97",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": null,
+    "confidence": 0,
+    "stage1_passed": false,
+    "stage2_passed": false,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 42,
+    "createdAt": "2026-06-14T14:51:02.701Z",
+    "updatedAt": "2026-06-14T14:51:02.701Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2ec0d1c802e909f0b78cfb",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0,
+    "stage1_passed": true,
+    "stage2_passed": false,
+    "status": "rejected",
+    "rejection_stage": "category_validation",
+    "rejection_reason": "Model failed to load. Restart the service and check the logs.",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 57,
+    "createdAt": "2026-06-14T14:55:14.002Z",
+    "updatedAt": "2026-06-14T14:55:14.002Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2ec0eec802e909f0b78cfd",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0,
+    "stage1_passed": true,
+    "stage2_passed": false,
+    "status": "rejected",
+    "rejection_stage": "category_validation",
+    "rejection_reason": "Model failed to load. Restart the service and check the logs.",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 96,
+    "createdAt": "2026-06-14T14:55:42.766Z",
+    "updatedAt": "2026-06-14T14:55:42.766Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2ec0f1c802e909f0b78cff",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": "bridal_lehenga",
+    "confidence": 0,
+    "stage1_passed": true,
+    "stage2_passed": false,
+    "status": "rejected",
+    "rejection_stage": "category_validation",
+    "rejection_reason": "Model failed to load. Restart the service and check the logs.",
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 96,
+    "createdAt": "2026-06-14T14:55:45.536Z",
+    "updatedAt": "2026-06-14T14:55:45.536Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a2ec467cb6c5a646fcc1d2d",
+    "user_id": "buyer_0afc8e5323404720",
+    "predicted_category": null,
+    "confidence": 0,
+    "stage1_passed": false,
+    "stage2_passed": false,
+    "status": "success",
+    "rejection_stage": null,
+    "rejection_reason": null,
+    "results_count": 0,
+    "top_results": [],
+    "search_time_ms": 0,
+    "preferred_category": "bridal_lehenga",
+    "image_size_kb": 59,
+    "createdAt": "2026-06-14T15:10:31.946Z",
+    "updatedAt": "2026-06-14T15:10:31.946Z",
+    "__v": 0
+  }
+]

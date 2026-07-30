@@ -36,6 +36,8 @@ export default function SellerAuthPage({ onLogin }) {
       // Persist seller to localStorage & notify parent
       const sellerData = result.seller;
       localStorage.setItem('ss_seller', JSON.stringify(sellerData));
+      // v3.2: notify SocketContext immediately (no 1.5s wait)
+      try { window.dispatchEvent(new Event('ss_auth_changed')); } catch {}
       onLogin(sellerData);
     } catch (err) {
       setError('Network error: ' + err.message);

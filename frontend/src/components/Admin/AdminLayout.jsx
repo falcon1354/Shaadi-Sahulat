@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import NotificationBell from '../Common/NotificationBell';
 
 const ADMIN_VIEWS = [
   { id: 'dashboard',   label: 'Dashboard',        icon: '📊' },
@@ -7,13 +8,17 @@ const ADMIN_VIEWS = [
   { id: 'buyers',      label: 'Buyers',            icon: '👰' },
   { id: 'marketplace', label: 'Marketplace',       icon: '🛍️' },
   { id: 'categories',  label: 'Category Manager',  icon: '🗂️' },
+  { id: 'banners',     label: 'Deal of the Day',   icon: '🎯' },
   { id: 'orders',      label: 'Orders',            icon: '📦' },
+  { id: 'disputes',    label: 'Disputes',          icon: '⚠️' },
+  { id: 'wallet',      label: 'Wallet',            icon: '💰' },
 ];
 
 export default function AdminLayout({ admin, onLogout }) {
   const navigate   = useNavigate();
   const location   = useLocation();
   const currentSeg = location.pathname.split('/')[2] || 'dashboard';
+  const adminId    = admin?.admin_id || admin?._id;
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -67,8 +72,28 @@ export default function AdminLayout({ admin, onLogout }) {
       </aside>
 
       {/* Main — page content injected by nested routes */}
-      <main className="ml-64 flex-1 p-8 overflow-y-auto min-h-screen">
-        <Outlet />
+      <main className="ml-64 flex-1 min-h-screen">
+        {/* Top bar with notification bell */}
+        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+          <div className="px-6 py-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700 capitalize">
+              {ADMIN_VIEWS.find(v => v.id === currentSeg)?.label || 'Dashboard'}
+            </h2>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 hidden sm:block">
+                {admin?.name} · {admin?.email}
+              </span>
+              <NotificationBell
+                userId="admin"
+                role="admin"
+                onNavigate={(path) => navigate(path)}
+              />
+            </div>
+          </div>
+        </header>
+        <div className="p-8 overflow-y-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

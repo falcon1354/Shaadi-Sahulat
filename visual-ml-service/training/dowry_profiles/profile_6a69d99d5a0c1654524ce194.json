@@ -1,0 +1,76 @@
+{
+  "profile_id": "6a69d99d5a0c1654524ce194",
+  "user_id": "buyer_cf4020bcd5044e24",
+  "budget": 721992,
+  "category_budgets": {
+    "wedding_dress": {
+      "estimated": 225000,
+      "spent": 0,
+      "remaining": 225000,
+      "active": true
+    },
+    "furniture": {
+      "estimated": 130000,
+      "spent": 0,
+      "remaining": 130000,
+      "active": true
+    },
+    "electronics": {
+      "estimated": 71992,
+      "spent": 0,
+      "remaining": 71992,
+      "active": true
+    },
+    "kitchen_items": {
+      "estimated": 80000,
+      "spent": 0,
+      "remaining": 80000,
+      "active": true
+    },
+    "decoration": {
+      "estimated": 50000,
+      "spent": 0,
+      "remaining": 50000,
+      "active": true
+    },
+    "miscellaneous": {
+      "estimated": 60000,
+      "spent": 0,
+      "remaining": 60000,
+      "active": true
+    },
+    "Accessaries": {
+      "estimated": 35000,
+      "spent": 0,
+      "remaining": 35000,
+      "active": true
+    },
+    "Second-Life Gear & Outdoors": {
+      "estimated": 70000,
+      "spent": 0,
+      "remaining": 70000,
+      "active": true
+    }
+  },
+  "category_breakdown": {
+    "wedding_dress": 225000,
+    "furniture": 130000,
+    "electronics": 71992,
+    "kitchen_items": 80000,
+    "decoration": 50000,
+    "miscellaneous": 60000,
+    "Accessaries": 35000,
+    "Second-Life Gear & Outdoors": 70000
+  },
+  "adjusted_estimates": {
+    "wedding_dress": 225000,
+    "furniture": 130000,
+    "electronics": 71992,
+    "kitchen_items": 80000,
+    "decoration": 50000,
+    "miscellaneous": 60000,
+    "Accessaries": 35000,
+    "Second-Life Gear & Outdoors": 70000
+  },
+  "saved_at": "2026-07-29T10:44:48.034324+00:00"
+}

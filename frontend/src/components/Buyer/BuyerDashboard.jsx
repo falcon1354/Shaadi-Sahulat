@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Gem, Hand, Banknote, Heart, TrendingUp, Eye, Wallet, BarChart3, PieChart, ArrowUpRight, ArrowDownRight, Sparkles, CheckCircle2, ChevronRight, Clock, Trash2, ShoppingBag } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { getFullBuyerData } from '../../api/buyerApi';
+import { listBuyerOrders } from '../../api/orderApi';
 
 // ── Buyer-isolated storage helpers ───────────────────────────────────────────
 function readDowry(buyerId) {
@@ -47,6 +48,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
   const [wishlist,       setWishlist]       = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [analyticsTab,   setAnalyticsTab]   = useState('Overview');
+  const [purchasedItems, setPurchasedItems] = useState([]);
 
   // Mount: load from localStorage, fall back to MongoDB seed if empty
   useEffect(() => {
@@ -73,6 +75,21 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
       localStorage.setItem(`ss_dowry_${buyerId}`, s);
       localStorage.setItem('ss_dowry_latest', s);
       setDowry(payload);
+    }).catch(() => {});
+  }, [buyerId]);
+
+  // Fetch purchased items from completed orders
+  useEffect(() => {
+    if (!buyerId) return;
+    listBuyerOrders(buyerId).then(r => {
+      if (!r.success) return;
+      const orders = r.orders || [];
+      const completed = orders.filter(o => ['COMPLETED', 'DELIVERED'].includes(o.status));
+      const items = [];
+      completed.forEach(o => {
+        (o.items || []).forEach(it => items.push({ ...it, order_id: o.order_id, status: o.status }));
+      });
+      setPurchasedItems(items);
     }).catch(() => {});
   }, [buyerId]);
 
@@ -496,6 +513,38 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* Purchased Items Section */}
+      {purchasedItems.length > 0 && (
+        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-[#FBEFF1]">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-extrabold text-gray-950 tracking-tight flex items-center gap-2">
+                <ShoppingBag className="text-[#a37b3d]" size={22} /> Items Already Purchased
+              </h2>
+              <p className="text-gray-400 text-xs mt-0.5">Products you've bought from completed orders</p>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg">
+              {purchasedItems.length} items
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[280px] overflow-y-auto pr-1">
+            {purchasedItems.slice(0, 9).map((item, i) => (
+              <div key={i} className="p-3 bg-emerald-50/30 rounded-2xl border border-emerald-100/60">
+                <p className="text-xs font-bold text-gray-900 truncate">{item.title}</p>
+                <p className="text-[10px] text-gray-500 capitalize">{item.major_category?.replace(/_/g, ' ')}</p>
+                <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-emerald-100/40">
+                  <span className="text-xs font-extrabold text-emerald-700">PKR {(item.price || 0).toLocaleString()}</span>
+                  <span className="text-[10px] text-gray-400">Qty: {item.qty}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {purchasedItems.length > 9 && (
+            <p className="text-xs text-gray-400 mt-3 text-center font-medium">+{purchasedItems.length - 9} more purchased items</p>
+          )}
         </div>
       )}
 

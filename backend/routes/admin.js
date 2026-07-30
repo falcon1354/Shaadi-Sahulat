@@ -17,7 +17,13 @@ const {
   addCustomField,
   removeCustomField,
   updateSubcategoryPrices,
+  updateCategoryIcon,
+  editCategory,
 } = require("../controllers/adminController");
+const { makeCategoryIconUploadMiddleware } = require("../lib/storage");
+
+// BNPL + Order Processing admin extensions
+const adminExtRoutes = require("./adminExt");
 
 // Auth
 router.post("/login",   loginAdmin);
@@ -39,10 +45,16 @@ router.get("/products", getAllProducts);
 // Categories
 router.get( "/categories",                                           getCategories);
 router.post("/categories",                                           addCategory);
+router.post("/categories/:category_id/icon", makeCategoryIconUploadMiddleware(), updateCategoryIcon);
+router.put( "/categories/:category_id",                              editCategory);
 router.post("/categories/:category_id/subcategory",                  addSubcategory);
 router.patch("/categories/:category_id/prices",                      updateCategoryPrices);
 router.post("/categories/:category_id/subcategory/:subcategory_id/field",          addCustomField);
 router.delete("/categories/:category_id/subcategory/:subcategory_id/field/:field_id", removeCustomField);
 router.patch("/categories/:category_id/subcategory/:subcategory_id/prices",          updateSubcategoryPrices);
+
+// ── BNPL + Order Processing admin extensions ───────────────────────────────
+// (orders, disputes, release-payment, wallet, payouts, bnpl oversight)
+router.use(adminExtRoutes);
 
 module.exports = router;

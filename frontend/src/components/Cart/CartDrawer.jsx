@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
 import { patchDowryBudgets } from '../../api/buyerApi';
@@ -12,7 +13,9 @@ function getDowryBudgets(buyerId) {
   } catch { return null; }
 }
 
-async function simulateCheckout(items, buyerId) {
+// Legacy: still called after a successful order placement to update local
+// dowry budgets. Real order creation now happens in CheckoutPage → POST /api/orders.
+async function updateLocalDowryBudgets(items, buyerId) {
   try {
     const key  = buyerId ? `ss_dowry_${buyerId}` : 'ss_dowry_latest';
     const dowry = JSON.parse(localStorage.getItem(key) || 'null');
@@ -38,20 +41,36 @@ async function simulateCheckout(items, buyerId) {
 export default function CartDrawer({ open, onClose, buyerId }) {
   const { items, removeItem, updateQty, totalItems, totalPrice, clearCart } = useCart();
   const { categories } = useCategories();
+  const navigate = useNavigate();
   const catLabel = (id) => categories.find(c => c.category_id === id)?.label || id?.replace(/_/g, ' ') || id;
   const [checkoutDone, setCheckoutDone] = useState(false);
+  const [budgetRefreshKey, setBudgetRefreshKey] = useState(0);
 
+  // Listen for dowry-updated events to refresh budget display
+  useEffect(() => {
+    const handler = () => setBudgetRefreshKey(k => k + 1);
+    window.addEventListener('dowry-updated', handler);
+    return () => window.removeEventListener('dowry-updated', handler);
+  }, []);
+
+  // Per BNPL&Delivery.md Step 1: "PROCEED TO CHECKOUT" now navigates to the
+  // real checkout page where the buyer picks COD or BNPL and the order is
+  // actually created in the backend via POST /api/orders.
   const handleCheckout = async () => {
-    await simulateCheckout(items, buyerId);
-    clearCart();
-    setCheckoutDone(true);
-    setTimeout(() => { setCheckoutDone(false); onClose(); }, 2000);
+    if (!buyerId) {
+      alert('Please log in as a buyer to checkout.');
+      navigate('/buyer/login');
+      return;
+    }
+    await updateLocalDowryBudgets(items, buyerId); // keep legacy dowry view in sync
+    onClose();
+    navigate('/buyer/checkout');
   };
 
   if (!open) return null;
 
   // §5.3 — per-category cart totals vs budget remaining
-  const budgets = getDowryBudgets(buyerId);
+  const budgets = getDowryBudgets(buyerId); // re-reads due to budgetRefreshKey effect
   const catTotals = items.reduce((acc, item) => {
     const cat   = item.major_category;
     const price = (item.discount_price || item.price || 0) * item.qty;
@@ -128,9 +147,13 @@ export default function CartDrawer({ open, onClose, buyerId }) {
                       <span className="text-sm font-medium w-4 text-center">{item.qty}</span>
                       <button
                         onClick={() => updateQty(item.product_id, item.qty + 1)}
-                        className="w-6 h-6 rounded-full bg-gray-100 hover:bg-[#FFF5F8] text-gray-600 text-sm font-bold leading-none flex items-center justify-center">
+                        disabled={item.stock_quantity && item.qty >= item.stock_quantity}
+                        className={`w-6 h-6 rounded-full bg-gray-100 hover:bg-[#FFF5F8] text-gray-600 text-sm font-bold leading-none flex items-center justify-center ${(item.stock_quantity && item.qty >= item.stock_quantity) ? 'opacity-40 cursor-not-allowed' : ''}`}>
                         +
                       </button>
+                      {item.stock_quantity && (
+                        <span className="text-[10px] text-gray-400 ml-1">max {item.stock_quantity}</span>
+                      )}
                       <button
                         onClick={() => removeItem(item.product_id)}
                         className="ml-auto text-xs text-red-400 hover:text-red-600 transition-colors">
@@ -190,7 +213,7 @@ export default function CartDrawer({ open, onClose, buyerId }) {
                 <button
                   onClick={handleCheckout}
                   className="w-full py-2.5 bg-[#a37b3d] hover:bg-[#8a6633] text-white rounded-xl text-sm font-semibold transition-colors">
-                  Confirm Order &amp; Update Budget
+                  Proceed to Checkout
                 </button>
               </>
             )}

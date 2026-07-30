@@ -44,10 +44,17 @@ const buyerSchema = new mongoose.Schema(
         major_category: { type: String, default: "" },
         image_url:      { type: String, default: "" },
         qty:            { type: Number, default: 1 },
+        stock_quantity: { type: Number, default: 0 },
+        seller_id:      { type: String, default: "" },
         added_at:       { type: Date,   default: Date.now },
       }],
       default: [],
     },
+
+    level:                     { type: String,  default: "New" },
+    total_orders:              { type: Number,  default: 0 },
+    saved_addresses:           { type: mongoose.Schema.Types.Mixed, default: [] },
+    preferred_delivery_method: { type: String,  default: "standard" },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );

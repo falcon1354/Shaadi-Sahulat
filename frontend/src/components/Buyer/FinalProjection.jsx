@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart as RechartsPieChart, Pie, Cell, Legend
+} from 'recharts';
 import { useCategories } from '../../hooks/useCategories';
 import { getFullBuyerData } from '../../api/buyerApi';
 import { 
   Sparkles, DollarSign, Wallet, ArrowUpRight, TrendingUp, Info, HelpCircle, 
-  CheckCircle2, ChevronRight, BarChart3, PieChart, AlertCircle, ShoppingBag, 
+  CheckCircle2, ChevronRight, BarChart3, PieChart as PieIcon, AlertCircle, ShoppingBag, 
   Percent, ShieldAlert, ArrowDownRight, Compass
 } from 'lucide-react';
 
@@ -22,6 +26,8 @@ const formatPKR = (v) => {
 
 const formatPKRFull = (v) =>
   new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 }).format(v);
+
+const CHART_COLORS = ['#a37b3d', '#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#14b8a6'];
 
 export default function FinalProjection({ buyer }) {
   const buyerId = buyer?.buyer_id;
@@ -78,13 +84,13 @@ export default function FinalProjection({ buyer }) {
         <div className="bg-gradient-to-tr from-[#1a0a1e] via-[#2d2d44] to-[#3d3455] rounded-3xl p-8 text-white shadow-xl relative overflow-hidden border border-white/10">
           <div className="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-64 h-64 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-slate-300 text-xs font-bold tracking-wide mb-3">
-            <span>👰</span> Buyer Portal · Financial Projection
+            <span>👰</span> Buyer Portal · Dashboard
           </div>
           <h1 className="text-3xl font-black mb-2 flex items-center gap-2 bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent">
-            <BarChart3 size={32} className="text-white" /> Spending Projection
+            <BarChart3 size={32} className="text-white" /> Dashboard & Analytics
           </h1>
           <p className="bg-gradient-to-r from-slate-300 via-purple-200 to-pink-200 bg-clip-text text-transparent font-light max-w-xl">
-            Live budget forecasting, historical comparison, and real-time tracking metrics.
+            Live budget analytics, category charts, and real-time tracking metrics.
           </p>
         </div>
         <div className="bg-white rounded-3xl p-16 text-center border border-[#FBEFF1] shadow-xl">
@@ -93,7 +99,7 @@ export default function FinalProjection({ buyer }) {
           </div>
           <h2 className="text-xl font-extrabold text-gray-900 mb-2">No Active Estimates Found</h2>
           <p className="text-sm text-gray-500 max-w-md mx-auto leading-relaxed font-light mb-6">
-            To view detailed projections, please initialize the Dowry Budget Estimation process inside your workspace dashboard.
+            To view detailed dashboard analytics, please initialize the Dowry Budget Estimation process inside the Budget Estimator tool.
           </p>
         </div>
       </div>
@@ -111,6 +117,13 @@ export default function FinalProjection({ buyer }) {
   const totalRemain = activeCats.reduce((s, [, v]) => s + (v.remaining ?? (v.estimated - (v.spent || 0))), 0);
   const spentPct    = totalEst > 0 ? Math.round((totalSpent / totalEst) * 100) : 0;
   const activeCatCount = activeCats.filter(([, v]) => (v.spent || 0) > 0).length;
+
+  const chartData = activeCats.map(([cat, info]) => ({
+    name: catLabel(cat),
+    Estimated: info.estimated || 0,
+    Spent: info.spent || 0,
+    Remaining: Math.max(0, info.remaining ?? ((info.estimated || 0) - (info.spent || 0))),
+  }));
 
   const categoryComparison = activeCats.map(([cat, info]) => ({
     category:  catLabel(cat),
@@ -134,15 +147,15 @@ export default function FinalProjection({ buyer }) {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-slate-300 text-xs font-bold tracking-wide mb-3">
-              <span>👰</span> Buyer Portal · Financial Projection
+              <span>👰</span> Buyer Portal · Dashboard
             </div>
             <h1 className="text-3xl font-black mb-1.5 flex items-center gap-2 tracking-tight">
               <span className="bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
-                <BarChart3 size={32} className="text-white" /> Spending Projection
+                <BarChart3 size={32} className="text-white" /> Dashboard Analytics
               </span>
             </h1>
             <p className="bg-gradient-to-r from-slate-300 via-purple-200 to-pink-200 bg-clip-text text-transparent font-light text-sm sm:text-base">
-              Synchronized with your real-time Dowry Estimator data.
+              Synchronized with your real-time Dowry Estimator data and purchase history.
             </p>
           </div>
           <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 shrink-0 flex items-center gap-3">
@@ -243,6 +256,54 @@ export default function FinalProjection({ buyer }) {
       {/* TAB: Overview */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {/* Visual Charts Container */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Bar Chart: Estimated vs Spent */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#FBEFF1]">
+              <h3 className="text-base font-extrabold text-gray-900 mb-1">Category Budget vs Expenditure</h3>
+              <p className="text-xs text-gray-400 mb-4">Comparison of estimated vs actual spent per category</p>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-15} textAnchor="end" />
+                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v / 1000}k`} />
+                    <Tooltip formatter={(value) => `PKR ${value.toLocaleString()}`} />
+                    <Bar dataKey="Estimated" fill="#ECD4A8" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Spent" fill="#a37b3d" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Pie Chart: Category Budget Share */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#FBEFF1]">
+              <h3 className="text-base font-extrabold text-gray-900 mb-1">Category Allocation Distribution</h3>
+              <p className="text-xs text-gray-400 mb-4">Percentage share of total budget across categories</p>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={chartData}
+                      dataKey="Estimated"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      innerRadius={45}
+                      paddingAngle={2}
+                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => `PKR ${value.toLocaleString()}`} />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-[#FBEFF1] space-y-6">
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-1">Overall Spending Progress</h2>

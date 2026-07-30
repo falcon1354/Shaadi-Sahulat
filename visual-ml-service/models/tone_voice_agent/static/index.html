@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tone-Aware Voice Agent v2</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface2: #252836;
+            --border: #2e3247;
+            --text: #e4e6f0;
+            --text-dim: #8b8fa3;
+            --accent: #6c5ce7;
+            --accent-glow: rgba(108, 92, 231, 0.25);
+            --positive: #00cec9;
+            --negative: #ff6b6b;
+            --warning: #fdcb6e;
+            --neutral: #a29bfe;
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 720px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+            background: linear-gradient(135deg, var(--accent), var(--positive));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle { color: var(--text-dim); margin-bottom: 2rem; font-size: 0.95rem; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .card-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+        }
+
+        /* ── Textarea ──────────────────────────────── */
+        textarea {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 0.9rem 1rem;
+            font-size: 0.95rem;
+            resize: vertical;
+            min-height: 90px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        textarea:focus { outline: none; border-color: var(--accent); }
+        .word-count {
+            text-align: right;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            margin-top: 0.4rem;
+        }
+        .word-count.over { color: var(--negative); font-weight: 600; }
+
+        /* ── Star Rating ───────────────────────────── */
+        .stars { display: flex; gap: 6px; margin-top: 0.5rem; }
+        .star {
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--border);
+            transition: color 0.15s, transform 0.15s;
+            user-select: none;
+        }
+        .star:hover { transform: scale(1.15); }
+        .star.active { color: var(--warning); }
+        .rating-label {
+            margin-top: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        /* ── Generate Button ───────────────────────── */
+        .btn-generate {
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-top: 1rem;
+        }
+        .btn-generate:hover { opacity: 0.92; }
+        .btn-generate:active { transform: scale(0.98); }
+        .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── Tone Analysis Panel ────────────────────── */
+        .tone-panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .tone-panel.visible { display: block; }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        .analysis-item {
+            background: var(--surface2);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+        }
+        .analysis-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-dim);
+            margin-bottom: 0.3rem;
+        }
+        .analysis-value {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .emotion-badge {
+            display: inline-block;
+            padding: 0.15rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .emotion-badge.positive { background: rgba(0,206,201,0.15); color: var(--positive); }
+        .emotion-badge.negative { background: rgba(255,107,107,0.15); color: var(--negative); }
+        .emotion-badge.neutral-badge { background: rgba(162,155,254,0.15); color: var(--neutral); }
+        .emotion-badge.warning-badge { background: rgba(253,203,110,0.15); color: var(--warning); }
+
+        .intensity-bar-bg {
+            background: var(--border);
+            border-radius: 4px;
+            height: 8px;
+            margin-top: 0.3rem;
+            overflow: hidden;
+        }
+        .intensity-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.4s ease;
+            background: linear-gradient(90deg, var(--positive), var(--warning), var(--negative));
+        }
+
+        .match-ok { color: var(--positive); }
+        .match-warn { color: var(--warning); }
+
+        .routing-tag {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .routing-tag.voice { background: rgba(0,206,201,0.15); color: var(--positive); }
+        .routing-tag.llm { background: rgba(108,92,231,0.15); color: var(--accent); }
+        .routing-tag.balanced { background: rgba(162,155,254,0.15); color: var(--neutral); }
+        .routing-tag.star { background: rgba(139,143,163,0.15); color: var(--text-dim); }
+
+        /* ── Agent Buttons ──────────────────────────── */
+        .agent-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+        }
+        .btn-agent {
+            padding: 0.7rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface2);
+            color: var(--text);
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .btn-agent:hover { border-color: var(--accent); }
+        .btn-agent.active {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            font-weight: 700;
+        }
+        .btn-agent .agent-lang {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            margin-top: 0.15rem;
+        }
+
+        /* ── Output Section ─────────────────────────── */
+        .output-section { display: none; animation: fadeIn 0.3s ease; }
+        .output-section.visible { display: block; }
+
+        .spoken-text {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.9rem 1rem;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            min-height: 60px;
+            color: var(--text);
+        }
+        .spoken-text .ssml-annotation {
+            color: var(--accent);
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 0.75rem;
+            border-radius: 8px;
+        }
+
+        /* ── Loading ────────────────────────────────── */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-dim);
+        }
+        .loading.visible { display: block; }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+
+        /* ── Error ──────────────────────────────────── */
+        .error-msg {
+            display: none;
+            background: rgba(255,107,107,0.1);
+            border: 1px solid rgba(255,107,107,0.3);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: var(--negative);
+            font-size: 0.9rem;
+        }
+        .error-msg.visible { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Responsive ─────────────────────────────── */
+        @media (max-width: 500px) {
+            .analysis-grid { grid-template-columns: 1fr; }
+            .agent-buttons { grid-template-columns: 1fr; }
+            h1 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔊 Tone-Aware Voice Agent</h1>
+        <p class="subtitle">Review voice-over with emotion detection, tone routing, and SSML-enhanced speech</p>
+
+        <!-- ── Input ──────────────────────────────── -->
+        <div class="card">
+            <div class="card-title">Review Input</div>
+            <textarea id="reviewText" placeholder="Enter a customer review (max 100 words)..."></textarea>
+            <div class="word-count" id="wordCount">0 / 100 words</div>
+
+            <div style="margin-top:1rem;">
+                <div class="card-title">Star Rating</div>
+                <div class="stars" id="starRating">
+                    <span class="star" data-value="0">☆</span>
+                    <span class="star" data-value="1">★</span>
+                    <span class="star" data-value="2">★</span>
+                    <span class="star" data-value="3">★</span>
+                    <span class="star" data-value="4">★</span>
+                    <span class="star" data-value="5">★</span>
+                </div>
+                <div class="rating-label" id="ratingLabel">Select a rating</div>
+            </div>
+
+            <button class="btn-generate" id="btnGenerate" disabled>Analyze & Generate</button>
+        </div>
+
+        <!-- ── Loading ────────────────────────────── -->
+        <div class="loading" id="loading">
+            <span class="spinner"></span> Analyzing tone and generating voice...
+        </div>
+
+        <!-- ── Error ──────────────────────────────── -->
+        <div class="error-msg" id="errorMsg"></div>
+
+        <!-- ── Tone Analysis Panel ─────────────────── -->
+        <div class="card tone-panel" id="tonePanel">
+            <div class="card-title">Tone Analysis</div>
+            <div class="analysis-grid">
+                <div class="analysis-item">
+                    <div class="analysis-label">Detected Emotion</div>
+                    <div class="analysis-value" id="detectedEmotion">—</div>
+                </div>
+                <div class="analysis-item">
+                    <div class="analysis-label">Intensity</div>
+                    <div class="analysis-value" id="intensityValue">0.0</div>
+                    <div class="intensity-bar-bg">
+                        <div class="intensity-bar-fill" id="intensityBar" style="width:0%"></div>
+                    </div>
+                </div>
+                <div class="analysis-item">
+                    <div class="analysis-label">Star-Text Match</div>
+                    <div class="analysis-value" id="matchStatus">—</div>
+                </div>
+                <div class="analysis-item">
+                    <div class="analysis-label">Routing Decision</div>
+                    <div class="analysis-value" id="routingDecision">—</div>
+                </div>
+            </div>
+            <div id="mismatchNote" style="display:none; margin-top:0.75rem; font-size:0.85rem; color:var(--warning);"></div>
+        </div>
+
+        <!-- ── Voice Agent Buttons ─────────────────── -->
+        <div class="card tone-panel" id="agentPanel">
+            <div class="card-title">Voice Agent</div>
+            <div class="agent-buttons">
+                <button class="btn-agent" data-agent="en_male" id="btnEnM">
+                    English Male
+                    <span class="agent-lang">Kokoro EN</span>
+                </button>
+                <button class="btn-agent" data-agent="en_female" id="btnEnF">
+                    English Female
+                    <span class="agent-lang">Kokoro EN</span>
+                </button>
+                <button class="btn-agent" data-agent="hi_male" id="btnHiM">
+                    Urdu Male
+                    <span class="agent-lang">Kokoro HI Voice</span>
+                </button>
+                <button class="btn-agent" data-agent="hi_female" id="btnHiF">
+                    Urdu Female
+                    <span class="agent-lang">Kokoro HI Voice</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ── Output ──────────────────────────────── -->
+        <div class="card output-section" id="outputSection">
+            <div class="card-title">Spoken Text</div>
+            <div class="spoken-text" id="spokenText"></div>
+            <audio id="audioPlayer" controls></audio>
+        </div>
+    </div>
+
+    <script>
+        // ── State ──────────────────────────────────
+        let currentRating = -1;
+        let currentAgent = null;
+        let analysisData = null;
+        let tonedTextEn = null;
+        let isProcessing = false;
+
+        const RATING_LABELS = {
+            0: "Very Disappointed / Upset",
+            1: "Disappointed",
+            2: "Mildly Dissatisfied / Concerned",
+            3: "Neutral / Balanced",
+            4: "Positive / Pleased",
+            5: "Very Happy / Excited"
+        };
+
+        const POSITIVE_EMOTIONS = ["joy", "excitement", "satisfaction", "gratitude"];
+        const NEGATIVE_EMOTIONS = ["disappointment", "frustration", "anger", "sadness", "sarcasm"];
+
+        // ── DOM refs ───────────────────────────────
+        const reviewText = document.getElementById('reviewText');
+        const wordCount = document.getElementById('wordCount');
+        const btnGenerate = document.getElementById('btnGenerate');
+        const starRating = document.getElementById('starRating');
+        const ratingLabel = document.getElementById('ratingLabel');
+        const loading = document.getElementById('loading');
+        const errorMsg = document.getElementById('errorMsg');
+        const tonePanel = document.getElementById('tonePanel');
+        const agentPanel = document.getElementById('agentPanel');
+        const outputSection = document.getElementById('outputSection');
+        const audioPlayer = document.getElementById('audioPlayer');
+
+        // ── Word counter ───────────────────────────
+        reviewText.addEventListener('input', () => {
+            const words = reviewText.value.trim().split(/\s+/).filter(w => w.length > 0);
+            const count = words.length;
+            wordCount.textContent = `${count} / 100 words`;
+            wordCount.classList.toggle('over', count > 100);
+            updateGenerateBtn();
+        });
+
+        // ── Star rating ────────────────────────────
+        const stars = starRating.querySelectorAll('.star');
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                currentRating = parseInt(star.dataset.value);
+                updateStars();
+                updateGenerateBtn();
+            });
+        });
+
+        function updateStars() {
+            stars.forEach(s => {
+                const val = parseInt(s.dataset.value);
+                s.classList.toggle('active', val <= currentRating);
+            });
+            ratingLabel.textContent = currentRating >= 0 ? `${currentRating}★ — ${RATING_LABELS[currentRating]}` : 'Select a rating';
+        }
+
+        function updateGenerateBtn() {
+            const words = reviewText.value.trim().split(/\s+/).filter(w => w.length > 0);
+            btnGenerate.disabled = words.length === 0 || currentRating < 0 || words.length > 100;
+        }
+
+        // ── Generate ───────────────────────────────
+        btnGenerate.addEventListener('click', async () => {
+            if (isProcessing) return;
+            const text = reviewText.value.trim();
+            if (!text || currentRating < 0) return;
+
+            isProcessing = true;
+            btnGenerate.disabled = true;
+            showLoading(true);
+            hideError();
+
+            try {
+                // Step 1: Rewrite (includes analysis)
+                const rewriteResp = await fetch('/rewrite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, rating: currentRating })
+                });
+
+                if (!rewriteResp.ok) {
+                    const err = await rewriteResp.json();
+                    throw new Error(err.detail || 'Rewrite failed');
+                }
+
+                const rewriteData = await rewriteResp.json();
+                analysisData = rewriteData;
+                tonedTextEn = rewriteData.toned_text_en;
+
+                // Show tone analysis
+                displayToneAnalysis(rewriteData);
+
+                // Show agent panel
+                tonePanel.classList.add('visible');
+                agentPanel.classList.add('visible');
+
+                // Auto-select English Male if no agent selected
+                if (!currentAgent) {
+                    selectAgent('en_male');
+                } else {
+                    // Re-synthesize with current agent
+                    await synthesizeWithAgent(currentAgent);
+                }
+
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                isProcessing = false;
+                btnGenerate.disabled = false;
+                showLoading(false);
+            }
+        });
+
+        // ── Agent buttons ──────────────────────────
+        document.querySelectorAll('.btn-agent').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const agent = btn.dataset.agent;
+                selectAgent(agent);
+                if (analysisData) {
+                    await synthesizeWithAgent(agent);
+                }
+            });
+        });
+
+        function selectAgent(agent) {
+            currentAgent = agent;
+            document.querySelectorAll('.btn-agent').forEach(b => {
+                b.classList.toggle('active', b.dataset.agent === agent);
+            });
+        }
+
+        // ── Synthesize ─────────────────────────────
+        async function synthesizeWithAgent(agent) {
+            showLoading(true);
+            hideError();
+
+            try {
+                const text = reviewText.value.trim();
+                const resp = await fetch('/synthesize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, rating: currentRating, agent })
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || 'Synthesis failed');
+                }
+
+                const data = await resp.json();
+
+                // Update spoken text display
+                const spokenDiv = document.getElementById('spokenText');
+                spokenDiv.innerHTML = escapeHtml(data.display_text || data.spoken_text || '');
+
+                // Update audio
+                if (data.audio_url) {
+                    audioPlayer.src = data.audio_url;
+                    audioPlayer.load();
+                    audioPlayer.play().catch(() => {});
+                }
+
+                outputSection.classList.add('visible');
+
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ── Display Tone Analysis ──────────────────
+        function displayToneAnalysis(data) {
+            const ep = data.emotion_profile || {};
+            const tp = data.tone_profile || {};
+            const er = data.emotion_route || {};
+
+            // Detected emotion
+            const emotion = ep.primary_emotion || 'neutral';
+            const emotionEl = document.getElementById('detectedEmotion');
+            const isPos = POSITIVE_EMOTIONS.includes(emotion);
+            const isNeg = NEGATIVE_EMOTIONS.includes(emotion);
+            const badgeClass = isPos ? 'positive' : (isNeg ? 'negative' : 'neutral-badge');
+            emotionEl.innerHTML = `<span class="emotion-badge ${badgeClass}">${emotion}</span>`;
+
+            // Intensity
+            const intensity = ep.emotional_intensity || 0;
+            document.getElementById('intensityValue').textContent = intensity.toFixed(2);
+            document.getElementById('intensityBar').style.width = `${intensity * 100}%`;
+
+            // Star-Text Match
+            const matchEl = document.getElementById('matchStatus');
+            const mismatchNoteEl = document.getElementById('mismatchNote');
+            if (ep.mismatch) {
+                matchEl.innerHTML = `<span class="match-warn">⚠ Mismatch</span>`;
+                mismatchNoteEl.textContent = ep.mismatch_note || '';
+                mismatchNoteEl.style.display = 'block';
+            } else {
+                matchEl.innerHTML = `<span class="match-ok">✓ Star & text agree</span>`;
+                mismatchNoteEl.style.display = 'none';
+            }
+
+            // Routing Decision
+            const routingEl = document.getElementById('routingDecision');
+            const carrier = er.carrier || 'balanced';
+            const carrierLabels = {
+                'voice_dominant': { text: '🎤 Voice Model', cls: 'voice', desc: 'Prosody carries the emotion' },
+                'llm_dominant': { text: '✍️ LLM (Words)', cls: 'llm', desc: 'Word choice carries the emotion' },
+                'balanced': { text: '⚖️ Balanced', cls: 'balanced', desc: 'Both share the emotional load' },
+                'star_only': { text: '⭐ Star-Only', cls: 'star', desc: 'Speed only, no emotion injection' },
+            };
+            const info = carrierLabels[carrier] || carrierLabels['balanced'];
+            routingEl.innerHTML = `<span class="routing-tag ${info.cls}">${info.text}</span><div style="font-size:0.78rem;color:var(--text-dim);margin-top:0.25rem">${info.desc}</div>`;
+        }
+
+        // ── Helpers ────────────────────────────────
+        function showLoading(visible) {
+            loading.classList.toggle('visible', visible);
+        }
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.add('visible');
+        }
+
+        function hideError() {
+            errorMsg.classList.remove('visible');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

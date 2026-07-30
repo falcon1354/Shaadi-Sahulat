@@ -1,0 +1,140 @@
+{
+  "version": 2,
+  "description": "Tunable parameters for the Tone-Aware Review Voice Agent v2. All magic numbers live here — pipeline code reads this file and never hardcodes these values.",
+
+  "star_speed_map": {
+    "0": 0.78,
+    "1": 0.84,
+    "2": 0.92,
+    "3": 1.00,
+    "4": 1.10,
+    "5": 1.20
+  },
+
+  "star_tone_labels": {
+    "0": "Very Disappointed / Upset",
+    "1": "Disappointed",
+    "2": "Mildly Dissatisfied / Concerned",
+    "3": "Neutral / Balanced",
+    "4": "Positive / Pleased",
+    "5": "Very Happy / Excited"
+  },
+
+  "emotion_routing": {
+    "high_intensity_threshold": 0.7,
+    "low_intensity_threshold": 0.3,
+    "voice_dominant_emotions": ["joy", "excitement", "frustration", "anger"],
+    "llm_dominant_emotions": ["sadness", "disappointment", "gratitude", "sarcasm"],
+    "balanced_emotions": ["concern", "surprise", "satisfaction", "neutral"]
+  },
+
+  "routing_rules": [
+    {
+      "id": "R1",
+      "condition": "intensity >= 0.7 AND primary_emotion IN voice_dominant_emotions AND mismatch == false",
+      "carrier": "voice_dominant",
+      "llm_rewrite_strength": "mild",
+      "ssml_intensity": "heavy",
+      "speed_adjustment": 1.0,
+      "description": "High-intensity raw emotions — Voice Model carries the emotion through prosody/SSML."
+    },
+    {
+      "id": "R2",
+      "condition": "intensity >= 0.7 AND primary_emotion IN llm_dominant_emotions AND mismatch == false",
+      "carrier": "llm_dominant",
+      "llm_rewrite_strength": "strong",
+      "ssml_intensity": "light",
+      "speed_adjustment": 0.95,
+      "description": "High-intensity text-dependent emotions — LLM carries the emotion through word choice."
+    },
+    {
+      "id": "R3",
+      "condition": "intensity >= 0.3 AND intensity < 0.7 AND mismatch == false",
+      "carrier": "balanced",
+      "llm_rewrite_strength": "moderate",
+      "ssml_intensity": "moderate",
+      "speed_adjustment": 1.0,
+      "description": "Mid-intensity emotions — both LLM and Voice Model share the emotional load equally."
+    },
+    {
+      "id": "R4",
+      "condition": "intensity < 0.3 AND mismatch == false",
+      "carrier": "star_only",
+      "llm_rewrite_strength": "minimal",
+      "ssml_intensity": "none",
+      "speed_adjustment": 1.0,
+      "description": "Low-intensity/neutral text — star rating sets the base vibe via speed only."
+    },
+    {
+      "id": "R5",
+      "condition": "mismatch == true",
+      "carrier": "llm_dominant",
+      "llm_rewrite_strength": "strong",
+      "ssml_intensity": "light",
+      "speed_adjustment": 0.90,
+      "description": "Star-text mismatch ALWAYS routes to LLM — linguistic contradictions need the right words."
+    }
+  ],
+
+  "routing_priority": ["R5", "R1", "R2", "R3", "R4"],
+  "routing_priority_note": "R5 (mismatch) is checked FIRST regardless of intensity.",
+
+  "mismatch_rules": {
+    "high_star_negative_text": {
+      "bias": "text_dominant",
+      "speed_override_factor": 0.90,
+      "description": "4-5 stars with angry/sarcastic/disappointed text → trust the text, dampen speed"
+    },
+    "low_star_positive_text": {
+      "bias": "blended_text_leading",
+      "speed_override_factor": 0.95,
+      "description": "0-1 stars with warm/positive text → blend both, lean toward text warmth"
+    }
+  },
+
+  "ssml_bridge": {
+    "break_pause_seconds": {
+      "default": 0.5,
+      "min": 0.2,
+      "max": 1.5
+    },
+    "emphasis_micro_pause_seconds": 0.15,
+    "prosody_fast_multiplier": 1.15,
+    "prosody_slow_multiplier": 0.85,
+    "interjection_pause_seconds": 0.2,
+    "max_segments_per_synthesis": 10,
+    "stitch_method": "pydub"
+  },
+
+  "voice_ids": {
+    "en_male": "am_michael",
+    "en_female": "af_bella",
+    "hi_male": "hm_omega",
+    "hi_female": "hf_beta"
+  },
+
+  "voice_id_note": "Kokoro prefixes: af_*/am_*=American F/M, bf_*/bm_*=British F/M, hf_*/hm_*=Hindi F/M. Valid Hindi male voices are hm_omega, hm_psi (hm_alpha does NOT exist and 404s on HuggingFace).",
+
+  "groq": {
+    "model": "llama-3.3-70b-versatile",
+    "classification_model": "llama-3.3-70b-versatile",
+    "translation_model": "llama-3.3-70b-versatile",
+    "max_tokens_classification": 200,
+    "max_tokens_rewrite": 200,
+    "max_tokens_translation": 300,
+    "temperature_classification": 0.1,
+    "temperature_rewrite": 0.7,
+    "temperature_translation": 0.3
+  },
+
+  "limits": {
+    "max_review_words": 100,
+    "max_rewrite_words": 120,
+    "max_concurrent_tts_jobs": 4
+  },
+
+  "cache": {
+    "ttl_seconds": 3600,
+    "max_entries": 500
+  }
+}

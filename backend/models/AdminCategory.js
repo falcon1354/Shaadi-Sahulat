@@ -20,6 +20,7 @@ const adminCategorySchema = new mongoose.Schema(
   {
     category_id:    { type: String, required: true, unique: true },
     label:          { type: String, required: true },
+    // icon can hold either an emoji (e.g. "📦") or a PNG icon URL path (e.g. "/uploads/Categories/wedding_dress.png")
     icon:           { type: String, default: "📦" },
     subcategories:  { type: [subcategorySchema], default: [] },
     price_min:      { type: Number, default: 1000 },
