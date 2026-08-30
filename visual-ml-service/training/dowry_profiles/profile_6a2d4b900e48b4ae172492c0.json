@@ -1,7 +1,7 @@
 {
   "profile_id": "6a2d4b900e48b4ae172492c0",
   "user_id": "buyer_63c08435c8104d54",
-  "budget": 492003,
+  "budget": 489003,
   "category_budgets": {
     "wedding_dress": {
       "estimated": 160000,
@@ -11,14 +11,14 @@
     },
     "furniture": {
       "estimated": 175000,
-      "spent": 0,
-      "remaining": 175000,
+      "spent": 190000,
+      "remaining": -15000,
       "active": true
     },
     "electronics": {
-      "estimated": 76158,
+      "estimated": 73158,
       "spent": 0,
-      "remaining": 76158,
+      "remaining": 73158,
       "active": true
     },
     "jewelry": {
@@ -35,8 +35,8 @@
     },
     "decoration": {
       "estimated": 19087,
-      "spent": 7500,
-      "remaining": 11587,
+      "spent": 12500,
+      "remaining": 6587,
       "active": true
     },
     "miscellaneous": {
@@ -49,27 +49,41 @@
       "estimated": 10000,
       "spent": 0,
       "remaining": 10000
+    },
+    "Second-Life Gear & Outdoors": {
+      "estimated": 3000,
+      "spent": 0,
+      "remaining": 3000
+    },
+    "Jweley": {
+      "estimated": 0,
+      "spent": 0,
+      "remaining": 0
     }
   },
   "category_breakdown": {
     "wedding_dress": 160000,
     "furniture": 175000,
-    "electronics": 76158,
+    "electronics": 73158,
     "jewelry": 0,
     "kitchen_items": 40677,
     "decoration": 19087,
     "miscellaneous": 21081,
-    "Accessaries": 10000
+    "Accessaries": 10000,
+    "Second-Life Gear & Outdoors": 3000,
+    "Jweley": 0
   },
   "adjusted_estimates": {
     "wedding_dress": 160000,
     "furniture": 175000,
-    "electronics": 76158,
+    "electronics": 73158,
     "jewelry": 0,
     "kitchen_items": 40677,
     "decoration": 19087,
     "miscellaneous": 21081,
-    "Accessaries": 10000
+    "Accessaries": 10000,
+    "Second-Life Gear & Outdoors": 3000,
+    "Jweley": 0
   },
-  "saved_at": "2026-07-23T15:26:55.932027+00:00"
+  "saved_at": "2026-08-27T05:44:54.808535+00:00"
 }

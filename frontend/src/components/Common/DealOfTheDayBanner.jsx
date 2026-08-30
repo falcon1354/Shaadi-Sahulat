@@ -4,39 +4,37 @@ import { resolveImageUrl } from '../../api/sellerApi';
 
 const BANNER_API = 'http://localhost:5000/api/banners/active';
 
-export default function DealOfTheDayBanner({ categoryId }) {
+export default function DealOfTheDayBanner({ categoryId, storefront }) {
   const navigate = useNavigate();
   const [banners, setBanners] = useState([]);
   const [current, setCurrent] = useState(0);
-  const [direction, setDirection] = useState('next'); // for slide animation
+  const [direction, setDirection] = useState('next');
 
   useEffect(() => {
-    fetch(BANNER_API)
+    let url = BANNER_API;
+    const params = new URLSearchParams();
+    if (storefront) params.set('storefront', storefront);
+    if (categoryId) params.set('category_id', categoryId);
+    if (params.toString()) url += '?' + params.toString();
+
+    fetch(url)
       .then(r => r.json())
       .then(data => {
         if (data.success && data.banners?.length) {
-          // Filter banners by category if categoryId prop is provided
           let filtered = data.banners;
           if (categoryId) {
             filtered = data.banners.filter(b =>
               (b.link_type === 'category' && b.link_value === categoryId) ||
               b.category_id === categoryId
             );
-          } else {
-            // On homepage (no categoryId), show "All marketplace" banners
-            filtered = data.banners.filter(b =>
-              !b.link_type || b.link_type !== 'category' || !b.link_value || !b.category_id
-            );
-            // If no generic banners exist, show all (fallback)
-            if (filtered.length === 0) filtered = data.banners;
           }
+          if (filtered.length === 0) filtered = data.banners;
           setBanners(filtered);
         }
       })
       .catch(() => {});
-  }, [categoryId]);
+  }, [categoryId, storefront]);
 
-  // Auto-rotate every 5 seconds with continuous loop
   useEffect(() => {
     if (banners.length <= 1) return;
     const timer = setInterval(() => {
@@ -52,9 +50,9 @@ export default function DealOfTheDayBanner({ categoryId }) {
 
   const handleClick = () => {
     if (banner.link_type === 'product' && banner.link_value) {
-      navigate(`/buyer/marketplace`);
+      navigate(`/buyer/${storefront === 'thrift' ? 'thrift' : 'marketplace'}`);
     } else if (banner.link_type === 'category' && banner.link_value) {
-      navigate(`/buyer/marketplace`);
+      navigate(`/buyer/${storefront === 'thrift' ? 'thrift' : 'marketplace'}`);
     } else if (banner.link_type === 'custom_url' && banner.link_value) {
       window.open(banner.link_value, '_blank', 'noopener,noreferrer');
     }
@@ -68,12 +66,17 @@ export default function DealOfTheDayBanner({ categoryId }) {
   const slideTransform = direction === 'next' ? 'translateX(-100%)' : 'translateX(100%)';
   const slideEnterTransform = direction === 'next' ? 'translateX(100%)' : 'translateX(-100%)';
 
+  const isThrift = storefront === 'thrift';
+  const accentFrom = isThrift ? 'from-emerald-600 to-teal-500' : 'from-red-500 to-orange-500';
+  const titleColor = isThrift ? 'text-emerald-900' : 'text-gray-900';
+
   return (
     <div className="mb-8">
-      {/* Title */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg animate-pulse">🔥</span>
-        <h2 className="text-lg font-extrabold text-gray-900 tracking-tight">Deal of the Day</h2>
+        <span className="text-lg animate-pulse">{isThrift ? '♻️' : '🔥'}</span>
+        <h2 className={`text-lg font-extrabold ${titleColor} tracking-tight`}>
+          {isThrift ? 'Thrift Deals' : 'Deal of the Day'}
+        </h2>
         {banners.length > 1 && (
           <span className="text-xs text-gray-400 ml-auto">
             {current + 1} / {banners.length}
@@ -81,14 +84,11 @@ export default function DealOfTheDayBanner({ categoryId }) {
         )}
       </div>
 
-      {/* Vertical Hero Slider */}
       <div
         onClick={handleClick}
         className="relative group cursor-pointer rounded-3xl overflow-hidden shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-500 h-64 sm:h-80"
       >
-        {/* Slide container with CSS transform animation */}
         <div className="relative w-full h-full overflow-hidden">
-          {/* Previous slide (exit) */}
           <div
             key={`exit-${current}`}
             className="absolute inset-0 transition-all duration-700 ease-in-out opacity-0"
@@ -101,7 +101,6 @@ export default function DealOfTheDayBanner({ categoryId }) {
             />
           </div>
 
-          {/* Current slide (enter/active) */}
           <div
             key={`active-${current}`}
             className="absolute inset-0 transition-all duration-700 ease-in-out"
@@ -115,7 +114,6 @@ export default function DealOfTheDayBanner({ categoryId }) {
             />
           </div>
 
-          {/* Next slide preload */}
           {banners.length > 1 && (
             <div
               key={`preload-${(current + 1) % banners.length}`}
@@ -131,10 +129,8 @@ export default function DealOfTheDayBanner({ categoryId }) {
           )}
         </div>
 
-        {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
 
-        {/* Banner Content */}
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
           {banner.title && (
             <h3 className="text-white text-xl sm:text-2xl font-extrabold drop-shadow-lg mb-1">
@@ -148,15 +144,13 @@ export default function DealOfTheDayBanner({ categoryId }) {
           </div>
         </div>
 
-        {/* Animated corner badge */}
         <div className="absolute top-4 right-4 z-10">
-          <span className="px-3 py-1.5 bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-black rounded-full shadow-lg flex items-center gap-1.5">
-            <span className="animate-bounce">⚡</span> LIMITED TIME
+          <span className={`px-3 py-1.5 bg-gradient-to-r ${accentFrom} text-white text-xs font-black rounded-full shadow-lg flex items-center gap-1.5`}>
+            <span className="animate-bounce">⚡</span> {isThrift ? 'THRIFT DEAL' : 'LIMITED TIME'}
           </span>
         </div>
       </div>
 
-      {/* Pagination dots */}
       {banners.length > 1 && (
         <div className="flex items-center justify-center gap-2 mt-3">
           {banners.map((_, i) => (
@@ -165,7 +159,7 @@ export default function DealOfTheDayBanner({ categoryId }) {
               onClick={(e) => { e.stopPropagation(); goTo(i); }}
               className={`w-2 h-2 rounded-full transition-all duration-300 ${
                 i === current
-                  ? 'bg-[#a37b3d] w-6'
+                  ? isThrift ? 'bg-emerald-600 w-6' : 'bg-[#a37b3d] w-6'
                   : 'bg-gray-300 hover:bg-gray-400'
               }`}
             />

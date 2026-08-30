@@ -166,6 +166,7 @@ const EMPTY = {
   color: '', fabric: '', embroidery_type: '', size: '',
   material: '', brand: '', condition: 'New', city: '',
   price: '', discount_pct: '', stock_quantity: '1',
+  marketplace_type: 'new', original_price: '',
 };
 
 export default function ProductUpload({ sellerId, sellerCity = '', onUploaded }) {
@@ -179,6 +180,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
   const [error,      setError]      = useState('');
   const [showDiscount,    setShowDiscount]    = useState(false);
   const [priceSuggestion, setPriceSuggestion] = useState(null);
+  const [listingType,     setListingType]     = useState('new'); // 'new' or 'thrift'
   const fileRef = useRef(null);
 
   // Merge DB categories with static CATEGORY_TREE (keeps nested item types for wedding_dress, etc.)
@@ -210,7 +212,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
   // When major category changes, reset subcategory/item
   const selectMajorCat = (id) => {
     setMajorCat(id);
-    setForm({ ...EMPTY, city: sellerCity });
+    setForm({ ...EMPTY, city: sellerCity, marketplace_type: listingType });
     setImages([]);
     setPreviews([]);
     setResult(null);
@@ -348,10 +350,12 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
         material:             form.material,
         brand:                form.brand,
         condition:            form.condition,
+        marketplace_type:     listingType,
+        original_price:       listingType === 'thrift' && form.original_price ? form.original_price : '',
         city:                 form.city,
         price:                form.price,
         discount_pct:         showDiscount && form.discount_pct ? form.discount_pct : '',
-        stock_quantity:       form.stock_quantity,
+        stock_quantity:       listingType === 'thrift' ? '1' : form.stock_quantity,
         custom_field_values:  Object.keys(customFieldValues).length ? JSON.stringify(customFieldValues) : '',
       };
 
@@ -425,6 +429,39 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* ── New / Thrift Toggle ────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Listing Type</p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => { setListingType('new'); setForm(f => ({ ...f, marketplace_type: 'new', condition: 'New' })); }}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border-2 ${
+                listingType === 'new'
+                  ? 'border-[#a37b3d] bg-[#FFF5F8] text-[#a37b3d] shadow-md'
+                  : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+              }`}
+            >
+              🛍️ New Product
+            </button>
+            <button
+              type="button"
+              onClick={() => { setListingType('thrift'); setForm(f => ({ ...f, marketplace_type: 'thrift', condition: 'Thrift', stock_quantity: '1' })); }}
+              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border-2 ${
+                listingType === 'thrift'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md'
+                  : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+              }`}
+            >
+              ♻️ Thrift Item
+            </button>
+          </div>
+          {listingType === 'thrift' && (
+            <p className="text-xs text-emerald-600 mt-2 font-medium">
+              Thrift items: quantity locked to 1, requires admin approval before going live, final sale (no returns)
+            </p>
+          )}
+        </div>
 
         {/* ── Subcategory ─────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -642,10 +679,44 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
-            <input type="number" value={form.stock_quantity} onChange={set('stock_quantity')} min="1" placeholder="1"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            <input type="number" value={listingType === 'thrift' ? '1' : form.stock_quantity}
+              onChange={set('stock_quantity')} min="1" placeholder="1"
+              disabled={listingType === 'thrift'}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:text-gray-400" />
+            {listingType === 'thrift' && (
+              <p className="text-xs text-emerald-600 mt-1">Thrift items are always quantity 1</p>
+            )}
           </div>
         </div>
+
+        {/* ── Thrift-specific: Original Price ──────────────────────────────── */}
+        {listingType === 'thrift' && (
+          <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-2">♻️ Thrift Item Details</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Original Price (PKR) <span className="text-gray-400 font-normal">(optional — shows "was PKR X, now PKR Y")</span>
+                </label>
+                <input type="number" value={form.original_price} onChange={set('original_price')}
+                  placeholder="e.g. 50000"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Condition *</label>
+                <select value={form.condition} onChange={set('condition')}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="Thrift">Thrift</option>
+                  <option value="Like New">Like New</option>
+                  <option value="Used">Used</option>
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-emerald-600 mt-2">
+              ⚠️ Actual photos of the item are required for thrift listings. Upload clear photos showing the real condition.
+            </p>
+          </div>
+        )}
 
         {/* ── Price + Discount ─────────────────────────────────────────────── */}
         <div className="p-4 bg-gray-50 rounded-xl space-y-3">

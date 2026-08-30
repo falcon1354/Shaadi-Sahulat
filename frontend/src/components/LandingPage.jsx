@@ -23,40 +23,40 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
           <p className="text-sm text-gray-500 bg-white/50 inline-block px-4 py-1.5 rounded-full border border-gray-100 shadow-sm">Smart budgeting, AI matching, and seamless shopping</p>
         </div>
 
-        {/* Role Selection Cards */}
+        {/* Role Selection Cards — 2 cards only */}
         <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
           {/* Buyer Card */}
           <div
             onClick={onSelectBuyer}
             className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative border border-[#FBEFF1]"
           >
-            <div className="h-40 bg-gradient-to-br from-[#1a0a1e] via-[#2d2044] to-[#3d3060] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden border border-white/10">
+            <div className="h-44 bg-gradient-to-br from-[#1a0a1e] via-[#2d2044] to-[#3d3060] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden border border-white/10">
               <div className="absolute inset-0 bg-purple-500/10 rounded-[1.5rem]" />
-              <ShoppingBag size={64} color="white" strokeWidth={1} className="group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md relative z-10" />
+              <ShoppingBag size={72} color="white" strokeWidth={1} className="group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md relative z-10" />
             </div>
-            <div className="p-8">
-              <h2 className="font-heading text-2xl font-bold text-gray-800 mb-2">I'm a Buyer</h2>
-              <p className="text-sm text-gray-500 mb-6 font-light">Bride, groom, or wedding planner</p>
+            <div className="p-6">
+              <h2 className="font-heading text-xl font-bold text-gray-800 mb-2">I'm a Buyer</h2>
+              <p className="text-sm text-gray-500 mb-4 font-light">Bride, groom, or wedding planner</p>
               
-              <div className="space-y-3 mb-8">
+              <div className="space-y-2 mb-6">
                 {[
                   "Smart dowry estimation wizard",
                   "AI dress matching by photo",
-                  "Browse marketplace & shopping cart",
+                  "Browse New & Pre-owned marketplace",
                   "Track spending & analytics"
                 ].map((text, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <CheckCircle2 size={18} className="text-purple-600 flex-shrink-0" />
-                    <span className="text-sm text-gray-600 font-medium">{text}</span>
+                  <div key={i} className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-purple-600 flex-shrink-0" />
+                    <span className="text-xs text-gray-600 font-medium">{text}</span>
                   </div>
                 ))}
               </div>
 
               <button
-                className="w-full px-4 py-3.5 bg-gradient-to-r from-purple-700 to-pink-500 text-white font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full px-4 py-3 bg-gradient-to-r from-purple-700 to-pink-500 text-white font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 Continue as Buyer 
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
@@ -66,33 +66,33 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
             onClick={onSelectSeller}
             className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative border border-[#FBEFF1]"
           >
-            <div className="h-40 bg-gradient-to-br from-[#0a1020] via-[#1a2040] to-[#252d55] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden border border-white/10">
+            <div className="h-44 bg-gradient-to-br from-[#0a1020] via-[#1a2040] to-[#252d55] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden border border-white/10">
                <div className="absolute inset-0 bg-indigo-500/10 rounded-[1.5rem]" />
-               <Store size={64} className="text-white group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md relative z-10" strokeWidth={1} />
+               <Store size={72} className="text-white group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md relative z-10" strokeWidth={1} />
             </div>
-            <div className="p-8">
-              <h2 className="font-heading text-2xl font-bold text-gray-800 mb-2">I'm a Seller</h2>
-              <p className="text-sm text-gray-500 mb-6 font-light">Designer, tailor, or boutique owner</p>
+            <div className="p-6">
+              <h2 className="font-heading text-xl font-bold text-gray-800 mb-2">I'm a Seller</h2>
+              <p className="text-sm text-gray-500 mb-4 font-light">Designer, tailor, or boutique owner</p>
               
-              <div className="space-y-3 mb-8">
+              <div className="space-y-2 mb-6">
                 {[
                   "Upload & manage products",
-                  "Smart price range suggestions",
+                  "List new OR pre-owned/thrift items",
                   "Dashboard & analytics",
                   "Financial projections & reports"
                 ].map((text, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <CheckCircle2 size={18} className="text-indigo-600 flex-shrink-0" />
-                    <span className="text-sm text-gray-600 font-medium">{text}</span>
+                  <div key={i} className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-indigo-600 flex-shrink-0" />
+                    <span className="text-xs text-gray-600 font-medium">{text}</span>
                   </div>
                 ))}
               </div>
 
               <button
-                className="w-full px-4 py-3.5 bg-gradient-to-r from-indigo-700 to-violet-500 text-white font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full px-4 py-3 bg-gradient-to-r from-indigo-700 to-violet-500 text-white font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 Continue as Seller 
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>

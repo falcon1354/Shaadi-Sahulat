@@ -232,6 +232,8 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
     product.brand           && { label: 'Brand',      value: product.brand,           icon: '🏷️' },
     product.condition       && { label: 'Condition',  value: product.condition,       icon: '🔖' },
     product.city            && { label: 'City',       value: product.city,            icon: '📍' },
+    product.marketplace_type === 'thrift' && { label: 'Marketplace', value: '♻️ Thrift', icon: '♻️' },
+    product.is_final_sale   && { label: 'Return Policy', value: 'Final Sale (No Returns)', icon: '⚠️' },
   ].filter(Boolean);
 
   const budgetInfo = (!isAdminView && product.major_category)
@@ -364,6 +366,28 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
                 </span>
               )}
             </div>
+            {/* Thrift original price */}
+            {product.original_price && product.original_price > product.price && (
+              <p className="text-sm text-gray-400 mt-1">
+                Original price: <span className="line-through">PKR {product.original_price.toLocaleString()}</span>
+                <span className="text-emerald-600 font-bold ml-2">
+                  Save PKR {(product.original_price - product.price).toLocaleString()}!
+                </span>
+              </p>
+            )}
+            {/* Thrift badge */}
+            {product.marketplace_type === 'thrift' && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
+                  ♻️ Thrift Item
+                </span>
+                {product.is_final_sale && (
+                  <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full border border-amber-200">
+                    ⚠️ Final Sale
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Budget banner */}

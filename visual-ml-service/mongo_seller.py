@@ -472,6 +472,7 @@ def get_public_products(
     max_price: float | None = None,
     color: str | None = None,
     condition: str | None = None,
+    marketplace_type: str | None = None,
     city: str | None = None,
     sort_by: str = "newest",
     page: int = 1,
@@ -489,6 +490,16 @@ def get_public_products(
         query["subcategory"] = subcategory
     if condition and condition != "all":
         query["condition"] = condition
+    if marketplace_type and marketplace_type != "all":
+        if marketplace_type == "new":
+            # Include products explicitly marked "new" OR products missing the field
+            # (pre-migration products are implicitly "new")
+            query["$or"] = [
+                {"marketplace_type": "new"},
+                {"marketplace_type": {"$exists": False}},
+            ]
+        else:
+            query["marketplace_type"] = marketplace_type
     if city:
         query["city"] = {"$regex": city, "$options": "i"}
     if color:

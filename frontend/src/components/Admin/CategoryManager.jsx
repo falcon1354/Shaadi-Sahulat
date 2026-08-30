@@ -137,7 +137,7 @@ export default function CategoryManager() {
   const [selectedSub, setSelectedSub] = useState(null);
 
   // Forms
-  const [newCat,   setNewCat]   = useState({ category_id: '', label: '', icon: '📦', price_min: '', price_max: '' });
+  const [newCat,   setNewCat]   = useState({ category_id: '', label: '', icon: '📦', price_min: '', price_max: '', storefront: 'both' });
   const [newSub,   setNewSub]   = useState({ id: '', label: '' });
   const [newField, setNewField] = useState({ field_id: '', label: '', type: 'text', options: '', required: false });
   const [subPriceEdit, setSubPriceEdit] = useState({ price_min: '', price_max: '' });
@@ -187,10 +187,11 @@ export default function CategoryManager() {
       ...newCat,
       price_min: Number(newCat.price_min) || 1000,
       price_max: Number(newCat.price_max) || 500000,
+      storefront: newCat.storefront || 'both',
     });
     if (r.success) {
       showCatMsg('Category added!');
-      setNewCat({ category_id: '', label: '', icon: '📦', price_min: '', price_max: '' });
+      setNewCat({ category_id: '', label: '', icon: '📦', price_min: '', price_max: '', storefront: 'both' });
       await reload();
     } else {
       showCatMsg(r.error);
@@ -290,7 +291,16 @@ export default function CategoryManager() {
                 <span>{cat.icon}</span>
                 <div>
                   <p className="text-sm font-semibold text-gray-800">{cat.label}</p>
-                  <p className="text-xs text-gray-400">{cat.subcategories?.length || 0} subcategories</p>
+                  <p className="text-xs text-gray-400">
+                    {cat.subcategories?.length || 0} subcategories
+                    <span className={`ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                      cat.storefront === 'thrift' ? 'bg-emerald-50 text-emerald-700' :
+                      cat.storefront === 'new' ? 'bg-blue-50 text-blue-700' :
+                      'bg-purple-50 text-purple-700'
+                    }`}>
+                      {cat.storefront === 'thrift' ? '♻️ Thrift' : cat.storefront === 'new' ? '🛍️ New' : '🔄 Both'}
+                    </span>
+                  </p>
                 </div>
               </div>
             </button>
@@ -320,6 +330,15 @@ export default function CategoryManager() {
                 onChange={e => setNewCat(p => ({ ...p, price_max: e.target.value }))}
                 className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
               />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Storefront</label>
+              <select value={newCat.storefront} onChange={e => setNewCat(p => ({ ...p, storefront: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none mt-1">
+                <option value="both">🔄 Both (New + Thrift)</option>
+                <option value="new">🛍️ New Only</option>
+                <option value="thrift">♻️ Thrift Only</option>
+              </select>
             </div>
             <button onClick={addCat}
               className="w-full py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600">

@@ -5,6 +5,7 @@ import { useCart } from '../../context/CartContext';
 import { useCategories } from '../../hooks/useCategories';
 import { toggleWishlistItem, recordRecentlyViewed, patchDowryBudgets } from '../../api/buyerApi';
 import DealOfTheDayBanner from '../Common/DealOfTheDayBanner';
+import ThriftHomePage from '../Thrift/ThriftHomePage';
 
 const SORT_OPTIONS = [
   { value: 'newest',     label: 'Newest First' },
@@ -552,6 +553,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
   const [maxPrice,   setMaxPrice]   = useState('');
   const [cityFilter, setCityFilter] = useState('');
   const [showFilter, setShowFilter] = useState(false);
+  const [storefrontMode, setStorefrontMode] = useState('new'); // 'new' | 'thrift'
 
   // Wishlist
   const [wishlist, setWishlist] = useState(() => readWishlist(buyerId));
@@ -606,6 +608,7 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
       const data = await sellerApi.getPublicProducts({
         major_category: activeCat || undefined,
         condition:      condition  || undefined,
+        marketplace_type: 'new',   // Default: show only new products in the main marketplace
         min_price:      minPrice   || undefined,
         max_price:      maxPrice   || undefined,
         city:           cityFilter || undefined,
@@ -757,14 +760,48 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
 
   return (
     <div className="animate-fade-in">
-      {/* Title */}
-      <div className="mb-5">
-        <h2 className="text-2xl font-bold text-gray-800">Marketplace</h2>
-        <p className="text-sm text-gray-500 mt-1">Browse wedding products from our verified sellers</p>
+      {/* Premium Hero Switcher Section */}
+      <div className="bg-gradient-to-br from-[#1a0a1e]/95 via-[#2d2044]/95 to-[#3d3060]/95 text-white rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden shadow-lg border border-white/10">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 space-y-4 max-w-2xl">
+          <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-wider text-pink-300 border border-white/20">
+            ShaadiSahulat Storefronts
+          </span>
+          <h2 className="text-3xl font-extrabold tracking-tight">Wedding Shopping Hub</h2>
+          <p className="text-gray-300 text-xs md:text-sm font-light">
+            Choose between browsing brand-new premium items directly from designers and boutique shops, or browse verified pre-owned & thrift wedding items at great discounts.
+          </p>
+          
+          {/* Switcher Tabs */}
+          <div className="flex gap-4 pt-2">
+            <button
+              onClick={() => setStorefrontMode('new')}
+              className={`flex-1 py-3 px-5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                storefrontMode === 'new'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg'
+                  : 'bg-white/10 hover:bg-white/20 text-gray-200 border border-white/10'
+              }`}
+            >
+              🛍️ Retail / Brand New
+            </button>
+            <button
+              onClick={() => setStorefrontMode('thrift')}
+              className={`flex-1 py-3 px-5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                storefrontMode === 'thrift'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg'
+                  : 'bg-white/10 hover:bg-white/20 text-gray-200 border border-white/10'
+              }`}
+            >
+              ♻️ Pre-owned & Thrift
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Deal of the Day Banner */}
-      <DealOfTheDayBanner categoryId={activeCat} />
+      {storefrontMode === 'new' ? (
+        <>
+          {/* Deal of the Day Banner */}
+          <DealOfTheDayBanner categoryId={activeCat} />
 
       {/* Search bar */}
       <div className="relative mb-5">
@@ -951,6 +988,10 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
             Next →
           </button>
         </div>
+      )}
+      </>
+      ) : (
+        <ThriftHomePage buyer={buyer} onProductClick={handleViewProduct} />
       )}
 
       {/* Product detail modal */}

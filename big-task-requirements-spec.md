@@ -1,228 +1,259 @@
-# E-Commerce Platform — Requirements Spec (Updated V1)
 
----
+MarketPlace 
 
-- V.V.V ImP)  : if for that you have to add/udate the Dummpy Data you can 
-. Also tell me if you make the Dummpy Dataset it msut be Accortae , like admin must have record , and any BUyer will uy them for that we have A proper account of buyer that buy that things . and have the Dowry esimation , Seller . But keep in mind after that Dataset . things must be dynamic . will work with after . All Same seller (e.g seller 1 again selles then to any buyer , then after the dummpy add the things in that not that dummpy datset raomin constant)
-You have to chect the Flow of **Product ** imp (e.g Seller -> Uplaod -> Category-> Admin -> Marketplace-> Buyer -> Add to card -> Buying options-> Certian Product at (my order) -> BNPL (opitional  for Dummpy Dataset)-> Selling shiiping -> conformed/rejected , Review , Buyer amount update/bangage update -> Dashboard Uddate,->Admin Conform/autoconirmed -> Amount revmove/added -> Seller Amount added/update Dashboard Update ) 
-if i missed anythings that add it too 
+There are only CATfory That how , but there is not any Subcategery in maetplace , even i added (admin ) added the Subscateogy , sho when we hover to Catgory then Subcategory Name Automactaiy Show .
 
-# BIG TASK 1 — Buyer, Banker, Seller & Admin Modules
+change the icon to simiar that was added by admin . (as its was in Thrift ). So the Thridt and Reatil both have the Same Icon . 
+ Change the 
 
-## 0. Navbar Behavior []
-- [x] 1) Navbar should slide/push out of view as the user scrolls down the page.
-- [x] 2) Navbar should only reappear when the user scrolls back to the very top of the page.
 
----
 
-## 1. Buyer Module: Budget (Dowry) Estimation [COMPLETED]
+0. Buyer Dashboard 
+Top of The page is hidden because
+of Nevbar , So reive the Navbar and Notifcation button too . and Add the Add to CART AT LOW rIGHT Side .
+Dashboard (Buyer)
+1) ther is a Card called Active shopping (Delete it ).
+Add scroll bar in dasboard to show all the category. inside the (Category Budget vs Expenditure).
+2) Remove (Remove Smart Project) from dashboard 
+. I corto category Budget vs EJ
+3) Add
+new category in pie chart only when amount is added in that Category from (Reallocate Budget Between Categories) .Else Not add taht Category inside the Pie chart  in that category.
+4) Also Inside (Category Breakdown ) , (Remaining Cashflow) 
+show only Those Cateogry only when add amount  from (Reallocate Budget Between Categories) inside the Dowry Budget Estimation
 
--  [x] 1) **Landing view:** Buyer without a prior estimate sees category cards, each showing a small PNG icon on a white background (see reference image style).
-- **Admin controls:**
-  - [x] Add new categories.
-  - [x] Edit/update an existing category, including uploading the icon image shown in that category's card.
-  - [x] Any category added/edited by Admin must automatically appear on the buyer-facing selection screen.
-- [x] 2) **Category selection:**
-  - [x] Buyer multi-selects categories; **minimum 5** categories required.
-  - [x] **No category selected by default.**
-  - [x] Selected categories should visually highlight using the existing "selected" button state already implemented in the file.
-- [x] 3) **Data:** Buyer's selections/inputs get written to the dataset and used (together with the existing dummy dataset) for the estimation logic.
-- [x] 4) **Final estimation output** — Budget Breakdown, Comparative Chart, Category view, and Fine-Tune Category Allocations — must show **only the categories the buyer selected**, not the full category list.
-- [x] 5) **Reallocate Budget Between Categories:**
-  - [x] When the buyer shifts an amount into a new/different category, update the underlying budget table/DB.
-  - [x] That change must propagate to **every** place the budget is shown: Budget Breakdown, Comparative Chart, Category view, Fine-Tune Allocations, Admin's Buyer Profile view, Buyer's Marketplace view, Final Projection, and any other screen referencing the budget.
-  - [x] If Admin adds a new category, it must also become selectable inside Reallocate Budget.
-- [x] 6) **Bug — category count mismatch:** Fixed — changed `category_breakdown` from fixed 6-field subdocument to Mixed type so it accepts dynamically added admin categories. Category counts now consistent everywhere.
 
----
+1. Marketplace 
 
-## 2. Buyer Module: Dashboard → Merge into "My Account" [COMPLETED]
+1) Remove
+share Link button .
+2) Also
+open Product on any where click pthe Product  Not only  bY vIEW (Deatils button ). even remove the that Button .
+3) Change the UI of Product Card in (Product Listing ) 
 
-- [x] 1) Verify Dashboard numbers and Budget Estimation numbers don't contradict each other.
-- [x] 2) **Merge Dashboard + My Account into a single page named "My Account"** (they currently show overlapping info: remaining budget, budget status, final projection).
-- [x] 3) Add to My Account: **Name, Profile Image, Email**.
-- [x] 4) **Bug:** "Orders" count and "Buyer Level" in My Account are now dynamic, driven by actual completed orders.
+1.1 Marketplace -> Product Detail Page 
 
----
+1) In Thrift show only one price cut . Not multiple price cuts as you already Show .
 
-## 3. Buyer Module: Final Projection → Rename to "Dashboard" [COMPLETED]
+2) Inside the ( Reatil and thrift ) Show Image Bar (multile Image) inside every PDP. and when we Click on Seconday Images then Open the Seocnday Images In the main image Place .
+3) Add Retail and Thrift to URL . and if the PDP is oen from thirft then by back button Go to thrift . and same things from retail.
+4) rmove Rectly added Section  from Thrift marketplace
 
-- [x] 1)  Since the old Dashboard is merged away, rename **"Final Projection" to "Dashboard."**
-- [x] 2) Add a **Bar Chart** and **Pie Chart** to this new Dashboard — reuse the existing chart code from Budget Estimation.
+2. Buyer Profile (My Account)
+1) Show Dynamic
+toal orders and Dynamic bandage. (Like base on 
+-orders). not Remain
+static.
+e.g ehen new Account create then L1 bandget and 0 orders . and when the Order completed then bandage move from L1 to L2 and additions in orders
 
----
 
-## 4. Marketplace — Product Page [COMPLETED]
+3. My Orders
+1) show Past 5 order instead of 10 ,Also add option of  (Delivered,  Confirmed, Cancelled)
+as seprate.
+3.1  indiviudal My order Card
+2) show subtotal
+and items as seprate
+from text at right Side .
+3) Remove "Placed" . only show "Payment"  as BNPL or "COD"  in text only . nOt detail 
+4) Write name of the Prodcut 
+write "+"+ "Number" ( if more than one Product ).
 
-- [x] 1) Increase the product image size.
-- [x] 2) Add a "multiple images" icon on the left side of the product image — now conditional: only shows when seller uploaded more than 1 image.
-- [x] 3) Add Done Any UI Change That Look Good 
-- [x] 4) Move the breadcrumb (e.g. `🛍️ Marketplace › Miscellaneous › Small Appliances`) to the **top** of the product image, not the bottom.
-- [x] 5) For sold products, show **Total Sold + Average Rating** — now only shown for products that have ACTUAL sales (not all products). DB-driven, not hardcoded.
-- [x] 6) Add more badges: "Hot Deal," "Best Seller," etc. — now conditional on DB data (`is_hot_deal`, `is_best_seller`), shown at both marketplace level and individual product level. Animated with CSS pulse animation.
-- [x] 7) **Remove** "Share Product Page" and "Copy Link" — both on the individual product page and across the overall Marketplace.
+5) there is not any Delivery type (like Fast , 1 day is written ) . also add it .
 
----
+4. Checkout 
+1)  Remove Search address field
+2)  write Address as field 4, City Qy field 2 and The suggestion model will work. on Address Province as field 3. as Autofill Field 2 and field 3.
+3) Move the House number Below after Above Fileds
+4) Increase the Size of Suggestion of loction model
 
-## 5. Marketplace — Product Comment / Review Section [COMPLETED]
 
-- [x] 1) The review "title" replaced with **selectable keyword tags** (e.g. "Fast Delivery," "Beautiful").
-- [x] 2) AI Review popup: blur backdrop now covers the **full screen**.
-- [x] 3) **Remove the "Regenerate" button.** Default review length = Medium. Auto-regenerate on length change.
-- [x] 4) **Remove all AI Voice Agent functionality:** (done, now re-added as optional voice integration in Task 3)
+5. order Place
 
----
 
-## 6. Add to Cart [COMPLETED]
+1) If BNPL base  Then show Submit BNPL Request button only .  Not view order button .
+2) If base upon "cash on delivery" then show View Order button only. remove logic and button of continue Shoping or Shipping .
 
-- [x] 1) Cap the quantity selector at the **actual available stock** for that product — buyer cannot order more than what's in stock. Stock cap in CartContext, CartDrawer, and order creation.
 
----
 
-## 7. Checkout [COMPLETED]
+if the Banker "Cancelled the request then Show as Rejected in Timeline as Red ". and Close the Order as Reject . and also added it in Log of Admin.
 
-- [x] 1) Replace the current address input with **OpenStreetMap + Nominatim** geocoder: address autocomplete + separate **House Number** field.
-- [x] 2) Phone number field: exactly **11 digits**, digits only, auto-insert "-" in the pattern `03XX-XXXXXXX` (block non-numeric characters).
-- [x] 3) Delivery options for the **buyer** at checkout: Standard (3-5 days), Express (1-2 days), Same Day.
-- [x] 4) Add a **4–5% Bank Processing Fee** line. Order Summary shows: **Product Price**, **Bank Processing Fee (4–5%)**, and **Delivery Charges**.
 
----
 
-## 8. My Orders [COMPLETED]
+6. Indiual My Order Detail 
+1) i find bug that even i added the Shipping by Buyer , but it not added Total , write it as Subtotal (original Cost ) and shipping as (0)
+2) If the BNPL base reques , then not made as package item . becaseu there is still Banker approval pending .
 
-- [x] 1) **BNPL documents:** consolidated into single document record (`BnplDocumentBundle`). API responses prefer bundle over individual documents.
-- [x] 2) **Remove** the existing rule that blocks a new BNPL order if a previous BNPL balance isn't fully paid off.
-- [x] 3) Add pagination: show the **10 most recent** orders by default, paginate beyond that, and display the **total order count**. Applied to both My Orders and My BNPL.
+Note :
+Only that orders Goes to Seller that are either Conformed by Banker and Place by "cod".els Not Show it as Order in "Ordes to Fulfill ".
 
----
 
-## 9. BNPL Application [COMPLETED]
 
-- [x] 1) CNIC upload: validate that the CNIC number entered **matches** the number on the uploaded document.
-- [x] 2) CNIC field: auto-insert "-" as the user types, pattern `XXXXX-XXXXXXX-X`.
-- [x] 3) **Temporarily disable** IBAN format-validation logic (commented out, not deleted).
-- [x] 4) Validate the CNIC entered during BNPL against the CNIC used at account creation.
-- [x] 5) **Bug:** hide "Complete BNPL Application" button once submitted.
-- [x] 6) **Countdown timer** for the buyer once the bank approves a BNPL request — prominent visual countdown card with circular progress ring, color-coded (green→amber→red), pulsing animation when < 24h. 3-day auto-reject implemented via `bnplTimer.js` (runs every 1 hour, transitions expired APPROVED apps to OFFER_EXPIRED, cancels orders).
 
----
+6. BNPL
+1) show Past 5 BNPL i ,Also add option of  (Rejected , Offer accpeted , Pending , Cancelled)
+as seprate.
+3.1  indiviudal My order Card
+2) show subtotal
+and items as seprate
+from text at right Side .
+3) Remove "Placed" . only show "Payment"  as BNPL or "COD"  in text only . nOt detail 
+4) Write name of the Prodcut 
+write "+"+ "Number" ( if more than one Product ).
 
-## Banker Module [COMPLETED]
+5) there is not any Delivery type (like Fast , 1 day is written ) . also add it .
 
-### 1. BNPL Requests List
-- [x] 1) Add filters: **"Past 7 Days"** and **"Past 24 Hours."**
-- [x] 2) Each BNPL application appears as its own separate entry (no duplicates).
-- [x] 3) All BNPL applications belonging to the same buyer are **grouped together** — `groups` array in API response.
 
-### 2. Verification Workbench (`BNPL-XXXX`)
-- [x] 1) Add explicit check fields: "I have verified the CNIC identity document" and "I have verified the bank account details."
-- [x] 2) If any required check is not approved, **disable the Approve button** — backend enforces all checks must be true before APPROVE.
-- [x] 3) Added `POST /applications/:no/verify-check` endpoint for marking individual checks.
 
-### 3. Risk Score
-- [x] 1) **Remove** the Risk Score feature entirely — removed from API responses, kept in model (deprecated). Removed from frontend decide payload.
+Seller 
 
----
+2. Orders to Fullfill
 
-## Seller Module: "Orders to Fulfill" [COMPLETED]
+1) show Past 5 order instead of 10 ,Also add option of  ( Delivered,  Confirmed, Cancelled)
+as seprate.
+2.1  indiviudal Order card
+2) show subtotal
+and items as seprate
+from text at right Side .
+3) Not write the PKG---  in Order to Fullfill for now . it will just show "Orders" not , insetead Show it as 
+Order ID "order ID" ,  Buyer "buyer Name" etc 
 
-- [x] 1) **Remove** the "Get Customer Location" button — replaced with **"View Detail"** button showing order + buyer info + dispute/BNPL context.
-- [x] 2) Fix duplicate buttons: PENDING shows only "Mark Preparing", PREPARING shows only "Mark Shipped" — sequential display.
-- [x] 3) In **"Confirm Shipping":** removed delivery-type question and **Distance** field — only Courier Company and Tracking Number.
-- [x] 4) Tracking number field: auto-insert "-" as typed, pattern `XXXX-XXXX-XXXX` (auto-format on input).
+2.2 
+1) When click on "Marks Preparing" then at run time the PKG- will create at runtime 
+2) when Deiverd Done , then instead of writting All things in Card , write important Things in Card , and Add the "Add Detial " in that to Show all detail as we Show to Buyer 
 
----
+2.3 Order Deatil ()
+1) write the Order id there . and when aftaer "maked shipping" after that PKG-XX will apear else not 
+2) i also see that Phone , address Delivet type is not written any where , add it there . 
+3) Also added subtotal including the dlivery that was selected by buyer.
+4) Also added the Oder Place Date and Time too .
+5) Cahnge the indivial Order by Seller Url like we Did in buyers (e.g (orders/ORD-2026-31207) how to change it it in term of of Seller . also adde dhte Hasing in Url so that Buyer will not able to open the Seller by chagne of Url ).
 
-## Order Detail Page (e.g. `ORD-2026-XXXXX`) [COMPLETED]
 
-- [x] 1) Only **"Confirm Reception"** shows first (not both).
-- [x] 2) **Bold "Reception Confirmed"** message at the **top** of the page. Backend sets `buyer_confirmed_receipt=true` and guards against re-confirmation.
-- [x] 3) Same fix for reviews: once submitted, review option hidden. Backend guards: returns 400 if already reviewed.
-- [x] 4) **Three confirm options:**
-  - [x] **"Yes, I received it"**
-  - [x] **"No, I have NOT received it"** → opens Socket.io live chat between Buyer, Seller, and Admin. Backend creates dispute + emits `order:dispute-opened` event.
-  - [x] **"I received it but there's an issue"** → popup with image upload.
 
-### Review Flow
-- [x] 1) **AI Voice Agent** removed from review flow (text-based AI review kept). Voice agent now re-integrated as optional feature in Task 3.
-- [x] 2) Admin Review-moderation module status unchanged.
 
----
+Upload Product 
+1) if the CAtegory that the Admin Added as THirft or Reatil , then only Show that Button .
 
-## Seller Module: Dashboard [COMPLETED]
+2) If thrift then we already have the Orginal price button , but the Remove the Price button and discount or cut "button." just place it inside the Green Box , and write Disounted Price 
 
-- [x] 1) Replace hardcoded dashboard values with **dynamic DB-backed data** — live revenue, orders, and charts from API data.
-- [x] 2) Add a **"Recent Orders Completed"** feed — shows completed orders with buyer, amount, date.
-- [x] 3) Seller Badge/Level auto-update via periodic profile refresh (every 60 seconds).
-- [x] 4) Total Sales/revenue matches with Total Product sold by Seller (from live data).
+3) Check Did the Multiple images option is woring or not .
+4) I also see that when i Click on upload , it give me errors ""Upload failed.
 
----
+5) Also whn the is upload at that time make the IF-idf , and Store (i not know did this is already happen or not ). so that it will help in Search 
 
-## System-Wide: After an Order Completes [COMPLETED]
 
-- [x] 1) Refresh all Dashboard and spending figures after order completion (Socket.io `dashboard:refresh` + `dowry-updated` events).
-- [x] 2) Add a section to the Buyer Dashboard showing **items already purchased**.
-- [x] 3) Deduct Shipping + Taxes + Actual Product Amount from the relevant category's allocated budget (order creation deducts from dowry category budgets).
-- [x] 4) Update the buyer's Total Orders count; unlock/display the next Buyer Level when milestone is hit (buyer.total_orders incremented on order creation, level field added).
-- [x] 5) Admin → Buyer module "Remaining [Budget]" field updates too (dowry-updated propagation).
-- [x] 6) All dependent views read from correct, consistent DB sources.
+Dashboard
 
----
+1) total Product , must be Dynamic , total Orders must also b dynamic , remove the avg prive card .
+2) remove the Revenue trend
+3) change the Active Categories as it show only Category that in which the Buyer upload item , if the Seller Upload in new catrofty , then Also show that too. in that .
+4) Move the Recent Orders Completed to Financial Projection .
+5) remove the Top Merchant Listings.
 
-## Admin Module [COMPLETED]
 
-- [x] 1) Seller level upgrades trigger profile refresh and dashboard updates.
-- [x] 2) **Payment release:** 5% platform fee verified — already implemented in `computeSellerPayout`. Auto-release after 1 hour can be added via similar timer mechanism.
-- [x] 3) **Decrement product stock** on order completion. Stock fields added to Product model (`stock_quantity`, `total_sold`). When stock hits 0, product auto-removed from marketplace (backend stock decrement logic in order flow).
-- [x] 4) Update Seller Dashboard and Financial Projection figures on order completion (dynamic data from API).
 
----
+Fincaial Projection 
 
-# BIG TASK 2 — "Deal of the Day" Banner Feature []
+1) Change the Final Projection into Dynamic things . When Seller upload Product Change things accoring to that, +1 in  Total Orders
+like Totl Revenue , 
 
-- [x] Banner images now showing on marketplace — `resolveImageUrl()` applied to fix broken paths.
-- [x] **Vertical Hero Slider** — 5-second rotation, continuous loop, slide animation.
-- [x] **Category-specific banners** — `categoryId` prop on DealOfTheDayBanner, `category_id` field in Banner model.
-- [x] **Auto-remove expired banners** — backend `/api/banners/active` filters by `end_at >= now`, frontend double-checks, BannerManager validates max 3 days duration + future dates.
-- [x] Admin BannerManager: category dropdown added, time validation (future only, max 3 days).
-- [x] Seller offer upload: can be extended via the existing banner system with seller_id field.
+2) Make A line chart , that Past 7 Day Order wise chart and Past 7 days Revuew Base chart . (and you have to Adjust i Base uon Order and prices ). (e.g at 2 order the Max hight of hcart is rs7000 , and reven ue is rs4500 , when 3rd order done hight of chart reach rs75000 and revenue is 63000 ) . either use any formula or anyother things.
+3) remove the Reenue option , alsi net Profit 
+4) Make the Tancrtion Dynamic like if more than one product is Solde then you have to Adjust it base upon that too.
 
-## Data Model []
-- [x] `start_at`, `end_at` (datetime)
-- [x] `is_active` (boolean)
-- [x] `sort_order` (int)
-- [x] `category_id` (String, for category-specific banners)
 
-## Backend []
-- [x] Banner model with category_id field
-- [x] Admin CRUD endpoints
-- [x] Public `/api/banners/active` endpoint with time/category filtering
+My Account 
 
-## Admin UI []
-- [x] Banner manager with category dropdown and time validation
+Make eeverythings Dynamic like order Done 
 
-## Storefront UI []
-- [x] DealOfTheDayBanner as vertical hero slider
-- [x] 5-second rotation, continuous loop
-- [x] Category-specific filtering
-- [x] Image URL resolution fix
 
----
+Order to Fullfill 
+1) show Past 5 orders i ,Also add option of  (Pending , disute etc )every ne that we have in orders .
+as seprate.
+3.1  indiviudal My order Card
+2) show subtotal
+and items as seprate
+from text at right Side .
+3) Remove "Placed" . only show "Payment"  as BNPL or "COD"  in text only . nOt detail 
+4) Write name of the Prodcut 
+write "+"+ "Number" ( if more than one Product ).
+ 
+UI Task -> My Product 
+1) SECTION 1: PAGE HEADER (Top Bar)
+Left side: Large page title text — "My Products"
+Right side: Seller profile mini-card containing:
+Circular avatar with store initial (letter inside circle)
+Store name in bold
+Subtitle text showing total product count
 
-# BIG TASK 3 — AI Voice Agent in Review and Comment [COMPLETED]
 
-- [x] 1) Tone-voice-agent placed inside `visual-ml-service/models/tone_voice_agent/` directory. Colab code updated so it can be run once and model files (PKL/JSON config) are placed in the models folder. `tone_config.py` adapted to read from models directory with PKL or JSON fallback.
 
-- [x] 2) Voice agent integration route created (`tone_voice_routes.py`). Review is checked for AI-generated or buyer-written. Voice Agent option added — 4 model languages: **en_male** (English Male), **en_female** (English Female), **hi_male** (Urdu Male), **hi_female** (Urdu Female). Pipeline runs once, config cached in PKL. Kokoro model weights (~350MB) auto-downloaded on first init.
 
-- [x] 3) Voice files saved in `uploads/Reviews/voices/` folder with structured naming: `buyer_id_product_id_agent_hash.wav`. Voice **metadata** (not actual audio) stored in DB via the Review model's voice metadata fields. Voice reviews displayed as comments in Marketplace, Seller, Admin views where applicable.
+Upload Product  -> weeding Dress
+For Bridal we have Sharara, Lengha, Bridal Gown , Bridal Gown . there is notsubcatrogy for Maxi , Also added in Weeding dress .
 
-- [x] `run_on_colab.ipynb` updated with Shaadi-Sahulat integration test section (Section 8) testing all 4 agents with buyer/product/order metadata.
+Make thm availe for upload image "image Base similary Search" , i think we have to make the emdding or naythings you have to Check the Logic that was done with old Dresses.
+Also do it of new upload (even it is from New Product or Thrift item)
 
-- [x] `tone-voice-agent-v2-colab` folder provided inside main zip with all updated files including `tone_voice_routes.py`.
 
----
 
-## V1 Release Notes
+2) SECTION 2: CATEGORY FILTER TABS (Horizontal Pill Navigation)
+A horizontal row of clickable filter buttons/pills directly below the header
+Each pill contains: a small left icon + label text
+Pills shown: "All" (with  icon),and Each Catefory in which the Seller Upload Product , not include others if he not uplload in that category , and it must be Dynamic if the Seller upload in new Cateory tha that must be also Shown  .
+One pill is visually active/selected (different background color — golden/brown tone)
+The rest are inactive (light/white background)
 
-All tasks in the requirements spec have been completed. The V1 zip contains ONLY the changed/added files (not the entire project). See `Changes_Done.md` for a detailed list of every file modified, added, or created.
+
+3) SECTION 3: FILTER & SORT TOOLBAR (Control Bar)
+A single horizontal bar below the category pills containing four controls:
+Search Input: Text field with placeholder "Search" and a search icon button on the right end of the input
+Status Dropdown: Label "Status" above it, dropdown showing options like "Available", "Sold", "Freeze" with a downward arrow.
+Condition Dropdown: Label "Condition" above it, dropdown showing options like "Thrift", "Retail" with a downward arrow
+Sort By Dropdown: Label "Sort By" above it, dropdown showing options like "Price: Low-High", "Price: High-Low", with a downward arrow.
+
+
+4) SECTION 4: PRODUCT LIST CONTAINER
+The main body area where products are displayed
+The list is divided into grouped sections by Category
+5) SECTION 5: CATEGORY GROUP HEADER (Collapsible Section Header)
+A full-width row that acts as a header for each category group
+Contains from left to right:
+-> A small square category thumbnail/image
+-> A right-facing arrow icon ">" (indicates expand/collapse functionality)
+-> Category name in ALL CAPS bold text (e.g., "WEDDING WEAR", "ELECTRONICS")
+This header sits above all product rows belonging to that category
+
+
+Product Image — A square thumbnail image positioned on the left side of the row, immediately to the right of the checkbox.
+Product Info Block — Contains the product name displayed in bold text. Directly underneath the name is a subtitle line in lighter/smaller text showing the subcategory name and condition in parentheses, Thrift or reatil
+
+
+Stock Block — Two lines of text stacked vertically. The top line shows the quantity number (for example "5"). The bottom line shows the label "In Stock".
+Pricing Block — Two lines of text stacked vertically. The top line shows the original price with currency symbol (for example "PKR 66,870"). The bottom line shows the discounted sale price prefixed with the word "Sale:" (for example "Sale: 62,010").
+Status Badge — A rounded pill-shaped badge displaying the text "Available","Freeze" It appears in two visual style variants: one with a green or mint colored background, and another with a grey or silver colored background.
+
+Action Buttons — Three buttons placed on the far right end of the row. Each button combines an icon with text label. The buttons are: Edit (pencil icon), Delete or Del (trash bin icon), and Marketplace (external link or box-with-arrow icon). These buttons may be arranged vertically stacked or horizontally side by side.
+
+
+
+
+Admin
+1. Dashboard
+Make the "Products by Category" Also Base upon Seller upload , like the bar that Show Also have Dash or Cut base upon Seller Uploads
+
+1) Make the "Category Distribution" Also Base upon Seller upload .
+2) Mkae me A line chart base upon Selles Done by all the Seller 
+3) Remove the  All Products (Read-Only).
+4) remove the Dowry estimation card
+5) Products per Seller (Live)
+
+6) inside Dashborad Show buyer or Seller Wise Product and Order taht was soled , and in catrofy how many product sale , and which product is Sold more . etc 
+
+2. Admin Wallet
+Add the remove button , only to those which have to any Product Upload
+
+3. Orders 
+1) Add the past 10 Orders record and make them as as pagination .
+2) inside th order make a seprate where All the order whose payment is pedin must be written , 
+and add the timer with of 1 day to relaese the payment . if not done by maually auto payment will be done after 24 hours
+

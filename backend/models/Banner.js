@@ -28,6 +28,41 @@ const bannerSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  // Which storefront this banner appears on: 'new', 'thrift', or 'both'
+  storefront: {
+    type: String,
+    enum: ['new', 'thrift', 'both'],
+    default: 'new',
+  },
+  // Seller offer fields — when a seller creates a promotional offer
+  seller_id: {
+    type: String,
+    default: '',
+  },
+  seller_name: {
+    type: String,
+    default: '',
+  },
+  // Product IDs selected by seller for the offer
+  seller_product_ids: {
+    type: [String],
+    default: [],
+  },
+  // Seller offer status: pending → approved/rejected by admin
+  seller_offer_status: {
+    type: String,
+    enum: ['none', 'pending', 'approved', 'rejected'],
+    default: 'none',
+  },
+  // Admin can suggest a price for the seller's promoted products
+  suggested_price: {
+    type: Number,
+    default: null,
+  },
+  admin_rejection_reason: {
+    type: String,
+    default: '',
+  },
   start_at: {
     type: Date,
     default: Date.now,
