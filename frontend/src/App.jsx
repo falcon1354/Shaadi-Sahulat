@@ -12,6 +12,8 @@ import ProductList         from './components/Seller/ProductList';
 import SellerFinancialProj from './components/Seller/SellerFinancialProjection';
 import MarketplacePage     from './components/Marketplace/MarketplacePage';
 import ProductDetailPage   from './components/Marketplace/ProductDetailPage';
+import ThriftHomePage      from './components/Thrift/ThriftHomePage';
+import SellerBannerOffer   from './components/Seller/SellerBannerOffer';
 import DowryPage           from './components/Dowry/DowryPage';
 import BuyerAuthPage       from './components/Buyer/BuyerAuthPage';
 import BuyerDashboard      from './components/Buyer/BuyerDashboard';
@@ -50,7 +52,7 @@ import {
 } from './api/buyerApi';
 import {
   LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User,
-  ShoppingCart, PlusCircle, Package, LineChart, Star
+  ShoppingCart, PlusCircle, Package, LineChart, Star, Image as ImageIcon
 } from 'lucide-react';
 import logo from './assets/ShaadiSahulat Logo PNG.png';
 
@@ -371,6 +373,7 @@ const SELLER_VIEWS = [
   { id: 'dashboard', label: 'Dashboard',            icon: <LayoutDashboard size={20} /> },
   { id: 'upload',    label: 'Upload Product',       icon: <PlusCircle size={20} /> },
   { id: 'products',  label: 'My Products',          icon: <Package size={20} /> },
+  { id: 'offers',    label: 'Banner Requests',      icon: <ImageIcon size={20} /> },
   { id: 'orders',    label: 'Orders to Fulfill',    icon: <ShoppingCart size={20} /> },
   { id: 'reviews',   label: 'Reviews',              icon: <Star size={20} /> },
   { id: 'finance',   label: 'Financial Projection', icon: <LineChart size={20} /> },
@@ -657,6 +660,17 @@ function BuyerMarketplacePage() {
   );
 }
 
+function BuyerThriftPage() {
+  const { buyer } = useAuth();
+  const navigate  = useNavigate();
+  return (
+    <ThriftHomePage
+      buyer={buyer}
+      onProductClick={(p) => navigate(`/buyer/thrift/${p.product_id}`, { state: { product: p, from: 'thrift' } })}
+    />
+  );
+}
+
 function BuyerVisualPage() {
   const { buyer } = useAuth();
   const navigate  = useNavigate();
@@ -733,6 +747,11 @@ function SellerFinancePage() {
 function SellerAccountPage() {
   const { seller } = useAuth();
   return <SellerAccountView seller={seller} />;
+}
+
+function SellerBannerOfferPageWrapper() {
+  const { seller } = useAuth();
+  return <SellerBannerOffer seller={seller} />;
 }
 
 // ── Wrapper pages for new modules (inject auth from context) ──────────────────
@@ -867,6 +886,8 @@ export default function App() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard"           element={<BuyerDashboardPage />} />
                 <Route path="marketplace"         element={<BuyerMarketplacePage />} />
+                <Route path="thrift"              element={<BuyerThriftPage />} />
+                <Route path="thrift/:productId"   element={<BuyerProductDetailPage />} />
                 <Route path="visual"              element={<BuyerVisualPage />} />
                 <Route path="dowry"               element={<BuyerDowryPage />} />
                 <Route path="projection"          element={<Navigate to="/buyer/dashboard" replace />} />
@@ -903,6 +924,7 @@ export default function App() {
                 <Route path="orders"    element={<SellerOrdersPageWrapper />} />
                 <Route path="reviews"   element={<SellerReviewsPageWrapper />} />
                 <Route path="account"   element={<SellerAccountPage />} />
+                <Route path="offers"    element={<SellerBannerOfferPageWrapper />} />
               </Route>
             </Route>
 
@@ -932,4 +954,3 @@ export default function App() {
     </CartProvider>
   );
 }
-

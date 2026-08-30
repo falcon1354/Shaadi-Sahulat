@@ -26,6 +26,8 @@ const adminCategorySchema = new mongoose.Schema(
     price_min:      { type: Number, default: 1000 },
     price_max:      { type: Number, default: 500000 },
     is_active:      { type: Boolean, default: true },
+    // Which storefront this category belongs to: 'new', 'thrift', or 'both'
+    storefront:     { type: String, enum: ["new", "thrift", "both"], default: "both" },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );

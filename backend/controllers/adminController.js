@@ -199,6 +199,7 @@ async function addCategory(req, res) {
       category_id, label, icon: icon || "📦",
       price_min: price_min || 1000,
       price_max: price_max || 500000,
+      storefront: req.body.storefront || "both",
     });
     return res.status(201).json({ success: true, category: cat });
   } catch (e) {
@@ -344,7 +345,7 @@ async function updateCategoryIcon(req, res) {
 async function editCategory(req, res) {
   try {
     const { category_id } = req.params;
-    const { label, price_min, price_max, icon, is_active } = req.body || {};
+    const { label, price_min, price_max, icon, is_active, storefront } = req.body || {};
 
     const updateFields = {};
     if (label !== undefined) updateFields.label = label;
@@ -352,6 +353,7 @@ async function editCategory(req, res) {
     if (price_max !== undefined) updateFields.price_max = Number(price_max);
     if (icon !== undefined) updateFields.icon = icon;
     if (is_active !== undefined) updateFields.is_active = String(is_active) === "true";
+    if (storefront !== undefined) updateFields.storefront = storefront;
 
     // If a file was uploaded via multipart, handle icon
     if (req.file) {

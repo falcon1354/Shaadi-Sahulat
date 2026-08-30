@@ -112,10 +112,11 @@ export async function deleteProduct(productId) {
   return res.json();
 }
 
-export async function searchProducts({ q, major_category, limit = 10 } = {}) {
+export async function searchProducts({ q, major_category, marketplace_type, limit = 10 } = {}) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (major_category) params.set("major_category", major_category);
+  if (marketplace_type) params.set("marketplace_type", marketplace_type);
   params.set("limit", limit);
   const res = await fetch(`${BASE_URL}/search?${params}`);
   return res.json();
@@ -129,6 +130,17 @@ export async function getPriceSuggestion({ major_category, subcategory, item_typ
   if (color)          params.set("color",           color);
   if (condition)      params.set("condition",       condition);
   const res = await fetch(`${BASE_URL}/price-suggestion?${params}`);
+  return res.json();
+}
+
+// ── Thrift product approval (admin) ─────────────────────────────────────────
+
+export async function approveThriftProduct(productId, { approved, suggested_price } = {}) {
+  const res = await fetch(`${BASE_URL}/product/${productId}/thrift-approve`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ approved, suggested_price }),
+  });
   return res.json();
 }
 
@@ -148,11 +160,13 @@ export default {
   getCategories,
   uploadProduct,
   listProducts,
+  getProducts: listProducts,
   getPublicProducts,
   getProduct,
   updateProduct,
   deleteProduct,
   searchProducts,
   getPriceSuggestion,
+  approveThriftProduct,
   resolveImageUrl,
 };

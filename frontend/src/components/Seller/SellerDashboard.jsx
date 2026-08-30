@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Package, Banknote, ShoppingCart, PlusCircle, BarChart3, Star, TrendingUp, Sparkles, ChevronRight, Activity, Calendar, ShieldAlert } from 'lucide-react';
+import { Store, Package, Banknote, ShoppingCart, PlusCircle, BarChart3, Star, TrendingUp, Sparkles, ChevronRight, Activity, Calendar, ShieldAlert, Image } from 'lucide-react';
 import { listProducts, getSellerProfile } from '../../api/sellerApi';
 import { listSellerPackages } from '../../api/orderApi';
 import { useCategories } from '../../hooks/useCategories';
@@ -182,10 +182,11 @@ export default function SellerDashboard({ seller, onNavigate }) {
       </div>
 
       {/* Quick Navigation */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { icon: <PlusCircle size={22} />, label: 'Upload Product', sub: 'Add new listing', view: 'upload', color: 'text-primary-900 bg-primary-50' },
           { icon: <Package size={22} />,    label: 'My Products',    sub: 'Manage listings',    view: 'my-products', color: 'text-primary-900 bg-primary-100' },
+          { icon: <Image size={22} />,      label: 'Banner Requests', sub: 'Create banner offers', view: 'offers', color: 'text-pink-600 bg-pink-50' },
           { icon: <BarChart3 size={22} />,  label: 'Analytics',      sub: 'View finances', view: 'fin-projection', color: 'text-emerald-600 bg-emerald-50' },
           { icon: <Star size={22} />,       label: 'Account',         sub: 'Edit details', view: 'seller-account', color: 'text-amber-600 bg-amber-50' },
         ].map(({ icon, label, sub, view, color }) => (

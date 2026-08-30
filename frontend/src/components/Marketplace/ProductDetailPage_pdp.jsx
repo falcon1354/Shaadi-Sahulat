@@ -70,6 +70,7 @@ function Toast({ message, visible }) {
 // ── Product Detail Page ───────────────────────────────────────────────────
 
 export default function ProductDetailPage({ productId, product: initialProduct, onBack, buyer, isAdminView = false }) {
+  const [selectedImg, setSelectedImg] = useState(0);
   const cartCtx = useCart();
   const addItem = cartCtx?.addItem || (() => {});
   const buyerId = buyer?.buyer_id || null;

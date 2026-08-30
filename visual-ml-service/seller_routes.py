@@ -229,6 +229,9 @@ def upload_product():
         stock_quantity = int(request.form.get("stock_quantity", 1))
     except ValueError:
         stock_quantity = 1
+    # Thrift items are always quantity=1 (single physical item)
+    if marketplace_type == "thrift":
+        stock_quantity = 1
 
     # ── Validate image files ───────────────────────────────────────────────
     image_files = request.files.getlist("images")
@@ -260,6 +263,9 @@ def upload_product():
         material=request.form.get("material", ""),
         brand=request.form.get("brand", ""),
         condition=request.form.get("condition", "new"),
+        marketplace_type=marketplace_type,
+        original_price=float(original_price_raw) if original_price_raw else None,
+        is_final_sale=(marketplace_type == "thrift"),
         city=request.form.get("city", seller_doc.get("city", "")),
         price=price,
         discount_price=discount_price,
@@ -323,6 +329,11 @@ def upload_product():
             product_id, image_records, image_embeddings, tfidf_vec, desc_data
         )
 
+        # Override: thrift items stay in 'processing' until admin approves
+        if marketplace_type == "thrift":
+            from mongo_seller import update_product as _update_product
+            _update_product(product_id, {"availability_status": "processing", "admin_approval_status": "pending"})
+
         # Invalidate in-memory recommendation cache
         from embedding_index import invalidate_cache
         invalidate_cache()
@@ -374,6 +385,7 @@ def marketplace_products():
     subcategory    = request.args.get("subcategory")    or None
     color          = request.args.get("color")          or None
     condition      = request.args.get("condition")      or None
+    marketplace_type = request.args.get("marketplace_type") or None
     city           = request.args.get("city")           or None
     sort_by        = request.args.get("sort_by", "newest")
     try:
@@ -392,6 +404,7 @@ def marketplace_products():
         max_price=max_price,
         color=color,
         condition=condition,
+        marketplace_type=marketplace_type,
         city=city,
         sort_by=sort_by,
         page=page,
@@ -453,6 +466,7 @@ def search_products():
     """
     q = (request.args.get("q") or "").strip()
     major_category = request.args.get("major_category") or None
+    marketplace_type = request.args.get("marketplace_type") or None
     try:
         limit = min(int(request.args.get("limit", 10)), 20)
     except ValueError:
@@ -484,6 +498,14 @@ def search_products():
         mongo_filter = {"availability_status": "available", "tfidf_vector": {"$exists": True, "$ne": {}}}
         if major_category:
             mongo_filter["major_category"] = major_category
+        if marketplace_type:
+            if marketplace_type == "new":
+                mongo_filter["$or"] = [
+                    {"marketplace_type": "new"},
+                    {"marketplace_type": {"$exists": False}},
+                ]
+            else:
+                mongo_filter["marketplace_type"] = marketplace_type
 
         projection = {
             "image_embeddings": 0,  # skip large embedding arrays

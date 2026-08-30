@@ -52,4 +52,34 @@ router.delete("/product/:product_id", sellerController.deleteProduct);
 // ── BNPL + Order Processing: seller-side order management ──────────────────
 router.use("/orders", require("./sellerOrders"));
 
+// ── Admin: Thrift product approval ──────────────────────────────────────────
+// Admin approves/rejects a thrift product listing
+router.patch("/product/:product_id/thrift-approve", async (req, res) => {
+  try {
+    const { product_id } = req.params;
+    const { approved, suggested_price, rejection_reason } = req.body || {};
+    const VISUAL_ML_URL = process.env.VISUAL_ML_URL || "http://localhost:5002";
+    const axios = require("axios");
+
+    if (approved) {
+      // Update product to available + admin_approved
+      await axios.put(`${VISUAL_ML_URL}/seller/product/${product_id}`, {
+        availability_status: "available",
+        admin_approval_status: "approved",
+        ...(suggested_price ? { price: Number(suggested_price) } : {}),
+      });
+      return res.json({ success: true, message: "Thrift product approved and now live" });
+    } else {
+      // Reject: keep in processing or set to hidden
+      await axios.put(`${VISUAL_ML_URL}/seller/product/${product_id}`, {
+        availability_status: "hidden",
+        admin_approval_status: "rejected",
+      });
+      return res.json({ success: true, message: "Thrift product rejected" });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

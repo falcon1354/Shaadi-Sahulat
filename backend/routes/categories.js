@@ -1,12 +1,25 @@
-const express       = require("express");
-const router        = express.Router();
+const express = require("express");
+const router  = express.Router();
 const AdminCategory = require("../models/AdminCategory");
 
-// Public — no auth required. Used by Buyer, Seller, and Admin frontends.
+// ── GET /api/categories — Public: active categories for buyer-facing UI ──────
+// Query params: storefront=new|thrift|both (default: all active)
 router.get("/", async (req, res) => {
   try {
-    const cats = await AdminCategory.find({ is_active: true }).lean();
-    return res.json({ success: true, categories: cats });
+    const { storefront } = req.query;
+    const filter = { is_active: { $ne: false } };
+
+    // Filter by storefront
+    if (storefront && storefront !== "both") {
+      filter.$or = [
+        { storefront: storefront },
+        { storefront: "both" },
+        { storefront: { $exists: false } }, // backward compat for old categories
+      ];
+    }
+
+    const categories = await AdminCategory.find(filter).lean();
+    return res.json({ success: true, categories });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
   }

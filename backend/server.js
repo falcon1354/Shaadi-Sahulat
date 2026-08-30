@@ -49,7 +49,7 @@ const orderRoutes        = require("./routes/orders");
 const disputeRoutes      = require("./routes/disputes");
 const reviewRoutes       = require("./routes/reviews");
 const notificationRoutes = require("./routes/notifications");
-const bannerRoutes       = require("./routes/banners");
+const { router: bannerRoutes, cleanupExpiredBanners } = require("./routes/banners");
 
 // NEW: Socket.io server
 const { initSocket, getStatus } = require("./lib/socket");
@@ -218,6 +218,10 @@ const start = async () => {
 
     // Start BNPL countdown timer (expires APPROVED applications after 3 days)
     startBnplTimer();
+
+    // Start banner cleanup timer (removes expired banners every 5 minutes)
+    setInterval(cleanupExpiredBanners, 5 * 60 * 1000);
+    console.log('[Server] Banner cleanup timer started (every 5 min)');
 
     httpServer.listen(PORT, () => {
       console.log(`[Server] ShaadiSahulat Backend running on port ${PORT}`);
