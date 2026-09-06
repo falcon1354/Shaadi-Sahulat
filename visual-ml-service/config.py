@@ -227,7 +227,7 @@ CATALOG_EMBEDDING_DIM = 1280 if BACKBONE == "efficientnet_b0" else 2048
 # ── MongoDB ────────────────────────────────────────────────────────────────
 MONGO_URI                = os.environ.get(
     "MONGODB_URI",
-    "mongodb+srv://Ahmad:1GhCTKOfd2k9QVvQ@cluster0.p2qcckk.mongodb.net/shaadi-sahulat?appName=Cluster0"
+    os.environ.get("MONGO_URI", "mongodb://localhost:27017/shaadi-sahulat"),
 )
 MONGO_DB                 = "shaadi-sahulat"
 MONGO_CATALOG_COLLECTION = "dress_catalog"

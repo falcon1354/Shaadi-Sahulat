@@ -197,3 +197,188 @@ def tfidf_cosine_similarity(vec_a: dict, vec_b: dict) -> float:
         return 0.0
 
     return float(np.clip(np.dot(v1, v2) / (n1 * n2), 0.0, 1.0))
+
+
+# ── Hybrid Search (works for both retail + thrift) ────────────────────────
+
+def search_hybrid(query_text: str, marketplace_type: str | None = None,
+                  top_k: int = 10) -> list[dict]:
+    """
+    TF-IDF cosine similarity search over ALL products in MongoDB
+    (seller_products collection). Works for both retail and thrift items
+    because it reads the stored `tfidf_vector` field from each product.
+
+    Parameters
+    ----------
+    query_text      : plain-text query from the user
+    marketplace_type: "new" | "thrift" | None (None = both)
+    top_k           : max number of results to return
+
+    Returns
+    -------
+    list of dicts, sorted by descending similarity_score:
+      [
+        {"product_id": str, "title": str, "score": float,
+         "major_category": str, "marketplace_type": str, "image_url": str},
+        ...
+      ]
+
+    Products with missing or empty tfidf_vector are skipped silently.
+    """
+    if not query_text or len(query_text.strip()) < 3:
+        return []
+
+    if load_vectorizer() is None:
+        return []
+
+    query_vec = description_to_tfidf_dict(query_text)
+    if not query_vec:
+        return []
+
+    # Lazy imports — keep tfidf_engine importable without pymongo installed
+    from pymongo import MongoClient
+    from config import MONGO_URI, MONGO_DB, PRODUCTS_COLLECTION
+
+    mongo_filter: dict = {
+        "availability_status": "available",
+        "tfidf_vector": {"$exists": True, "$ne": {}},
+    }
+    if marketplace_type:
+        if marketplace_type == "new":
+            mongo_filter["$or"] = [
+                {"marketplace_type": "new"},
+                {"marketplace_type": {"$exists": False}},
+            ]
+        else:
+            mongo_filter["marketplace_type"] = marketplace_type
+
+    projection = {
+        "_id": 0,
+        "image_embeddings": 0,
+    }
+
+    results: list[dict] = []
+    client = None
+    try:
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        db = client[MONGO_DB]
+        for prod in db[PRODUCTS_COLLECTION].find(mongo_filter, projection):
+            prod_vec = prod.get("tfidf_vector") or {}
+            if not prod_vec:
+                # Skip products without a usable TF-IDF vector (don't error).
+                continue
+            score = tfidf_cosine_similarity(query_vec, prod_vec)
+            if score <= 0.0:
+                continue
+            results.append({
+                "product_id":       prod.get("product_id", ""),
+                "title":            prod.get("title", ""),
+                "score":            round(float(score), 4),
+                "major_category":   prod.get("major_category", ""),
+                "marketplace_type": prod.get("marketplace_type", "new"),
+                "image_url":        prod.get("primary_image_url", ""),
+            })
+    except Exception as exc:
+        print(f"[TF-IDF] search_hybrid error: {exc}")
+        return []
+    finally:
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+
+    # Sort by score descending, take top_k
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results[:top_k]
+
+
+# ── Backfill missing TF-IDF vectors ───────────────────────────────────────
+
+def backfill_missing_tfidf(db) -> tuple[int, int, int]:
+    """
+    Iterate all products where `tfidf_vector` is missing or empty `{}`,
+    rebuild the vector from each product's `description` field, and write it
+    back to MongoDB. Idempotent — already-populated products are left alone.
+
+    Parameters
+    ----------
+    db : pymongo Database handle (caller-managed connection)
+
+    Returns
+    -------
+    (backfilled_count, already_had_vector_count, error_count)
+
+    Notes
+    -----
+    - Requires the TF-IDF vectorizer to be fitted (data/tfidf_vectorizer.pkl).
+      If not fitted, returns (0, N, 0) where N = count of products missing
+      vectors, without attempting to backfill.
+    - Skips (counts as error) products whose `description` is empty.
+    """
+    from config import PRODUCTS_COLLECTION
+
+    backfilled = 0
+    already_had = 0
+    errors = 0
+
+    if load_vectorizer() is None:
+        # Vectorizer not fitted — can't backfill. Count missing products so
+        # the caller knows the scope, but don't attempt any writes.
+        missing = db[PRODUCTS_COLLECTION].count_documents({
+            "$or": [
+                {"tfidf_vector": {"$exists": False}},
+                {"tfidf_vector": {}},
+                {"tfidf_vector": None},
+            ],
+        })
+        return (0, missing, 0)
+
+    # Count products that ALREADY have a non-empty vector (computed BEFORE the
+    # backfill loop so the number reflects the pre-backfill state, not the
+    # post-backfill state). Use $and so we can apply multiple operators on the
+    # same field safely.
+    already_had = db[PRODUCTS_COLLECTION].count_documents({
+        "$and": [
+            {"tfidf_vector": {"$exists": True}},
+            {"tfidf_vector": {"$ne": {}}},
+            {"tfidf_vector": {"$ne": None}},
+        ],
+    })
+
+    # Find all products missing or with empty tfidf_vector
+    missing_filter = {
+        "$or": [
+            {"tfidf_vector": {"$exists": False}},
+            {"tfidf_vector": {}},
+            {"tfidf_vector": None},
+        ],
+    }
+    cursor = db[PRODUCTS_COLLECTION].find(
+        missing_filter,
+        {"product_id": 1, "description": 1, "_id": 0},
+    )
+
+    for prod in cursor:
+        product_id = prod.get("product_id")
+        description = prod.get("description") or ""
+        if not description.strip():
+            errors += 1
+            continue
+        try:
+            vec = description_to_tfidf_dict(description)
+            db[PRODUCTS_COLLECTION].update_one(
+                {"product_id": product_id},
+                {"$set": {"tfidf_vector": vec}},
+            )
+            if vec:
+                backfilled += 1
+            else:
+                # Vectorizer returned empty (e.g. description had no vocabulary
+                # terms) — still counts as a write so we don't loop forever.
+                backfilled += 1
+        except Exception as exc:
+            print(f"[TF-IDF] backfill error for {product_id}: {exc}")
+            errors += 1
+
+    return (backfilled, already_had, errors)

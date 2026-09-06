@@ -2,31 +2,20 @@
 ShaadiSahulat Visual Recommendation - Flask API
 =================================================
 REST API for the hybrid image+text recommendation pipeline.
-
-Buyer Endpoints:
-  GET  /health                  — Service health + model/index status
-  POST /visual/recommend        — Upload image → 2 similar dress recommendations
-  POST /visual/build-index      — Build hybrid index from catalog/ images
-  GET  /visual/categories       — List supported categories
-  GET  /visual/index-stats      — MongoDB index statistics
-  GET  /visual/dataset-status   — Training image counts per category
-  GET  /images/<path>           — Serve catalog images (seller uploads)
-
-Seller Endpoints (mounted at /seller):
-  POST /seller/register
-  GET  /seller/profile/<seller_id>
-  GET  /seller/by-email?email=
-  POST /seller/product
-  GET  /seller/products
-  GET  /seller/product/<id>
-  PUT  /seller/product/<id>
-  DELETE /seller/product/<id>
-
-Run:  python app.py
-Port: 5002
 """
 
 import os
+from pathlib import Path
+
+# Load root .env (TRYON_PROVIDER, FAL_KEY, MONGODB_URI, …)
+try:
+    from dotenv import load_dotenv
+    root_env = Path(__file__).resolve().parents[1] / ".env"
+    load_dotenv(root_env)
+    load_dotenv()  # also local visual-ml-service/.env if present
+except Exception:
+    pass
+
 import json
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -44,6 +33,7 @@ from embedding_index import build_index, add_single_product, get_index_stats
 from seller_routes import seller_bp
 from dowry_routes import dowry_bp
 from review_ai import review_ai_bp
+from tryon_routes import tryon_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -52,6 +42,7 @@ CORS(app)
 app.register_blueprint(seller_bp)
 app.register_blueprint(dowry_bp)
 app.register_blueprint(review_ai_bp)
+app.register_blueprint(tryon_bp)
 
 
 # ── Catalog image serving ─────────────────────────────────────────────────

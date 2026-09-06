@@ -35,6 +35,12 @@ seller_products schema (v2 — expanded to all 6 categories)
   condition:           "new | thrift | used",
   city:                "string",
 
+  # Marketplace / thrift
+  marketplace_type:    "new | thrift",        # default "new"
+  original_price:      number | null,         # thrift "was" price (pre-discount)
+  is_final_sale:       bool,                  # true for thrift items
+  admin_approval_status: "pending | approved | rejected | ''",  # thrift gating
+
   # Pricing
   price:               number,
   discount_price:      number | null,
@@ -229,8 +235,17 @@ def create_product(
     discount_price: float | None = None,
     discount_pct: float | None = None,
     stock_quantity: int = 1,
+    marketplace_type: str = "new",
+    original_price: float | None = None,
+    is_final_sale: bool = False,
+    admin_approval_status: str = "",
 ) -> dict:
-    """Create product shell with status 'processing'. Caller adds embeddings/TF-IDF next."""
+    """Create product shell with status 'processing'. Caller adds embeddings/TF-IDF next.
+
+    Thrift-related parameters (marketplace_type, original_price, is_final_sale,
+    admin_approval_status) are persisted into the product document so the
+    Node backend's Mongoose strict mode stops stripping them on read.
+    """
     product_id = f"sp_{uuid.uuid4().hex[:16]}"
 
     # For backward compat with embedding search: `category` = item_type for
@@ -263,6 +278,12 @@ def create_product(
         "brand":               brand.strip(),
         "condition":           condition.strip() or "new",
         "city":                city.strip(),
+        # marketplace / thrift fields (persisted so Node Mongoose strict mode
+        # does not strip them — see EXPLORE-4 findings J and section I)
+        "marketplace_type":    (marketplace_type or "new").strip().lower(),
+        "original_price":      float(original_price) if original_price else None,
+        "is_final_sale":       bool(is_final_sale),
+        "admin_approval_status": (admin_approval_status or "").strip(),
         # pricing
         "price":               float(price),
         "discount_price":      float(discount_price) if discount_price else None,
@@ -388,6 +409,11 @@ def update_product(product_id: str, updates: dict) -> dict | None:
         "size", "material", "brand", "condition", "city",
         "price", "discount_price", "discount_pct", "stock_quantity",
         "availability_status",
+        # Thrift / marketplace fields (writable via update_product so the
+        # post-thrift-approval override in seller_routes.py can flip
+        # admin_approval_status and availability_status together.)
+        "marketplace_type", "original_price", "is_final_sale",
+        "admin_approval_status",
     }
     safe = {k: v for k, v in updates.items() if k in allowed_fields}
     safe["updated_at"] = datetime.utcnow()
