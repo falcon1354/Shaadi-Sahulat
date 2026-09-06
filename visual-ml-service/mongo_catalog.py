@@ -58,7 +58,7 @@ def _get_db():
         _client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
         _client.server_info()          # raises if unreachable
         _db = _client[MONGO_DB]
-        print(f"[MongoDB] Connected → {MONGO_URI}  db={MONGO_DB}")
+        print(f"[MongoDB] Connected -> {MONGO_URI}  db={MONGO_DB}")
         return _db
     except (ConnectionFailure, ServerSelectionTimeoutError) as exc:
         print(f"[MongoDB] Connection failed: {exc}")

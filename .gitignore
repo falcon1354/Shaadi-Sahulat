@@ -1,10 +1,53 @@
+# Dependencies
 node_modules/
-myvenv/
-__pycache__/
-*.pyc
-.env
-.DS_Store
-*.log
+*/node_modules/
 .venv/
-*.zip
+*/.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.pytest_cache/
 
+# Environment / secrets — never commit
+.env
+.env.*
+!.env.example
+tone-voice/.env
+**/credentials*.json
+**/*secret*
+
+# Build / cache
+dist/
+build/
+.cache/
+*.timestamp-*.mjs
+.vite/
+
+# Logs & OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.cursor/
+
+# ML / large local artifacts
+visual-ml-service/uploads/tryon/
+**/outputs/
+*.pth
+!visual-ml-service/models/.gitkeep
+
+# Local test uploads
+Uploads/tryon-test-person.jpg
+Uploads/.ocr-tmp/
+
+# Python packaging
+pip-wheel-metadata/

@@ -1,12 +1,12 @@
 {
   "profile_id": "6a2d4b900e48b4ae172492c0",
   "user_id": "buyer_63c08435c8104d54",
-  "budget": 489003,
+  "budget": 469003,
   "category_budgets": {
     "wedding_dress": {
-      "estimated": 160000,
+      "estimated": 210000,
       "spent": 2136351,
-      "remaining": -1976351,
+      "remaining": -1926351,
       "active": true
     },
     "furniture": {
@@ -16,9 +16,9 @@
       "active": true
     },
     "electronics": {
-      "estimated": 73158,
+      "estimated": 23158,
       "spent": 0,
-      "remaining": 73158,
+      "remaining": 23158,
       "active": true
     },
     "jewelry": {
@@ -28,15 +28,15 @@
       "active": false
     },
     "kitchen_items": {
-      "estimated": 40677,
+      "estimated": 20677,
       "spent": 6500,
-      "remaining": 34177,
+      "remaining": 14177,
       "active": true
     },
     "decoration": {
       "estimated": 19087,
-      "spent": 12500,
-      "remaining": 6587,
+      "spent": 15000,
+      "remaining": 4087,
       "active": true
     },
     "miscellaneous": {
@@ -56,34 +56,34 @@
       "remaining": 3000
     },
     "Jweley": {
-      "estimated": 0,
-      "spent": 0,
-      "remaining": 0
+      "estimated": 20000,
+      "spent": 1302,
+      "remaining": 18698
     }
   },
   "category_breakdown": {
-    "wedding_dress": 160000,
+    "wedding_dress": 210000,
     "furniture": 175000,
-    "electronics": 73158,
+    "electronics": 23158,
     "jewelry": 0,
-    "kitchen_items": 40677,
+    "kitchen_items": 20677,
     "decoration": 19087,
     "miscellaneous": 21081,
     "Accessaries": 10000,
     "Second-Life Gear & Outdoors": 3000,
-    "Jweley": 0
+    "Jweley": 20000
   },
   "adjusted_estimates": {
-    "wedding_dress": 160000,
+    "wedding_dress": 210000,
     "furniture": 175000,
-    "electronics": 73158,
+    "electronics": 23158,
     "jewelry": 0,
-    "kitchen_items": 40677,
+    "kitchen_items": 20677,
     "decoration": 19087,
     "miscellaneous": 21081,
     "Accessaries": 10000,
     "Second-Life Gear & Outdoors": 3000,
-    "Jweley": 0
+    "Jweley": 20000
   },
-  "saved_at": "2026-08-27T05:44:54.808535+00:00"
+  "saved_at": "2026-08-30T15:32:41.458282+00:00"
 }

@@ -180,6 +180,20 @@ def upload_product():
     subcategory    = (request.form.get("subcategory")    or "").strip()
     item_type      = (request.form.get("item_type")      or "").strip()
 
+    # Marketplace type ("new" or "thrift"). Defaults to "new".
+    # Also accepts the legacy `is_thrift` boolean form field for backward
+    # compatibility with older frontend uploads.
+    marketplace_type = (request.form.get("marketplace_type") or "").strip().lower()
+    is_thrift_raw = (request.form.get("is_thrift") or "").strip().lower()
+    is_thrift = is_thrift_raw in ("true", "1", "yes", "on")
+    if not marketplace_type:
+        marketplace_type = "thrift" if is_thrift else "new"
+    if marketplace_type not in ("new", "thrift"):
+        marketplace_type = "new"
+
+    # Original (pre-discount) price — used for thrift "was/now" display.
+    original_price_raw = request.form.get("original_price")
+
     if not seller_id:
         return jsonify({"success": False, "error": "seller_id is required"}), 400
     if not title:
@@ -460,9 +474,14 @@ def delete_seller_product(product_id):
 @seller_bp.route("/search", methods=["GET"])
 def search_products():
     """
-    GET /seller/search?q=<text>&major_category=<cat>&limit=<n>
+    GET /seller/search?q=<text>&major_category=<cat>&marketplace_type=<new|thrift>&limit=<n>
     TF-IDF cosine similarity search against product descriptions.
     Threshold: 0.2 | Min query length: 3 chars
+
+    marketplace_type:
+      - "new"    → retail products only (also includes legacy products missing the field)
+      - "thrift" → thrift products only
+      - omitted  → both retail + thrift (unified search)
     """
     q = (request.args.get("q") or "").strip()
     major_category = request.args.get("major_category") or None
@@ -472,10 +491,34 @@ def search_products():
     except ValueError:
         limit = 10
 
-    if len(q) < 3:
+    return _run_tfidf_search(q, major_category, marketplace_type, limit)
+
+
+@seller_bp.route("/search/thrift", methods=["GET"])
+def search_thrift_products():
+    """
+    GET /seller/search/thrift?q=<text>&major_category=<cat>&limit=<n>
+    Convenience wrapper around /seller/search that forces marketplace_type="thrift".
+    Useful for the thrift storefront search bar — guarantees only thrift items
+    are returned without the caller having to pass marketplace_type=thrift.
+    """
+    q = (request.args.get("q") or "").strip()
+    major_category = request.args.get("major_category") or None
+    try:
+        limit = min(int(request.args.get("limit", 10)), 20)
+    except ValueError:
+        limit = 10
+    return _run_tfidf_search(q, major_category, "thrift", limit)
+
+
+def _run_tfidf_search(q: str, major_category: str | None,
+                      marketplace_type: str | None, limit: int):
+    """Core TF-IDF + text fallback search shared by /search and /search/thrift."""
+    q = (q or "").strip()
+    if len(q) < 2:
         return jsonify({
             "success": False,
-            "error": "Query must be at least 3 characters",
+            "error": "Query must be at least 2 characters",
             "products": [],
         }), 400
 
@@ -483,19 +526,16 @@ def search_products():
     from pymongo import MongoClient
     from config import MONGO_URI, MONGO_DB, PRODUCTS_COLLECTION
 
-    # Vectorizer must be fitted
-    if load_vectorizer() is None:
-        return jsonify({"success": True, "products": [], "total": 0, "query": q,
-                        "note": "TF-IDF not fitted yet — run seed script first."})
-
-    query_vec = description_to_tfidf_dict(q)
-    if not query_vec:
-        return jsonify({"success": True, "products": [], "total": 0, "query": q})
+    query_vec = description_to_tfidf_dict(q) if load_vectorizer() is not None else {}
+    q_lower = q.lower()
+    # Short single-word queries rarely clear a high cosine bar — keep this low
+    # and rely on title/description text matches as a fallback.
+    TFIDF_MIN_SCORE = 0.08
 
     try:
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         db = client[MONGO_DB]
-        mongo_filter = {"availability_status": "available", "tfidf_vector": {"$exists": True, "$ne": {}}}
+        mongo_filter = {"availability_status": "available"}
         if major_category:
             mongo_filter["major_category"] = major_category
         if marketplace_type:
@@ -518,8 +558,32 @@ def search_products():
     results = []
     for prod in candidates:
         prod_vec = prod.pop("tfidf_vector", {}) or {}
-        score = tfidf_cosine_similarity(query_vec, prod_vec) if prod_vec else 0.0
-        if score >= 0.2:
+        score = tfidf_cosine_similarity(query_vec, prod_vec) if (query_vec and prod_vec) else 0.0
+
+        haystack = " ".join([
+            str(prod.get("title") or ""),
+            str(prod.get("description") or ""),
+            str(prod.get("category") or ""),
+            str(prod.get("major_category") or ""),
+            str(prod.get("subcategory") or ""),
+            str(prod.get("item_type") or ""),
+            str(prod.get("brand") or ""),
+            str(prod.get("color") or ""),
+            str(prod.get("fabric") or ""),
+        ]).lower()
+
+        if q_lower in haystack:
+            # Prefer exact phrase hits; keep TF-IDF if it scored higher
+            score = max(score, 0.55)
+        else:
+            # Token fallback (e.g. "bridal lehenga" vs title words)
+            tokens = [t for t in q_lower.replace("-", " ").split() if len(t) >= 2]
+            if tokens:
+                hits = sum(1 for t in tokens if t in haystack)
+                if hits:
+                    score = max(score, 0.25 * (hits / len(tokens)))
+
+        if score >= TFIDF_MIN_SCORE:
             _iso_doc(prod)
             prod["_id"] = str(prod.get("_id", ""))
             results.append({**prod, "similarity_score": round(score, 4)})
