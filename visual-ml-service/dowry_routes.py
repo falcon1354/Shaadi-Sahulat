@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
 from config import MONGO_URI, MONGO_DB, PRODUCTS_COLLECTION
+from price_stats import category_price_map, rebuild_price_stats
 
 PROFILES_DIR = os.path.join(os.path.dirname(__file__), "training", "dowry_profiles")
 os.makedirs(PROFILES_DIR, exist_ok=True)
@@ -44,36 +45,33 @@ def _get_active_categories(db):
 @dowry_bp.route("/category-prices", methods=["GET"])
 def get_category_prices():
     """
-    Returns avg price of top-5 cheapest available products per category.
-    Used by hybridEngine.js to ground estimates in real market data.
+    Returns live market averages + priority bands per category / subcategory.
+    Used by hybridEngine.js to ground estimates in real catalog prices.
     """
     try:
+        refresh = (request.args.get("refresh") or "").lower() in ("1", "true", "yes")
+        payload = rebuild_price_stats() if refresh else None
+        cats = category_price_map(payload)
+
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         db = client[MONGO_DB]
-
         active_cats = _get_active_categories(db)
+        client.close()
+
         result = {}
         for cat in active_cats:
-            products = list(
-                db[PRODUCTS_COLLECTION]
-                .find(
-                    {"major_category": cat, "availability_status": "available"},
-                    {"price": 1, "_id": 0},
-                )
-                .sort("price", 1)
-                .limit(5)
-            )
+            info = cats.get(cat) or {}
+            result[cat] = {
+                "avg": info.get("avg"),
+                "median": info.get("median"),
+                "min": info.get("min"),
+                "max": info.get("max"),
+                "count": info.get("count") or 0,
+                "avg_top5_cheapest": info.get("avg_top5_cheapest") or info.get("avg"),
+                "priority_ranges": info.get("priority_ranges"),
+                "subcategories": info.get("subcategories") or {},
+            }
 
-            if products:
-                avg = sum(p["price"] for p in products) / len(products)
-                result[cat] = {
-                    "avg_top5_cheapest": round(avg),
-                    "count": len(products),
-                }
-            else:
-                result[cat] = {"avg_top5_cheapest": None, "count": 0}
-
-        client.close()
         return jsonify({"success": True, "data": result})
 
     except Exception as exc:

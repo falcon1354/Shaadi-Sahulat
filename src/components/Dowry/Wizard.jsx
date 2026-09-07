@@ -7,6 +7,7 @@ import api from '../../api/dowryApi';
 import { patchDowryBudgets } from '../../api/buyerApi';
 import { useCategories } from '../../hooks/useCategories';
 import { Sparkles, DollarSign, Users, Target, BarChart2, Check, ArrowRight, ArrowLeft, RefreshCw, Save, ShieldAlert } from 'lucide-react';
+import { isRetiredCategory } from '../../lib/dowryDisplay';
 
 const STEPS = [
   { id: 1, title: 'Financial Profile', icon: <DollarSign size={18} /> },
@@ -41,7 +42,7 @@ function Wizard({ userId }) {
 
   // Dynamic categories from MongoDB; fall back to static list while loading
   const CATEGORIES = dbCats.length
-    ? dbCats.map(c => ({
+    ? dbCats.filter(c => !isRetiredCategory(c.category_id)).map(c => ({
         key:             `priority_${c.category_id}`,
         label:           c.label,
         icon:            c.icon || '📦',
@@ -121,11 +122,15 @@ function Wizard({ userId }) {
         if (est.category_budgets && Object.keys(est.category_budgets).length > 0) {
           const totalFromBudgets = Object.values(est.category_budgets)
             .reduce((s, v) => s + (v?.estimated || 0), 0);
+          const originalIds = Array.isArray(est.original_category_ids) && est.original_category_ids.length
+            ? est.original_category_ids
+            : Object.keys(est.category_budgets).filter(k => (est.category_budgets[k]?.estimated || 0) > 0);
           const dowryPayload = JSON.stringify({
-            estimation_id:    est._id,
-            total_budget:     totalFromBudgets || est.total_recommended_budget,
-            category_budgets: est.category_budgets,
-            saved_at:         est.updated_at || est.created_at || new Date().toISOString(),
+            estimation_id:          est._id,
+            total_budget:           totalFromBudgets || est.total_recommended_budget,
+            category_budgets:       est.category_budgets,
+            original_category_ids:  originalIds,
+            saved_at:               est.updated_at || est.created_at || new Date().toISOString(),
           });
           localStorage.setItem('ss_dowry_latest', dowryPayload);
           localStorage.setItem(`ss_dowry_${userId}`, dowryPayload);
@@ -243,11 +248,13 @@ function Wizard({ userId }) {
               active:     (payload.priorities?.[`priority_${cat}`] || 'Medium') !== 'Not_Wanted',
             };
           }
+          const originalIds = Object.keys(catBudgets).filter(k => catBudgets[k].active !== false);
           const dowryPayload = JSON.stringify({
-            estimation_id:    response.estimation_id,
-            total_budget:     response.data.total_recommended_budget,
-            category_budgets: catBudgets,
-            saved_at:         new Date().toISOString(),
+            estimation_id:          response.estimation_id,
+            total_budget:           response.data.total_recommended_budget,
+            category_budgets:       catBudgets,
+            original_category_ids:  originalIds,
+            saved_at:               new Date().toISOString(),
           });
           localStorage.setItem('ss_dowry_latest', dowryPayload);
           if (userId) {

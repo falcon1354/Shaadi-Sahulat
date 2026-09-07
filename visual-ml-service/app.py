@@ -27,13 +27,41 @@ from config import (
     MODEL_DIR, BACKBONE, FINE_TUNED_MODEL_PATH,
     CATALOG_DIR, UPLOADS_DIR, DESCRIPTIONS_FILE,
 )
-from predictor import get_predictor
-from data_loader import validate_dataset, print_dataset_report
-from embedding_index import build_index, add_single_product, get_index_stats
 from seller_routes import seller_bp
 from dowry_routes import dowry_bp
 from review_ai import review_ai_bp
 from tryon_routes import tryon_bp
+
+try:
+    from predictor import get_predictor
+    from data_loader import validate_dataset, print_dataset_report
+    from embedding_index import build_index, add_single_product, get_index_stats
+    _HAS_VISUAL_MODEL = True
+except ImportError:
+    _HAS_VISUAL_MODEL = False
+
+    def get_predictor():
+        raise RuntimeError("PyTorch is not installed — visual recommendations are unavailable.")
+
+    def get_index_stats():
+        return {
+            "index_exists": False,
+            "total_products": 0,
+            "tfidf_fitted": False,
+            "seller_products": 0,
+        }
+
+    def validate_dataset(*_a, **_k):
+        return False, {}, ["PyTorch is not installed"]
+
+    def print_dataset_report(*_a, **_k):
+        pass
+
+    def build_index(*_a, **_k):
+        return 0, {}
+
+    def add_single_product(*_a, **_k):
+        return False
 
 app = Flask(__name__)
 CORS(app)
@@ -62,6 +90,21 @@ def serve_catalog_image(image_path):
 
 @app.route("/health", methods=["GET"])
 def health():
+    if not _HAS_VISUAL_MODEL:
+        return jsonify({
+            "status":               "ok",
+            "service":              "shaadi-sahulat-visual-ml",
+            "backbone":             BACKBONE,
+            "model_trained":        False,
+            "model_loaded":         False,
+            "model_source":         "unavailable_no_torch",
+            "embedding_dim":        0,
+            "index_built":          False,
+            "total_indexed":        0,
+            "seller_products":      0,
+            "tfidf_fitted":         False,
+            "categories_supported": len(CATEGORIES),
+        })
     from model import is_model_fine_tuned
     fine_tuned   = is_model_fine_tuned()
     stats        = get_index_stats()

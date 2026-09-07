@@ -19,8 +19,14 @@ DELETE /seller/product/<product_id>     — Delete product + filesystem images
 """
 
 import os
-import torch
-import torchvision.transforms as transforms
+try:
+    import torch
+    import torchvision.transforms as transforms
+    _HAS_TORCH = True
+except ImportError:
+    torch = None
+    transforms = None
+    _HAS_TORCH = False
 from PIL import Image
 from flask import Blueprint, request, jsonify, current_app
 
@@ -42,11 +48,13 @@ from tfidf_engine import description_to_tfidf_dict
 seller_bp = Blueprint("seller", __name__, url_prefix="/seller")
 
 # Image pre-processing transform (same as training/index)
-_TRANSFORM = transforms.Compose([
-    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
+_TRANSFORM = (
+    transforms.Compose([
+        transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]) if _HAS_TORCH else None
+)
 
 _ALLOWED_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 
@@ -291,7 +299,7 @@ def upload_product():
     # ── Save images + extract embeddings (wedding_dress only) ──────────────
     image_records    = []
     image_embeddings = []
-    needs_embedding  = (major_category == "wedding_dress")
+    needs_embedding  = (major_category == "wedding_dress") and _HAS_TORCH
 
     # Use item_type as the storage folder for wedding_dress (backward compat),
     # otherwise use major_category/subcategory path
@@ -348,9 +356,18 @@ def upload_product():
             from mongo_seller import update_product as _update_product
             _update_product(product_id, {"availability_status": "processing", "admin_approval_status": "pending"})
 
-        # Invalidate in-memory recommendation cache
-        from embedding_index import invalidate_cache
-        invalidate_cache()
+        if marketplace_type != "thrift":
+            try:
+                from price_stats import rebuild_price_stats
+                rebuild_price_stats()
+            except Exception:
+                pass
+
+        try:
+            from embedding_index import invalidate_cache
+            invalidate_cache()
+        except Exception:
+            pass
 
     except Exception as exc:
         for rec in image_records:
@@ -600,6 +617,8 @@ _model_cache = {"model": None}
 
 
 def _get_model():
+    if not _HAS_TORCH:
+        return None
     if _model_cache["model"] is None:
         from model import load_model_for_inference
         _model_cache["model"] = load_model_for_inference(MODEL_DIR, BACKBONE)

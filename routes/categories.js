@@ -19,7 +19,9 @@ router.get("/", async (req, res) => {
     }
 
     const categories = await AdminCategory.find(filter).lean();
-    return res.json({ success: true, categories });
+    const RETIRED = ["jewelry", "jewellery", "accessories", "second_hand", "second_hand_gear", "second-hand", "jweley"];
+    const filtered = (categories || []).filter(c => !RETIRED.includes(c.category_id));
+    return res.json({ success: true, categories: filtered });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
   }
