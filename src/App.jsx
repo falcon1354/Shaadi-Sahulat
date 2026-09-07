@@ -104,11 +104,15 @@ function AuthProvider({ children }) {
           const budgets = est.category_budgets;
           if (!budgets || !Object.keys(budgets).length) return;
           const total   = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
+          const originalIds = Array.isArray(est.original_category_ids) && est.original_category_ids.length
+            ? est.original_category_ids
+            : Object.keys(budgets).filter(k => (budgets[k]?.estimated || 0) > 0);
           const payload = JSON.stringify({
-            estimation_id:    est._id,
-            total_budget:     total || est.total_recommended_budget,
-            category_budgets: budgets,
-            saved_at:         est.updated_at || est.created_at || new Date().toISOString(),
+            estimation_id:         est._id,
+            total_budget:          total || est.total_recommended_budget,
+            category_budgets:      budgets,
+            original_category_ids: originalIds,
+            saved_at:              est.updated_at || est.created_at || new Date().toISOString(),
           });
           localStorage.setItem(`ss_dowry_${b.buyer_id}`, payload);
           localStorage.setItem('ss_dowry_latest', payload);

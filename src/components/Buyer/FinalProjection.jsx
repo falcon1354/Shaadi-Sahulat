@@ -7,6 +7,7 @@ import { useCategories } from '../../hooks/useCategories';
 import { getFullBuyerData } from '../../api/buyerApi';
 import orderApi from '../../api/orderApi';
 import bnplApi from '../../api/bnplApi';
+import { filterDisplayBudgetEntries, isRetiredCategory } from '../../lib/dowryDisplay';
 import {
   Sparkles, DollarSign, Wallet, ArrowUpRight, Info, HelpCircle,
   CheckCircle2, ChevronRight, BarChart3, PieChart as PieIcon, AlertCircle, ShoppingBag,
@@ -62,11 +63,15 @@ export default function FinalProjection({ buyer }) {
       const budgets = est.category_budgets;
       if (!budgets || !Object.keys(budgets).length) return;
       const total   = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
+      const originalIds = Array.isArray(est.original_category_ids) && est.original_category_ids.length
+        ? est.original_category_ids
+        : Object.keys(budgets).filter(k => (budgets[k]?.estimated || 0) > 0);
       const payload = {
-        estimation_id:    est._id,
-        total_budget:     total || est.total_recommended_budget,
-        category_budgets: budgets,
-        saved_at:         est.updated_at || est.created_at || new Date().toISOString(),
+        estimation_id:         est._id,
+        total_budget:          total || est.total_recommended_budget,
+        category_budgets:      budgets,
+        original_category_ids: originalIds,
+        saved_at:              est.updated_at || est.created_at || new Date().toISOString(),
       };
       const s = JSON.stringify(payload);
       localStorage.setItem(`ss_dowry_${buyerId}`, s);
@@ -218,9 +223,24 @@ export default function FinalProjection({ buyer }) {
 
   const catBudgets  = dowry.category_budgets;
   const dbCatIds    = categories.map(c => c.category_id);
-  const activeCats  = Object.entries(catBudgets).filter(
-    ([key, v]) => v.active !== false && (dbCatIds.length === 0 || dbCatIds.includes(key))
-  );
+  const originalIds = Array.isArray(dowry.original_category_ids) && dowry.original_category_ids.length
+    ? dowry.original_category_ids
+    : Object.keys(catBudgets).filter(k => (catBudgets[k]?.estimated || 0) > 0);
+
+  // Merge newly added admin categories at 0 so Reallocate can fund them later,
+  // without showing them on pie / breakdown / remaining until allocated.
+  const mergedBudgets = { ...catBudgets };
+  categories.forEach(c => {
+    if (isRetiredCategory(c.category_id)) return;
+    if (!(c.category_id in mergedBudgets)) {
+      mergedBudgets[c.category_id] = { estimated: 0, spent: 0, remaining: 0, active: true };
+    }
+  });
+
+  const allocatedCats = filterDisplayBudgetEntries(mergedBudgets, originalIds)
+    .filter(([key]) => dbCatIds.length === 0 || dbCatIds.includes(key));
+
+  const activeCats = allocatedCats;
 
   const totalEst    = activeCats.reduce((s, [, v]) => s + (v.estimated || 0), 0);
   const totalSpent  = activeCats.reduce((s, [, v]) => s + (v.spent || 0), 0);
@@ -248,9 +268,7 @@ export default function FinalProjection({ buyer }) {
   }));
   const pieChartData = rawChartData.filter(item => item.Estimated > 0 || item.Spent > 0);
 
-  const categoryComparison = activeCats
-    .filter(([, info]) => (info.estimated || 0) > 0 || (info.spent || 0) > 0)
-    .map(([cat, info]) => ({
+  const categoryComparison = allocatedCats.map(([cat, info]) => ({
       category:  catLabel(cat),
       cat,
       estimated: info.estimated || 0,

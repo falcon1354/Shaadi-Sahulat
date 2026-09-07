@@ -111,6 +111,10 @@ async function saveEstimation(req, res) {
       };
     }
 
+    const originalCategoryIds = Object.keys(categoryBudgets).filter(
+      (cat) => categoryBudgets[cat].active !== false
+    );
+
     const wasManuallyAdjusted = Object.keys(adjustedEstimates).some(
       (cat) => adjustedEstimates[cat] !== breakdown[cat]
     );
@@ -142,6 +146,7 @@ async function saveEstimation(req, res) {
       redistributions: inputs.redistributions || {},
       notes:          result.notes,
       source:         result.source,
+      original_category_ids: originalCategoryIds,
     });
 
     const saved = await estimation.save();
@@ -251,6 +256,10 @@ async function upsertEstimation(req, res) {
       categoryBudgets[cat] = { estimated, spent: 0, remaining: estimated, active: isActive };
     }
 
+    const originalCategoryIds = Object.keys(categoryBudgets).filter(
+      (cat) => categoryBudgets[cat].active !== false
+    );
+
     const wasManuallyAdjusted = Object.keys(adjustedEstimates).some(
       (cat) => adjustedEstimates[cat] !== breakdown[cat]
     );
@@ -277,6 +286,7 @@ async function upsertEstimation(req, res) {
       redistributions:          inputs.redistributions || {},
       notes:                    result.notes,
       source:                   result.source,
+      original_category_ids:    originalCategoryIds,
       updated_at:               new Date(),
     };
 

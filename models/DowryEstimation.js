@@ -78,6 +78,10 @@ const dowryEstimationSchema = new mongoose.Schema(
 
     notes:  { type: [String], default: [] },
     source: { type: String, default: "Hybrid Engine" },
+
+    // Snapshot of categories that were part of the original estimation.
+    // New admin-added categories stay hidden on the pie/breakdown until funded.
+    original_category_ids: { type: [String], default: [] },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

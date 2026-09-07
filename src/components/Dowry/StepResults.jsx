@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { Sparkles, ArrowRight, TrendingUp, Info, HelpCircle, Save, CheckCircle2 } from 'lucide-react';
+import { isRetiredCategory } from '../../lib/dowryDisplay';
 
 // 10-colour palette — repeats for more than 10 categories
 const PALETTE = [
@@ -90,7 +91,7 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
   const adjustedTotal = Object.values(displayBreakdown).reduce((a, b) => a + b, 0);
 
   const sortedEntries = Object.entries(displayBreakdown)
-    .filter(([key, v]) => v > 0 && (priorities ? (priorities[`priority_${key}`] !== null && priorities[`priority_${key}`] !== 'Not_Wanted') : true))
+    .filter(([key, v]) => v > 0 && !isRetiredCategory(key) && (priorities ? (priorities[`priority_${key}`] !== null && priorities[`priority_${key}`] !== 'Not_Wanted') : true))
     .sort(([, a], [, b]) => b - a);
 
   const pieData = sortedEntries.map(([key, value]) => ({
@@ -153,6 +154,10 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
         
         <div className="space-y-6">
           {Object.entries(result.category_breakdown || {}).map(([key, originalAmt]) => {
+            if (isRetiredCategory(key)) return null;
+            if (priorities && priorities[`priority_${key}`] === 'Not_Wanted') return null;
+            if (!priorities && originalAmt === 0) return null;
+
             const current   = displayBreakdown[key] ?? originalAmt;
             const step      = getSliderStep(originalAmt);
             const maxVal    = Math.max(originalAmt * 2, step * 20);
@@ -162,9 +167,9 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
               ? (((current - originalAmt) / originalAmt) * 100).toFixed(0)
               : 0;
             const color = catColor(key);
-
-            if (priorities && priorities[`priority_${key}`] === 'Not_Wanted') return null;
-            if (!priorities && originalAmt === 0) return null;
+            const market = result.market_price_stats?.[key];
+            const pri = priorities?.[`priority_${key}`] || 'Medium';
+            const band = market?.priority_ranges?.[pri];
 
             return (
               <div key={key} className="space-y-1.5 p-3 rounded-2xl bg-gray-50/40 border border-gray-100 hover:bg-gray-50/90 transition-colors duration-200">
@@ -196,6 +201,12 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
                   <span>Sys Reference: {formatPKR(originalAmt)}</span>
                   <span>{formatPKR(maxVal)}</span>
                 </div>
+                {band && (
+                  <p className="text-[10px] text-primary-800 font-medium px-0.5">
+                    Market {pri}: PKR {band.min.toLocaleString()} – {band.max.toLocaleString()}
+                    {market?.avg ? ` · avg PKR ${Number(market.avg).toLocaleString()}` : ''}
+                  </p>
+                )}
               </div>
             );
           })}
@@ -373,9 +384,17 @@ function BudgetManageSection({ buyerId, categories }) {
   const [amount, setAmount] = useState('');
   const [msg, setMsg]       = useState({ text: '', error: false });
 
-  const budgets = dowry?.category_budgets || {};
-  // Only show categories that are active (not Not_Wanted) and have a budget
-  const cats = Object.entries(budgets).filter(([, v]) => v.active !== false);
+  const budgets = { ...(dowry?.category_budgets || {}) };
+  (categories || []).forEach(c => {
+    if (isRetiredCategory(c.category_id)) return;
+    if (!(c.category_id in budgets)) {
+      budgets[c.category_id] = { estimated: 0, spent: 0, remaining: 0, active: true };
+    }
+  });
+  const cats = Object.entries(budgets).filter(
+    ([k, v]) => v.active !== false && !isRetiredCategory(k)
+  );
+  const fromCats = cats.filter(([, v]) => (v.remaining ?? v.estimated ?? 0) > 0);
 
   const fromBudget = fromCat ? budgets[fromCat] : null;
   const maxShift   = fromBudget ? (fromBudget.remaining ?? fromBudget.estimated ?? 0) : 0;
@@ -422,7 +441,7 @@ function BudgetManageSection({ buyerId, categories }) {
             onChange={e => { setFromCat(e.target.value); setMsg({ text: '', error: false }); }}
             className="w-full border border-gray-200/80 bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all">
             <option value="">Select category…</option>
-            {cats.filter(([k]) => k !== toCat).map(([k, v]) => (
+            {fromCats.filter(([k]) => k !== toCat).map(([k, v]) => (
               <option key={k} value={k}>
                 {catLabel(k)} — PKR {(v.remaining ?? v.estimated ?? 0).toLocaleString()} left
               </option>

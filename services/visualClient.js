@@ -201,8 +201,8 @@ async function getCategories() {
         { id: "bridal_saree", label: "Bridal Saree", type: "bridal" },
         { id: "bridal_maxi", label: "Bridal Maxi", type: "bridal" },
         { id: "groom_sherwani", label: "Groom Sherwani", type: "groom" },
-        { id: "groom_kurta", label: "Groom Kurta", type: "groom" },
-        { id: "groom_waistcoat", label: "Groom Waistcoat", type: "groom" },
+        { id: "groom_shalwar_kameez", label: "Groom Shalwar Kameez", type: "groom" },
+        { id: "groom_prince_coat", label: "Prince Coat", type: "groom" },
       ],
       total: 8,
     };

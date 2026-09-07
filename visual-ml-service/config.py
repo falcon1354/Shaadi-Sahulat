@@ -35,17 +35,19 @@ SELLER_CATEGORY_TREE = [
                 "items": [
                     {"id": "bridal_lehenga", "label": "Lehenga"},
                     {"id": "bridal_sharara", "label": "Sharara"},
+                    {"id": "bridal_saree",   "label": "Saree"},
                     {"id": "bridal_gharara", "label": "Gharara"},
                     {"id": "bridal_gown",    "label": "Bridal Gown"},
+                    {"id": "bridal_maxi",    "label": "Maxi"},
                 ],
             },
             {
                 "id": "groom",
                 "label": "Groom",
                 "items": [
-                    {"id": "groom_sherwani",       "label": "Sherwani"},
+                    {"id": "groom_sherwani",        "label": "Sherwani"},
                     {"id": "groom_shalwar_kameez",  "label": "Shalwar Kameez"},
-                    {"id": "groom_suit",            "label": "Suit"},
+                    {"id": "groom_prince_coat",     "label": "Prince Coat"},
                 ],
             },
         ],
@@ -82,10 +84,12 @@ SELLER_CATEGORY_TREE = [
         "requires_embedding": False,
         "subcategories": [
             {"id": "large_appliances", "label": "Large Appliances", "items": [
-                {"id": "microwave",      "label": "Microwave"},
-                {"id": "juicer_blender", "label": "Juicer / Blender Set"},
-                {"id": "toaster",        "label": "Toaster"},
-                {"id": "dishwasher",     "label": "Dishwasher"},
+                {"id": "microwave",             "label": "Microwave"},
+                {"id": "juicer_blender",        "label": "Juicer / Blender Set"},
+                {"id": "toaster",               "label": "Toaster"},
+                {"id": "breakfast_beverages",   "label": "Breakfast / Beverages"},
+                {"id": "built_in_hob",          "label": "Built-in Hob"},
+                {"id": "dishwasher",            "label": "Dishwasher"},
             ]},
             {"id": "general_kitchen", "label": "General Kitchen Items", "items": [
                 {"id": "crockery_set",    "label": "Crockery Set"},
@@ -148,9 +152,11 @@ _DRESS_TO_ML_CLASS = {
     "bridal_sharara":      "bridal_sharara",
     "bridal_gharara":      "bridal_sharara",   # closest class
     "bridal_gown":         "bridal_lehenga",   # closest class
+    "bridal_maxi":         "bridal_saree",
     "groom_sherwani":      "bridal_lehenga",   # closest class (no groom model yet)
     "groom_shalwar_kameez":"bridal_sharara",
-    "groom_suit":          "bridal_lehenga",
+    "groom_prince_coat":   "bridal_lehenga",
+    "groom_suit":          "bridal_lehenga",   # legacy alias
 }
 DRESS_TO_ML_CLASS = _DRESS_TO_ML_CLASS
 

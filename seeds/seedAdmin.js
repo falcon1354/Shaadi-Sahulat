@@ -141,6 +141,14 @@ async function seed() {
   }
   console.log(`Seeded ${seeded} categories into admin_categories.`);
 
+  const retired = await AdminCategory.updateMany(
+    { category_id: { $in: ["jewelry", "jewellery", "accessories", "second_hand", "second_hand_gear", "second-hand", "jweley"] } },
+    { $set: { is_active: false } }
+  );
+  if (retired.modifiedCount) {
+    console.log(`Deactivated ${retired.modifiedCount} retired categor${retired.modifiedCount === 1 ? "y" : "ies"} (jewelry / accessories / second-hand).`);
+  }
+
   await mongoose.disconnect();
   console.log("\nDone.");
 }

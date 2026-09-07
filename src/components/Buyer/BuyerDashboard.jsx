@@ -3,6 +3,7 @@ import { Gem, Hand, Banknote, Heart, TrendingUp, Eye, Wallet, BarChart3, PieChar
 import { useCategories } from '../../hooks/useCategories';
 import { getFullBuyerData } from '../../api/buyerApi';
 import { listBuyerOrders } from '../../api/orderApi';
+import { filterDisplayBudgetEntries, isRetiredCategory } from '../../lib/dowryDisplay';
 
 // ── Buyer-isolated storage helpers ───────────────────────────────────────────
 function readDowry(buyerId) {
@@ -65,11 +66,15 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
       const budgets = est.category_budgets;
       if (!budgets || !Object.keys(budgets).length) return;
       const total   = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
+      const originalIds = Array.isArray(est.original_category_ids) && est.original_category_ids.length
+        ? est.original_category_ids
+        : Object.keys(budgets).filter(k => (budgets[k]?.estimated || 0) > 0);
       const payload = {
-         estimation_id:    est._id,
-         total_budget:     total || est.total_recommended_budget,
-         category_budgets: budgets,
-         saved_at:         est.updated_at || est.created_at || new Date().toISOString(),
+         estimation_id:         est._id,
+         total_budget:          total || est.total_recommended_budget,
+         category_budgets:      budgets,
+         original_category_ids: originalIds,
+         saved_at:              est.updated_at || est.created_at || new Date().toISOString(),
       };
       const s = JSON.stringify(payload);
       localStorage.setItem(`ss_dowry_${buyerId}`, s);
@@ -105,18 +110,23 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
   }, [buyerId]);
 
   // Merge new DB categories into buyer's category_budgets with default 0
+  // so Reallocate can target them — they stay hidden on charts until funded.
   const mergedDowry = useMemo(() => {
     if (!dowry || !categories.length) return dowry;
     const budgets = { ...(dowry.category_budgets || {}) };
     let changed = false;
     for (const cat of categories) {
+      if (isRetiredCategory(cat.category_id)) continue;
       if (!(cat.category_id in budgets)) {
         budgets[cat.category_id] = { estimated: 0, spent: 0, remaining: 0, active: true };
         changed = true;
       }
     }
-    if (!changed) return dowry;
-    const updated = { ...dowry, category_budgets: budgets };
+    const originalIds = Array.isArray(dowry.original_category_ids) && dowry.original_category_ids.length
+      ? dowry.original_category_ids
+      : Object.keys(dowry.category_budgets || {}).filter(k => ((dowry.category_budgets || {})[k]?.estimated || 0) > 0);
+    if (!changed && dowry.original_category_ids) return dowry;
+    const updated = { ...dowry, category_budgets: budgets, original_category_ids: originalIds };
     const s = JSON.stringify(updated);
     localStorage.setItem('ss_dowry_latest', s);
     if (buyerId) localStorage.setItem(`ss_dowry_${buyerId}`, s);
@@ -125,11 +135,10 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
 
   const dbCatIds   = categories.map(c => c.category_id);
   const catBudgets = mergedDowry?.category_budgets || {};
+  const originalIds = mergedDowry?.original_category_ids;
 
-  // Only show categories that exist in DB
-  const activeCats = Object.entries(catBudgets).filter(([key, v]) =>
-    v.active !== false && (dbCatIds.length === 0 || dbCatIds.includes(key))
-  );
+  const activeCats = filterDisplayBudgetEntries(catBudgets, originalIds)
+    .filter(([key]) => dbCatIds.length === 0 || dbCatIds.includes(key));
 
   const totalEst    = activeCats.reduce((s, [, v]) => s + (v.estimated || 0), 0);
   const totalSpent  = activeCats.reduce((s, [, v]) => s + (v.spent || 0), 0);

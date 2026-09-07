@@ -15,6 +15,7 @@ const CATEGORY_TREE = [
         items: [
           { id: 'bridal_lehenga', label: 'Lehenga' },
           { id: 'bridal_sharara', label: 'Sharara' },
+          { id: 'bridal_saree',   label: 'Saree' },
           { id: 'bridal_gharara', label: 'Gharara' },
           { id: 'bridal_gown',    label: 'Bridal Gown' },
           { id: 'bridal_maxi',    label: 'Maxi' },
@@ -25,7 +26,7 @@ const CATEGORY_TREE = [
         items: [
           { id: 'groom_sherwani',        label: 'Sherwani' },
           { id: 'groom_shalwar_kameez',  label: 'Shalwar Kameez' },
-          { id: 'groom_suit',            label: 'Suit' },
+          { id: 'groom_prince_coat',     label: 'Prince Coat' },
         ],
       },
     ],
@@ -58,10 +59,12 @@ const CATEGORY_TREE = [
       {
         id: 'large_appliances', label: 'Large Appliances',
         items: [
-          { id: 'microwave',       label: 'Microwave' },
-          { id: 'juicer_blender',  label: 'Juicer / Blender Set' },
-          { id: 'toaster',         label: 'Toaster' },
-          { id: 'dishwasher',      label: 'Dishwasher' },
+          { id: 'microwave',            label: 'Microwave' },
+          { id: 'juicer_blender',       label: 'Juicer / Blender Set' },
+          { id: 'toaster',              label: 'Toaster' },
+          { id: 'breakfast_beverages',  label: 'Breakfast / Beverages' },
+          { id: 'built_in_hob',         label: 'Built-in Hob' },
+          { id: 'dishwasher',           label: 'Dishwasher' },
         ],
       },
       {
@@ -136,6 +139,8 @@ const PRICE_RANGES = {
   microwave:          { min: 8000,   max: 60000  },
   juicer_blender:     { min: 3000,   max: 25000  },
   toaster:            { min: 2000,   max: 10000  },
+  breakfast_beverages:{ min: 2000,   max: 25000  },
+  built_in_hob:       { min: 15000,  max: 120000 },
   dishwasher:         { min: 40000,  max: 150000 },
   // Kitchen general
   crockery_set:       { min: 5000,   max: 80000  },

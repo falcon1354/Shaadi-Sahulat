@@ -23,7 +23,10 @@ async function fetchActiveCategoryIds() {
     const cats = await AdminCategory.find({ is_active: { $ne: false } })
       .select("category_id")
       .lean();
-    if (cats.length > 0) return cats.map(c => c.category_id);
+    if (cats.length > 0) {
+      const RETIRED = ["jewelry", "jewellery", "accessories", "second_hand", "second_hand_gear", "second-hand", "jweley"];
+      return cats.map(c => c.category_id).filter(id => !RETIRED.includes(id));
+    }
   } catch { /* ignore */ }
   return Object.keys(KNOWN_ALLOCATION);
 }
@@ -61,30 +64,49 @@ async function hybridEstimate(inputs, useML = true) {
   // Step 2 — Fetch DB avg prices per category (§2.3)
   const categoryPrices = await fetchCategoryPrices();
 
-  // Step 3 — Per-category DB grounding
+  // Step 3 — Per-category DB grounding + priority-band clamp
   const groundedBreakdown = {};
   const estimateSources   = {};
+  const marketStats       = {};
+  const priorities        = inputs.priorities || {};
+  let usedMarket          = false;
+
   for (const [cat, ruleAmt] of Object.entries(ruleResult.category_breakdown)) {
-    const dbInfo = categoryPrices[cat];
-    if (dbInfo && dbInfo.avg_top5_cheapest && dbInfo.count >= 1) {
-      groundedBreakdown[cat] = Math.floor(
-        0.6 * ruleAmt + 0.4 * dbInfo.avg_top5_cheapest
-      );
+    const dbInfo = categoryPrices[cat] || {};
+    const marketAvg = dbInfo.avg || dbInfo.avg_top5_cheapest;
+    const pri = priorities[`priority_${cat}`] || "Medium";
+    marketStats[cat] = {
+      avg: marketAvg || null,
+      count: dbInfo.count || 0,
+      priority_ranges: dbInfo.priority_ranges || null,
+      subcategories: dbInfo.subcategories || {},
+    };
+
+    let amount = ruleAmt;
+    if (marketAvg && dbInfo.count >= 1) {
+      amount = Math.floor(0.6 * ruleAmt + 0.4 * marketAvg);
       estimateSources[cat] = dbInfo.count >= 5 ? "hybrid" : "partial_hybrid";
+      usedMarket = true;
     } else {
-      groundedBreakdown[cat] = ruleAmt;
-      estimateSources[cat]   = "rule_only";
+      estimateSources[cat] = "rule_only";
     }
+
+    const band = dbInfo.priority_ranges && dbInfo.priority_ranges[pri];
+    if (band && pri !== "Not_Wanted" && band.min && band.max) {
+      amount = Math.min(band.max, Math.max(band.min, amount));
+    }
+    groundedBreakdown[cat] = amount;
   }
 
-  // Re-normalize so total stays equal to rule baseline
-  // (DB grounding may shift the sum slightly)
-  const groundedTotal = Object.values(groundedBreakdown).reduce((a, b) => a + b, 0);
-  const targetTotal   = ruleResult.baseline_budget;
-  if (groundedTotal > 0 && targetTotal > 0) {
-    const scale = targetTotal / groundedTotal;
-    for (const cat of Object.keys(groundedBreakdown)) {
-      groundedBreakdown[cat] = Math.floor(groundedBreakdown[cat] * scale);
+  // Keep the rule-engine total unless market bands pulled a category away
+  if (!usedMarket) {
+    const groundedTotal = Object.values(groundedBreakdown).reduce((a, b) => a + b, 0);
+    const targetTotal   = ruleResult.baseline_budget;
+    if (groundedTotal > 0 && targetTotal > 0) {
+      const scale = targetTotal / groundedTotal;
+      for (const cat of Object.keys(groundedBreakdown)) {
+        groundedBreakdown[cat] = Math.floor(groundedBreakdown[cat] * scale);
+      }
     }
   }
 
@@ -134,6 +156,7 @@ async function hybridEstimate(inputs, useML = true) {
   };
 
   finalResult.estimate_sources = estimateSources;
+  finalResult.market_price_stats = marketStats;
 
   return finalResult;
 }

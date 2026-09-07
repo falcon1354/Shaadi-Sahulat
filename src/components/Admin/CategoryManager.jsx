@@ -321,11 +321,11 @@ export default function CategoryManager() {
           {/* ── Add new category ─────────────────────────────── */}
           <div className="bg-white rounded-2xl border border-gray-200 p-4 mt-4 space-y-2">
             <p className="text-xs font-semibold text-gray-600">Add New Category</p>
-            <input placeholder="ID (e.g. jewelry)" value={newCat.category_id}
+            <input placeholder="ID (e.g. gifts)" value={newCat.category_id}
               onChange={e => setNewCat(p => ({ ...p, category_id: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
             />
-            <input placeholder="Label (e.g. Jewelry)" value={newCat.label}
+            <input placeholder="Label (e.g. Gifts)" value={newCat.label}
               onChange={e => setNewCat(p => ({ ...p, label: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
             />
