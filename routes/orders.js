@@ -58,6 +58,8 @@ const {
 const DowryEstimation = require("../models/DowryEstimation");
 const { pushNotification, notifyBuyerAndAdmin, notifySellerAndAdmin, notifyAll } = require("../lib/notify");
 const { publicUrl, makeDisputeUploadMiddleware } = require("../lib/storage");
+const { attachReviewVoices } = require("../lib/reviewVoice");
+const { normalizeAgent } = require("../lib/toneVoiceClient");
 
 const disputeUpload = makeDisputeUploadMiddleware();
 
@@ -782,6 +784,7 @@ router.post("/:order_id/review", requireBuyer, async (req, res) => {
     const {
       rating, comment, title, recommend,
       ai_suggested_rating, ai_used, ai_generated, ai_provider,
+      voice_agent, skip_voice,
     } = req.body || {};
 
     // Validate rating: must be 0.5–5 in 0.5 steps
@@ -836,12 +839,22 @@ router.post("/:order_id/review", requireBuyer, async (req, res) => {
       reviews.push(review);
     }
 
+    let voiceResult = null;
+    if (!skip_voice && reviews.length && String(comment || "").trim()) {
+      voiceResult = await attachReviewVoices(reviews, {
+        comment,
+        rating: r,
+        voice_agent: normalizeAgent(voice_agent),
+        order_id: order.order_id,
+      });
+    }
+
     order.timeline.push({
       status: order.status,
       at: new Date(),
       by: "buyer",
       by_id: req.user.id,
-      note: `Buyer submitted ${reviews.length} review(s) with rating ${r}/5.${ai_generated ? " (AI-generated comment)" : ""}`,
+      note: `Buyer submitted ${reviews.length} review(s) with rating ${r}/5.${ai_generated ? " (AI-generated comment)" : ""}${voiceResult?.ok ? " + voice" : ""}`,
     });
     await order.save();
 
@@ -858,6 +871,7 @@ router.post("/:order_id/review", requireBuyer, async (req, res) => {
       success: true,
       message: `${reviews.length} review(s) submitted.`,
       reviews,
+      voice: voiceResult,
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

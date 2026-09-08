@@ -100,17 +100,20 @@ export default function BuyerOrderDetailPage({ buyer }) {
   const submitReview = async ({
     rating, title, comment,
     ai_suggested_rating, ai_used, ai_generated, ai_provider,
+    voice_agent,
   }) => {
     setSubmitting(true); setMsg("");
     const r = await orderApi.submitReview({
       buyerId: buyer.buyer_id, orderId,
       rating, title, comment,
       ai_suggested_rating, ai_used, ai_generated, ai_provider,
+      voice_agent,
     });
     setSubmitting(false);
     if (!r.success) { setMsg(r.error); return; }
     setShowReview(false);
-    setMsg(`${r.reviews.length} review(s) submitted. Thank you!`);
+    const voiceNote = r.voice?.ok ? " Voice clip saved." : "";
+    setMsg(`${r.reviews.length} review(s) submitted. Thank you!${voiceNote}`);
     load();
   };
 
