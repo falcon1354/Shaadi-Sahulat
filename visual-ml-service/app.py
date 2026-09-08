@@ -7,7 +7,7 @@ REST API for the hybrid image+text recommendation pipeline.
 import os
 from pathlib import Path
 
-# Load root .env (TRYON_PROVIDER, FAL_KEY, MONGODB_URI, …)
+# Load root .env (TRYON_PROVIDER, KLING_API_KEY, MONGODB_URI, …)
 try:
     from dotenv import load_dotenv
     root_env = Path(__file__).resolve().parents[1] / ".env"

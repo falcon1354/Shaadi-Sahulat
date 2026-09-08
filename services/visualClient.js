@@ -241,7 +241,7 @@ async function runTryOn({
 
     const response = await axios.post(`${ML_SERVICE_URL}/tryon/preview`, formData, {
       headers: formData.getHeaders(),
-      timeout: 120000,
+      timeout: 210000,
       maxContentLength: 25 * 1024 * 1024,
     });
     return response.data;

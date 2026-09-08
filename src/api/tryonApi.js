@@ -30,7 +30,7 @@ const tryonApi = {
 
     const res = await axios.post(`${API_BASE}/visual/tryon`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 120000,
+      timeout: 210000, // Kling async try-on can take up to ~3 minutes
     });
     return res.data;
   },

@@ -550,19 +550,21 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
                   ❤
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setTryOnOpen(true)}
-                className="w-full py-3 rounded-2xl text-sm font-semibold border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors"
-              >
-                Try it on
-              </button>
+              {String(product.major_category || '').toLowerCase() === 'wedding_dress' && (
+                <button
+                  type="button"
+                  onClick={() => setTryOnOpen(true)}
+                  className="w-full py-3 rounded-2xl text-sm font-semibold border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                >
+                  Try it on
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {!isAdminView && (
+      {!isAdminView && String(product.major_category || '').toLowerCase() === 'wedding_dress' && (
         <SizeAwareTryOnModal
           open={tryOnOpen}
           onClose={() => setTryOnOpen(false)}
