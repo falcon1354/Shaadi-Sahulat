@@ -54,6 +54,7 @@ const { router: bannerRoutes, cleanupExpiredBanners } = require("./routes/banner
 // NEW: Socket.io server
 const { initSocket, getStatus } = require("./lib/socket");
 const { startBnplTimer } = require("./lib/bnplTimer");
+const { startDisputeTimer } = require("./lib/disputeTimer");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -218,6 +219,9 @@ const start = async () => {
 
     // Start BNPL countdown timer (expires APPROVED applications after 3 days)
     startBnplTimer();
+
+    // Dispute SLAs: 7d auto-complete, 48h seller response, 5d admin resolution
+    startDisputeTimer();
 
     // Start banner cleanup timer (removes expired banners every 5 minutes)
     setInterval(cleanupExpiredBanners, 5 * 60 * 1000);

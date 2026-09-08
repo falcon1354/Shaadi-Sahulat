@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import sellerApi, { resolveImageUrl } from '../../api/sellerApi';
-import DealOfTheDayBanner from '../Common/DealOfTheDayBanner';
 import { useCategories, resolveCategoryIconUrl } from '../../hooks/useCategories';
 import ThriftProductCard from './ThriftProductCard';
 
@@ -39,7 +38,6 @@ export default function ThriftHomePage({ buyer, onProductClick }) {
     try {
       const params = {
         marketplace_type: 'thrift',
-        condition: 'Thrift',
         sort_by: 'newest',
         limit: 40,
       };
@@ -90,9 +88,6 @@ export default function ThriftHomePage({ buyer, onProductClick }) {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
-        {/* Hero Banner Slider — Thrift-specific banners */}
-        <DealOfTheDayBanner storefront="thrift" />
-
         {/* Category Section */}
         <div>
           <h2 className="text-lg font-extrabold text-gray-900 mb-3 flex items-center gap-2">

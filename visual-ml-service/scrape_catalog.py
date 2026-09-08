@@ -35,7 +35,7 @@ import requests
 from pymongo import MongoClient
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import MONGO_DB, MONGO_URI, PRODUCTS_COLLECTION, SELLERS_COLLECTION
+from config import MONGO_DB, MONGO_URI, PRODUCTS_COLLECTION, RETIRED_CAT_RE, SELLERS_COLLECTION
 from price_stats import rebuild_price_stats
 
 HEADERS = {
@@ -783,13 +783,12 @@ def scrape_all() -> None:
     seller = ensure_catalog_seller(db)
     gbp_rate = gbp_to_pkr_rate()
 
-    db["admincategories"].update_many(
-        {"category_id": {"$in": [
-            "jewelry", "jewellery", "jweley", "accessories",
-            "second_hand", "second_hand_gear", "second-hand",
-        ]}},
-        {"$set": {"is_active": False}},
-    )
+    db["admincategories"].delete_many({
+        "$or": [
+            {"category_id": RETIRED_CAT_RE},
+            {"label": RETIRED_CAT_RE},
+        ]
+    })
 
     inserted = 0
     skipped = 0

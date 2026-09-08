@@ -237,11 +237,15 @@ def search_hybrid(query_text: str, marketplace_type: str | None = None,
 
     # Lazy imports — keep tfidf_engine importable without pymongo installed
     from pymongo import MongoClient
-    from config import MONGO_URI, MONGO_DB, PRODUCTS_COLLECTION
+    from config import MONGO_URI, MONGO_DB, PRODUCTS_COLLECTION, RETIRED_CAT_RE
 
     mongo_filter: dict = {
         "availability_status": "available",
         "tfidf_vector": {"$exists": True, "$ne": {}},
+        "$nor": [
+            {"major_category": RETIRED_CAT_RE},
+            {"category": RETIRED_CAT_RE},
+        ],
     }
     if marketplace_type:
         if marketplace_type == "new":

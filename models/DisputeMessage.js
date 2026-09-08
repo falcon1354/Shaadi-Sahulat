@@ -20,6 +20,8 @@ const disputeMessageSchema = new mongoose.Schema(
     },
     sender_name: { type: String, default: "" },
     message:     { type: String, default: "" },
+    is_system:   { type: Boolean, default: false },
+    read_by:     { type: [String], default: [] },
     attachment_path: { type: String, default: "" },
     attachment_name: { type: String, default: "" },
   },

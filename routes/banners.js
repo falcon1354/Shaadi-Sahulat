@@ -4,31 +4,27 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const Banner = require('../models/Banner');
-const { UPLOAD_BASE, publicUrl } = require('../lib/storage');
+const { UPLOAD_BASE, publicUrl, saveBannerUploadAsync } = require('../lib/storage');
 
 const BANNER_ROOT = path.join(UPLOAD_BASE, 'Banners');
 if (!fs.existsSync(BANNER_ROOT)) {
   fs.mkdirSync(BANNER_ROOT, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, BANNER_ROOT);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    cb(null, `banner-${Date.now()}-${Math.floor(Math.random() * 1000)}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const ok = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype);
     cb(ok ? null : new Error('Invalid file type. Use JPG/PNG/WebP/GIF.'), ok);
   },
 });
+
+async function storeBannerImage(file) {
+  const ext = path.extname(file.originalname) || '.jpg';
+  const filename = `banner-${Date.now()}-${Math.floor(Math.random() * 1000)}${ext}`;
+  return saveBannerUploadAsync(filename, file.buffer);
+}
 
 // ── GET /api/banners/active (Public) ──────────────────────────────────────────
 // Query params: storefront=new|thrift|both (default: all), category_id
@@ -150,7 +146,7 @@ router.post('/seller-offer', upload.single('image'), async (req, res) => {
 
     let imageUrl = '';
     if (req.file) {
-      imageUrl = path.join('Banners', req.file.filename).split(path.sep).join('/');
+      imageUrl = await storeBannerImage(req.file);
     } else if (req.body.image_url) {
       imageUrl = req.body.image_url;
     } else {
@@ -259,7 +255,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 
     let imageUrl = '';
     if (req.file) {
-      imageUrl = path.join('Banners', req.file.filename).split(path.sep).join('/');
+      imageUrl = await storeBannerImage(req.file);
     } else if (req.body.image_url) {
       imageUrl = req.body.image_url;
     } else {
@@ -306,7 +302,7 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     const { title, link_type, link_value, start_at, end_at, is_active, sort_order, category_id, storefront } = req.body || {};
 
     if (req.file) {
-      banner.image_url = path.join('Banners', req.file.filename).split(path.sep).join('/');
+      banner.image_url = await storeBannerImage(req.file);
     } else if (req.body.image_url) {
       banner.image_url = req.body.image_url;
     }

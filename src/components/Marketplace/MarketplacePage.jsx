@@ -4,7 +4,6 @@ import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
 import { useCategories } from '../../hooks/useCategories';
 import { toggleWishlistItem, recordRecentlyViewed, patchDowryBudgets } from '../../api/buyerApi';
-import DealOfTheDayBanner from '../Common/DealOfTheDayBanner';
 import ThriftHomePage from '../Thrift/ThriftHomePage';
 
 const SORT_OPTIONS = [
@@ -808,9 +807,6 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
 
       {storefrontMode === 'new' ? (
         <>
-          {/* Deal of the Day Banner */}
-          <DealOfTheDayBanner categoryId={activeCat} />
-
       {/* Search bar has been moved to the global Navbar (GlobalSearch component) */}
 
       {/* Category tabs — with hover-dropdown for subcategories */}

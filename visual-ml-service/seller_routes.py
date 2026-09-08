@@ -351,17 +351,21 @@ def upload_product():
             product_id, image_records, image_embeddings, tfidf_vec, desc_data
         )
 
-        # Override: thrift items stay in 'processing' until admin approves
+        # Thrift listings go live immediately (no admin approval gate)
         if marketplace_type == "thrift":
             from mongo_seller import update_product as _update_product
-            _update_product(product_id, {"availability_status": "processing", "admin_approval_status": "pending"})
+            _update_product(product_id, {
+                "availability_status": "available",
+                "admin_approval_status": "approved",
+                "thrift_approval_status": "approved",
+            })
 
-        if marketplace_type != "thrift":
-            try:
-                from price_stats import rebuild_price_stats
-                rebuild_price_stats()
-            except Exception:
-                pass
+        try:
+            from price_stats import rebuild_price_stats
+            # Thrift prices are excluded inside rebuild_price_stats
+            rebuild_price_stats()
+        except Exception:
+            pass
 
         try:
             from embedding_index import invalidate_cache

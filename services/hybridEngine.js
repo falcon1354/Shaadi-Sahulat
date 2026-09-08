@@ -14,6 +14,7 @@ const axios            = require("axios");
 const { ruleEngine, ensureMinimums, KNOWN_ALLOCATION } = require("./ruleEngine");
 const mlClient         = require("./mlClient");
 const AdminCategory    = require("../models/AdminCategory");
+const { isRetiredCategory } = require("../lib/retiredCategories");
 
 const VISUAL_ML_URL = process.env.VISUAL_ML_URL || "http://localhost:5002";
 
@@ -24,8 +25,7 @@ async function fetchActiveCategoryIds() {
       .select("category_id")
       .lean();
     if (cats.length > 0) {
-      const RETIRED = ["jewelry", "jewellery", "accessories", "second_hand", "second_hand_gear", "second-hand", "jweley"];
-      return cats.map(c => c.category_id).filter(id => !RETIRED.includes(id));
+      return cats.map(c => c.category_id).filter(id => !isRetiredCategory(id));
     }
   } catch { /* ignore */ }
   return Object.keys(KNOWN_ALLOCATION);

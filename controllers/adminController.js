@@ -3,6 +3,7 @@ const path          = require("path");
 const fs            = require("fs");
 const Admin         = require("../models/Admin");
 const AdminCategory = require("../models/AdminCategory");
+const { isRetiredCategory, filterRetiredCategories } = require("../lib/retiredCategories");
 const Buyer         = require("../models/Buyer");
 const DowryEstimation = require("../models/DowryEstimation");
 
@@ -184,7 +185,7 @@ async function getAllProducts(req, res) {
 async function getCategories(req, res) {
   try {
     const cats = await AdminCategory.find({}).lean();
-    return res.json({ success: true, categories: cats });
+    return res.json({ success: true, categories: filterRetiredCategories(cats) });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
   }
@@ -195,6 +196,8 @@ async function addCategory(req, res) {
     const { category_id, label, icon, price_min, price_max } = req.body;
     if (!category_id || !label)
       return res.status(400).json({ success: false, error: "category_id and label required" });
+    if (isRetiredCategory(category_id, label))
+      return res.status(400).json({ success: false, error: "Jewelry, accessories, and second-hand categories are no longer supported" });
     const cat = await AdminCategory.create({
       category_id, label, icon: icon || "📦",
       price_min: price_min || 1000,
@@ -331,8 +334,8 @@ async function updateCategoryIcon(req, res) {
 
     const ext = path.extname(req.file.originalname) || ".png";
     const filename = `${category_id}${ext}`;
-    const { saveCategoryIcon, publicUrl } = require("../lib/storage");
-    const relPath = saveCategoryIcon(filename, req.file.buffer);
+    const { saveCategoryIconAsync, publicUrl } = require("../lib/storage");
+    const relPath = await saveCategoryIconAsync(filename, req.file.buffer);
 
     const cat = await AdminCategory.findOneAndUpdate(
       { category_id },
@@ -370,8 +373,8 @@ async function editCategory(req, res) {
     if (req.file) {
       const ext = path.extname(req.file.originalname) || ".png";
       const filename = `${category_id}${ext}`;
-      const { saveCategoryIcon, publicUrl } = require("../lib/storage");
-      updateFields.icon = saveCategoryIcon(filename, req.file.buffer);
+      const { saveCategoryIconAsync } = require("../lib/storage");
+      updateFields.icon = await saveCategoryIconAsync(filename, req.file.buffer);
     }
 
     const cat = await AdminCategory.findOneAndUpdate(

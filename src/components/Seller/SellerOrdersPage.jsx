@@ -246,7 +246,7 @@ export default function SellerOrdersPage({ seller }) {
                       className="px-3 py-1.5 bg-[#a37b3d] hover:bg-[#8a6633] text-white text-xs rounded-lg font-semibold">View Detail</button>
                   )}
                   {["SHIPPED", "DELIVERED", "DISPUTED"].includes(p.status) && disputes[p.order_id] && (
-                    <button onClick={() => navigate(`/disputes/${disputes[p.order_id]}`)}
+                    <button onClick={() => navigate(`/disputes/${disputes[p.order_id]}?as=seller`, { state: { asRole: "seller" } })}
                       className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs rounded-lg font-semibold"
                     >⚖️ Dispute Chat</button>
                   )}

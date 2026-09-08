@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Shirt, Sofa, Monitor, Utensils, Sparkles, Gift, Package } from 'lucide-react';
 import sellerApi from '../../api/sellerApi';
 import { useCategories } from '../../hooks/useCategories';
+import { isRetiredCategory } from '../../lib/dowryDisplay';
 
 // ── Category tree (mirrors config.py SELLER_CATEGORY_TREE) ────────────────
 const CATEGORY_TREE = [
@@ -33,7 +34,7 @@ const CATEGORY_TREE = [
   },
   {
     id: 'furniture', label: 'Furniture', icon: <Sofa size={36} strokeWidth={1.5} className="text-primary-800" />,
-    multipleImages: false,
+    multipleImages: true,
     subcategories: [
       { id: 'sofa_set',       label: 'Sofa Set',       items: null },
       { id: 'bed_set',        label: 'Bed Set',        items: null },
@@ -44,7 +45,7 @@ const CATEGORY_TREE = [
   },
   {
     id: 'electronics', label: 'Electronics', icon: <Monitor size={36} strokeWidth={1.5} className="text-blue-500" />,
-    multipleImages: false,
+    multipleImages: true,
     subcategories: [
       { id: 'led_tv',          label: 'LED TV',          items: null },
       { id: 'refrigerator',    label: 'Refrigerator',    items: null },
@@ -54,7 +55,7 @@ const CATEGORY_TREE = [
   },
   {
     id: 'kitchen_items', label: 'Kitchen Items', icon: <Utensils size={36} strokeWidth={1.5} className="text-orange-500" />,
-    multipleImages: false,
+    multipleImages: true,
     subcategories: [
       {
         id: 'large_appliances', label: 'Large Appliances',
@@ -81,7 +82,7 @@ const CATEGORY_TREE = [
   },
   {
     id: 'decoration', label: 'Decoration', icon: <Sparkles size={36} strokeWidth={1.5} className="text-yellow-500" />,
-    multipleImages: false,
+    multipleImages: true,
     subcategories: [
       { id: 'lights',             label: 'Lights / Fairy Lights',  items: null },
       { id: 'artificial_flowers', label: 'Artificial Flowers',     items: null },
@@ -92,7 +93,7 @@ const CATEGORY_TREE = [
   },
   {
     id: 'miscellaneous', label: 'Miscellaneous', icon: <Gift size={36} strokeWidth={1.5} className="text-teal-500" />,
-    multipleImages: false,
+    multipleImages: true,
     subcategories: [
       {
         id: 'small_appliances', label: 'Small Appliances',
@@ -193,7 +194,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
   // Merge DB categories with static CATEGORY_TREE (keeps nested item types for wedding_dress, etc.)
   const effectiveCatTree = useMemo(() => {
     if (!dbCategories.length) return CATEGORY_TREE;
-    return dbCategories.map(dbCat => {
+    return dbCategories.filter(dbCat => !isRetiredCategory(dbCat.category_id, dbCat.label)).map(dbCat => {
       const staticDef = CATEGORY_TREE.find(c => c.id === dbCat.category_id);
       const subs = dbCat.subcategories?.length
         ? dbCat.subcategories.map(sub => {
@@ -205,7 +206,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
         id:             dbCat.category_id,
         label:          dbCat.label,
         icon:           staticDef?.icon || <Package size={36} strokeWidth={1.5} className="text-gray-400" />,
-        multipleImages: dbCat.category_id === 'wedding_dress',
+        multipleImages: true,
         storefront:     dbCat.storefront || staticDef?.storefront || 'both',
         subcategories:  subs,
       };
@@ -494,7 +495,7 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
               </div>
               {listingType === 'thrift' && (
                 <p className="text-xs text-emerald-600 mt-2 font-medium">
-                  Thrift items: quantity locked to 1, requires admin approval before going live, final sale (no returns)
+                  Thrift items: quantity locked to 1, go live immediately, final sale (no returns)
                 </p>
               )}
             </div>
