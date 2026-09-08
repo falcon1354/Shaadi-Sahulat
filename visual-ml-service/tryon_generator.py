@@ -5,7 +5,8 @@ Produces a try-on preview of a person wearing a wedding garment.
 
 Providers:
   1. local  — size-aware generative composite (always available, offline)
-  2. fal    — fal.ai generative VTON when FAL_KEY is set (TRYON_PROVIDER=fal)
+  2. kling  — Kling AI Kolors virtual try-on (TRYON_PROVIDER=kling)
+  3. fal    — legacy fal.ai VTON (TRYON_PROVIDER=fal)
 
 The local provider is intentionally size-aware: garment scale / placement
 changes with the fit verdict so "too small" and "too large" are visible.
@@ -13,8 +14,13 @@ changes with the fit verdict so "too small" and "too large" are visible.
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import io
+import json
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -31,6 +37,19 @@ os.makedirs(TRYON_OUT_DIR, exist_ok=True)
 
 PROVIDER = (os.environ.get("TRYON_PROVIDER") or "local").strip().lower()
 FAL_KEY = os.environ.get("FAL_KEY") or os.environ.get("FAL_API_KEY") or ""
+
+# Kling AI — Bearer API key OR Access Key + Secret Key (JWT)
+KLING_API_KEY = (os.environ.get("KLING_API_KEY") or "").strip()
+KLING_ACCESS_KEY = (os.environ.get("KLING_ACCESS_KEY") or "").strip()
+KLING_SECRET_KEY = (os.environ.get("KLING_SECRET_KEY") or "").strip()
+KLING_API_BASE = (os.environ.get("KLING_API_BASE") or "https://api.klingai.com").rstrip("/")
+KLING_MODEL = (os.environ.get("KLING_TRYON_MODEL") or "kolors-virtual-try-on-v1-5").strip()
+KLING_POLL_INTERVAL_SEC = float(os.environ.get("KLING_POLL_INTERVAL_SEC") or "2")
+KLING_POLL_TIMEOUT_SEC = float(os.environ.get("KLING_POLL_TIMEOUT_SEC") or "180")
+
+
+def kling_configured() -> bool:
+    return bool(KLING_API_KEY or (KLING_ACCESS_KEY and KLING_SECRET_KEY))
 
 
 def _open_rgb(data: bytes) -> Image.Image:
@@ -218,31 +237,230 @@ def generate_local_tryon(
     return out.convert("RGB")
 
 
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _kling_jwt(access_key: str, secret_key: str) -> str:
+    """HS256 JWT for official Kling Open Platform (Access Key + Secret Key)."""
+    header = _b64url(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
+    now = int(time.time())
+    payload = _b64url(
+        json.dumps(
+            {"iss": access_key, "exp": now + 1800, "nbf": now - 5},
+            separators=(",", ":"),
+        ).encode()
+    )
+    signing_input = f"{header}.{payload}".encode()
+    sig = hmac.new(secret_key.encode("utf-8"), signing_input, hashlib.sha256).digest()
+    return f"{header}.{payload}.{_b64url(sig)}"
+
+
+def _kling_auth_header() -> Optional[str]:
+    if KLING_API_KEY:
+        return f"Bearer {KLING_API_KEY}"
+    if KLING_ACCESS_KEY and KLING_SECRET_KEY:
+        return f"Bearer {_kling_jwt(KLING_ACCESS_KEY, KLING_SECRET_KEY)}"
+    return None
+
+
+def _to_jpg_bytes(data: bytes, *, max_side: int = 1536, quality: int = 90) -> bytes:
+    im = Image.open(io.BytesIO(data))
+    im = ImageOps.exif_transpose(im).convert("RGB")
+    w, h = im.size
+    # Kling requires min edge >= 300px
+    if min(w, h) < 300:
+        scale = 300 / float(min(w, h))
+        im = im.resize((max(300, int(w * scale)), max(300, int(h * scale))), Image.Resampling.LANCZOS)
+        w, h = im.size
+    if max(w, h) > max_side:
+        scale = max_side / float(max(w, h))
+        im = im.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, format="JPEG", quality=quality, optimize=True)
+    out = buf.getvalue()
+    # Keep under ~9MB for Kling base64 / upload limits
+    while len(out) > 9 * 1024 * 1024 and quality > 60:
+        quality -= 8
+        buf = io.BytesIO()
+        im.save(buf, format="JPEG", quality=quality, optimize=True)
+        out = buf.getvalue()
+    return out
+
+
+def _kling_image_payload(data: bytes) -> str:
+    """
+    Prefer a public HTTPS URL (Cloudinary) so Kling can fetch the image;
+    otherwise send raw base64 (no data: prefix).
+    """
+    jpg = _to_jpg_bytes(data)
+    try:
+        from cloudinary_storage import is_configured, upload_bytes
+
+        if is_configured():
+            result = upload_bytes(
+                jpg,
+                folder="tryon/inputs",
+                filename=f"kling_{uuid.uuid4().hex[:10]}.jpg",
+            )
+            url = result.get("secure_url") or result.get("url")
+            if url:
+                return url
+    except Exception as exc:
+        print(f"[tryon] kling input upload skipped: {exc}")
+    return base64.b64encode(jpg).decode("ascii")
+
+
+def _kling_extract_image_url(task_data: dict) -> Optional[str]:
+    if not isinstance(task_data, dict):
+        return None
+    # Official: data.task_result.images[].url
+    result = task_data.get("task_result") or {}
+    images = result.get("images") if isinstance(result, dict) else None
+    if isinstance(images, list) and images:
+        first = images[0]
+        if isinstance(first, dict) and first.get("url"):
+            return first["url"]
+        if isinstance(first, str):
+            return first
+    # Some gateways: data.url
+    if task_data.get("url"):
+        return task_data["url"]
+    outputs = task_data.get("outputs")
+    if isinstance(outputs, list) and outputs:
+        o0 = outputs[0]
+        if isinstance(o0, dict) and o0.get("url"):
+            return o0["url"]
+    return None
+
+
+def _kling_error_message(payload) -> str:
+    """Normalize Kling error bodies (esp. code 1102 insufficient balance)."""
+    if isinstance(payload, dict):
+        code = payload.get("code")
+        msg = str(payload.get("message") or payload)[:400]
+        if code == 1102 or "balance" in msg.lower() or "not enough" in msg.lower():
+            return (
+                "Kling account balance is empty. "
+                "Top up credits at https://app.klingai.com (Open Platform), then retry."
+            )
+        return msg
+    text = str(payload)[:400]
+    if "balance" in text.lower() or "1102" in text:
+        return (
+            "Kling account balance is empty. "
+            "Top up credits at https://app.klingai.com (Open Platform), then retry."
+        )
+    return text
+
+
+def _try_kling_tryon(
+    person_bytes: bytes, garment_bytes: bytes, fit: dict
+) -> tuple[Optional[Image.Image], Optional[str]]:
+    """
+    Kling AI Kolors virtual try-on (async create + poll).
+    Returns (image_or_None, error_message_or_None).
+    """
+    auth = _kling_auth_header()
+    if not auth:
+        msg = "Kling not configured (set KLING_API_KEY or ACCESS+SECRET)."
+        print(f"[tryon] {msg}")
+        return None, msg
+
+    try:
+        headers = {
+            "Authorization": auth,
+            "Content-Type": "application/json",
+        }
+        print("[tryon] kling: preparing images…")
+        payload = {
+            "model_name": KLING_MODEL,
+            "human_image": _kling_image_payload(person_bytes),
+            "cloth_image": _kling_image_payload(garment_bytes),
+        }
+        create_url = f"{KLING_API_BASE}/v1/images/kolors-virtual-try-on"
+        print(f"[tryon] kling: POST {create_url}")
+        resp = requests.post(create_url, headers=headers, json=payload, timeout=60)
+        if resp.status_code >= 400:
+            try:
+                msg = _kling_error_message(resp.json())
+            except Exception:
+                msg = _kling_error_message(resp.text)
+            print(f"[tryon] kling create error {resp.status_code}: {msg}")
+            return None, msg
+
+        body = resp.json() if resp.content else {}
+        code = body.get("code")
+        if isinstance(code, int) and code != 0:
+            msg = _kling_error_message(body)
+            print(f"[tryon] kling create business error: {msg}")
+            return None, msg
+
+        data = body.get("data") if isinstance(body.get("data"), dict) else body
+        task_id = data.get("task_id") or body.get("task_id")
+        if not task_id:
+            image_url = _kling_extract_image_url(data) or _kling_extract_image_url(body)
+            if image_url:
+                img_bytes = requests.get(image_url, timeout=60).content
+                img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+                return _draw_overlay(img, fit).convert("RGB"), None
+            msg = "Kling create response missing task_id"
+            print(f"[tryon] {msg}:", str(body)[:300])
+            return None, msg
+
+        print(f"[tryon] kling: polling task_id={task_id}")
+        poll_url = f"{KLING_API_BASE}/v1/images/kolors-virtual-try-on/{task_id}"
+        deadline = time.time() + KLING_POLL_TIMEOUT_SEC
+        while time.time() < deadline:
+            time.sleep(KLING_POLL_INTERVAL_SEC)
+            pr = requests.get(poll_url, headers=headers, timeout=30)
+            if pr.status_code >= 400:
+                msg = f"Kling poll error {pr.status_code}: {pr.text[:300]}"
+                print(f"[tryon] {msg}")
+                return None, msg
+            pbody = pr.json() if pr.content else {}
+            pdata = pbody.get("data") if isinstance(pbody.get("data"), dict) else pbody
+            status = (
+                (pdata.get("task_status") if isinstance(pdata, dict) else None)
+                or pdata.get("status")
+                or pbody.get("task_status")
+                or ""
+            )
+            status = str(status).lower()
+            if status in ("succeed", "succeeded", "success", "completed"):
+                image_url = _kling_extract_image_url(pdata) or _kling_extract_image_url(pbody)
+                if not image_url:
+                    msg = "Kling succeeded but returned no image URL"
+                    print(f"[tryon] {msg}:", str(pbody)[:400])
+                    return None, msg
+                img_bytes = requests.get(image_url, timeout=60).content
+                img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+                print("[tryon] kling: success")
+                return _draw_overlay(img, fit).convert("RGB"), None
+            if status in ("failed", "fail", "error", "canceled", "cancelled"):
+                msg = (pdata.get("task_status_msg") if isinstance(pdata, dict) else None) or str(pbody)[:300]
+                print(f"[tryon] kling task failed: {msg}")
+                return None, f"Kling task failed: {msg}"
+
+        msg = f"Kling timed out after {int(KLING_POLL_TIMEOUT_SEC)}s"
+        print(f"[tryon] {msg} (task_id={task_id})")
+        return None, msg
+    except Exception as exc:
+        msg = f"Kling provider failed: {exc}"
+        print(f"[tryon] {msg}")
+        return None, msg
+
+
 def _try_fal_tryon(person_bytes: bytes, garment_bytes: bytes, fit: dict) -> Optional[Image.Image]:
-    """
-    Optional fal.ai generative try-on.
-    Uses fal-ai/image-apps-v2/virtual-try-on when FAL_KEY is configured.
-    Falls back to None on any failure so caller can use local generator.
-    """
+    """Legacy fal.ai generative try-on (optional)."""
     if not FAL_KEY:
         return None
     try:
-        # Upload-less path: many fal models accept data URIs; use temporary HTTP via fal storage if SDK present.
-        # Minimal REST approach with base64 data URI.
-        import base64
-
         def b64_uri(data: bytes, mime="image/jpeg") -> str:
             return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
 
-        # Convert inputs to JPEG bytes
-        def to_jpg(data: bytes) -> bytes:
-            im = Image.open(io.BytesIO(data)).convert("RGB")
-            buf = io.BytesIO()
-            im.save(buf, format="JPEG", quality=92)
-            return buf.getvalue()
-
-        person_uri = b64_uri(to_jpg(person_bytes))
-        garment_uri = b64_uri(to_jpg(garment_bytes))
+        person_uri = b64_uri(_to_jpg_bytes(person_bytes))
+        garment_uri = b64_uri(_to_jpg_bytes(garment_bytes))
 
         prompt_hint = {
             "FIT": "natural fitting wedding attire, correct length",
@@ -254,20 +472,17 @@ def _try_fal_tryon(person_bytes: bytes, garment_bytes: bytes, fit: dict) -> Opti
             "Authorization": f"Key {FAL_KEY}",
             "Content-Type": "application/json",
         }
-        # Queue API
         payload = {
             "model_image": person_uri,
             "garment_image": garment_uri,
             "description": prompt_hint,
         }
-        # Try a commonly available fal virtual try-on endpoint
         url = "https://fal.run/fal-ai/image-apps-v2/virtual-try-on"
         resp = requests.post(url, headers=headers, json=payload, timeout=120)
         if resp.status_code >= 400:
             print(f"[tryon] fal error {resp.status_code}: {resp.text[:300]}")
             return None
         data = resp.json()
-        # Expected: { images: [ { url } ] } or { image: { url } }
         image_url = None
         if isinstance(data.get("images"), list) and data["images"]:
             image_url = data["images"][0].get("url")
@@ -327,11 +542,19 @@ def run_tryon(
     )
 
     provider_used = "local"
+    fallback_reason = None
     img = None
-    if PROVIDER == "fal":
+    if PROVIDER == "kling":
+        img, fallback_reason = _try_kling_tryon(person_bytes, garment_bytes, fit)
+        if img is not None:
+            provider_used = "kling"
+            fallback_reason = None
+    elif PROVIDER == "fal":
         img = _try_fal_tryon(person_bytes, garment_bytes, fit)
         if img is not None:
             provider_used = "fal"
+        else:
+            fallback_reason = "fal.ai try-on failed"
 
     if img is None:
         img = generate_local_tryon(person_bytes, garment_bytes, fit)
@@ -341,6 +564,8 @@ def run_tryon(
     return {
         "success": True,
         "provider": provider_used,
+        "requested_provider": PROVIDER,
+        "provider_fallback_reason": fallback_reason,
         "result_image_url": url,
         "filename": filename,
         "fit": fit,

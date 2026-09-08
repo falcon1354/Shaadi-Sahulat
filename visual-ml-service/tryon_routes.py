@@ -15,7 +15,7 @@ import requests
 from flask import Blueprint, jsonify, request
 
 from size_fit_engine import evaluate_fit, SIZE_ORDER, SIZE_TO_MEASUREMENTS
-from tryon_generator import run_tryon, PROVIDER, FAL_KEY
+from tryon_generator import run_tryon, PROVIDER, FAL_KEY, kling_configured
 from config import UPLOADS_DIR, MONGO_URI, MONGO_DB, PRODUCTS_COLLECTION
 
 tryon_bp = Blueprint("tryon", __name__, url_prefix="/tryon")
@@ -95,6 +95,7 @@ def tryon_health():
         "status": "ok",
         "feature": "size-aware-virtual-tryon",
         "provider": PROVIDER,
+        "kling_configured": kling_configured(),
         "fal_configured": bool(FAL_KEY),
         "sizes_supported": SIZE_ORDER,
     })
@@ -153,6 +154,13 @@ def tryon_preview():
         or meta.get("major_category")
         or "wedding_dress"
     )
+
+    major = (meta.get("major_category") or request.form.get("category") or "").strip().lower()
+    if product_id and major and major != "wedding_dress":
+        return jsonify({
+            "success": False,
+            "error": "Virtual try-on is only available for wedding dresses.",
+        }), 400
 
     try:
         person_bytes = person.read()

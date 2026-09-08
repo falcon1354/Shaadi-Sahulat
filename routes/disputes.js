@@ -239,7 +239,107 @@ router.post("/:dispute_id/evidence", disputeUpload, async (req, res) => {
   }
 });
 
-/** Seller pre-arbitration response (48h window). */
+/**
+ * ============================================================================
+ * DELEGATE PATTERN (University demo) — Seller dispute responses
+ * ============================================================================
+ * In C#, a "delegate" is a type-safe pointer to a method: you store a function
+ * in a variable and call it later, without hard-coding which method runs.
+ *
+ * JavaScript has no `delegate` keyword, but the same idea is a FUNCTION REFERENCE
+ * (callback). Below, each seller action is a separate async function. We store
+ * those functions in a map (`sellerResponseDelegates`). At runtime we look up
+ * the function by action name and invoke it — that lookup+call is the delegate use.
+ *
+ * Benefit vs if/else: the route only says "run the handler for this action".
+ * Adding a new seller option = add one function to the map, not grow a long chain.
+ * ============================================================================
+ */
+
+/**
+ * Shared context passed into every seller-response delegate.
+ * @typedef {object} SellerRespondCtx
+ * @property {object} dispute  Mongoose dispute document
+ * @property {object|null} order  Parent order (may be null)
+ * @property {Date} now
+ * @property {string} note
+ * @property {string} [tracking_number]
+ */
+
+/** Delegate: seller accepts full refund → close dispute, refund buyer. */
+async function handleAcceptFullRefund(ctx) {
+  const { dispute, order, now } = ctx;
+  dispute.status = "RESOLVED";
+  dispute.decision = "accept_full_refund";
+  dispute.outcome_code = "CLOSED_BUYER_WINS_FULL_REFUND";
+  dispute.decided_at = now;
+  dispute.chat_locked = true;
+  dispute.appeal_deadline = appealDeadline(now);
+  await dispute.save();
+  if (order) {
+    order.status = "CANCELLED";
+    order.payment_status = "REFUNDED";
+    order.timeline.push({
+      status: "CANCELLED",
+      at: now,
+      by: "seller",
+      note: `Seller accepted full refund on dispute ${dispute.dispute_id}.`,
+    });
+    await order.save();
+    await Package.updateMany({ order_id: order.order_id }, { $set: { status: "CANCELLED" } });
+  }
+  await postSystem(dispute, "Seller accepted a full refund. Order closed as refunded.");
+}
+
+/** Delegate: seller offers partial refund → wait for buyer accept/reject. */
+async function handleOfferPartialRefund(ctx) {
+  const { dispute } = ctx;
+  dispute.status = "BUYER_REVIEW_PENDING";
+  await dispute.save();
+  await postSystem(
+    dispute,
+    `Seller offered a partial refund (${dispute.seller_offer_percent || "?"}%). Buyer can accept or reject.`
+  );
+}
+
+/** Delegate: seller offers replacement → wait for buyer accept/reject. */
+async function handleOfferReplacement(ctx) {
+  const { dispute, tracking_number } = ctx;
+  dispute.status = "BUYER_REVIEW_PENDING";
+  await dispute.save();
+  await postSystem(
+    dispute,
+    `Seller offered a replacement (tracking: ${tracking_number || "pending"}). Buyer can accept or reject.`
+  );
+}
+
+/** Delegate: seller rejects dispute → escalate to admin (5-day SLA starts). */
+async function handleRejectDispute(ctx) {
+  const { dispute, now, note } = ctx;
+  dispute.status = "ADMIN_REVIEW_PENDING";
+  dispute.escalated_at = now;
+  dispute.escalation_reason = "seller_rejected";
+  dispute.admin_resolution_deadline = adminResolutionDeadline(now);
+  await dispute.save();
+  await postSystem(
+    dispute,
+    `Seller rejected the dispute${note ? `: ${note}` : ""}. Escalated to admin.`
+  );
+}
+
+/**
+ * Delegate map: action id → handler function.
+ * Each value is a delegate (function reference). We do NOT call them here —
+ * we only register them. Invocation happens later via sellerResponseDelegates[action](...).
+ */
+const sellerResponseDelegates = {
+  accept_full_refund: handleAcceptFullRefund,
+  offer_partial_refund: handleOfferPartialRefund,
+  offer_replacement: handleOfferReplacement,
+  reject_dispute: handleRejectDispute,
+};
+
+/** Seller pre-arbitration response (48h window) — uses delegate map above. */
 router.post("/:dispute_id/seller-respond", async (req, res) => {
   try {
     const { seller_id, action, note, refund_percent, tracking_number } = req.body || {};
@@ -266,44 +366,20 @@ router.post("/:dispute_id/seller-respond", async (req, res) => {
 
     const order = await Order.findOne({ order_id: dispute.order_id });
 
-    if (action === "accept_full_refund") {
-      dispute.status = "RESOLVED";
-      dispute.decision = "accept_full_refund";
-      dispute.outcome_code = "CLOSED_BUYER_WINS_FULL_REFUND";
-      dispute.decided_at = now;
-      dispute.chat_locked = true;
-      dispute.appeal_deadline = appealDeadline(now);
-      await dispute.save();
-      if (order) {
-        order.status = "CANCELLED";
-        order.payment_status = "REFUNDED";
-        order.timeline.push({
-          status: "CANCELLED",
-          at: now,
-          by: "seller",
-          note: `Seller accepted full refund on dispute ${dispute.dispute_id}.`,
-        });
-        await order.save();
-        await Package.updateMany({ order_id: order.order_id }, { $set: { status: "CANCELLED" } });
-      }
-      await postSystem(dispute, "Seller accepted a full refund. Order closed as refunded.");
-    } else if (action === "offer_partial_refund" || action === "offer_replacement") {
-      dispute.status = "BUYER_REVIEW_PENDING";
-      await dispute.save();
-      await postSystem(
-        dispute,
-        action === "offer_partial_refund"
-          ? `Seller offered a partial refund (${dispute.seller_offer_percent || "?"}%). Buyer can accept or reject.`
-          : `Seller offered a replacement (tracking: ${tracking_number || "pending"}). Buyer can accept or reject.`
-      );
-    } else if (action === "reject_dispute") {
-      dispute.status = "ADMIN_REVIEW_PENDING";
-      dispute.escalated_at = now;
-      dispute.escalation_reason = "seller_rejected";
-      dispute.admin_resolution_deadline = adminResolutionDeadline(now);
-      await dispute.save();
-      await postSystem(dispute, `Seller rejected the dispute${note ? `: ${note}` : ""}. Escalated to admin.`);
+    // --- DELEGATE INVOCATION ---
+    // 1) Look up the function reference for this action (the "delegate").
+    // 2) Call it. The route does not use if/else for business outcomes.
+    const handler = sellerResponseDelegates[action]; // delegate = function pointer
+    if (!handler) {
+      return res.status(400).json({ success: false, error: `No delegate registered for action: ${action}` });
     }
+    await handler({
+      dispute,
+      order,
+      now,
+      note: note || "",
+      tracking_number: tracking_number || "",
+    });
 
     await notifyAll({
       buyer_id: dispute.buyer_id,

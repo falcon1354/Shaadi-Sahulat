@@ -87,6 +87,9 @@ export default function SizeAwareTryOnModal({ open, onClose, product }) {
         setError(data.error || 'Try-on failed');
       } else {
         setResult(data);
+        if (data.provider === 'local' && data.provider_fallback_reason) {
+          setError(data.provider_fallback_reason);
+        }
       }
     } catch (err) {
       setError(
@@ -241,8 +244,12 @@ export default function SizeAwareTryOnModal({ open, onClose, product }) {
             </button>
 
             {error && (
-              <div className="text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
-                {error}
+              <div className={`text-xs rounded-xl px-3 py-2 border ${
+                result
+                  ? 'text-amber-800 bg-amber-50 border-amber-200'
+                  : 'text-rose-700 bg-rose-50 border-rose-100'
+              }`}>
+                {result ? `Kling unavailable — showing local preview. ${error}` : error}
               </div>
             )}
           </div>
