@@ -4,9 +4,13 @@ Size-Aware Virtual Try-On Generator
 Produces a try-on preview of a person wearing a wedding garment.
 
 Providers:
-  1. local  — size-aware generative composite (always available, offline)
-  2. kling  — Kling AI Kolors virtual try-on (TRYON_PROVIDER=kling)
-  3. fal    — legacy fal.ai VTON (TRYON_PROVIDER=fal)
+  1. local       — size-aware generative composite (always available, offline)
+  2. kling_omni  — Kling Omni / multi-image (Image Generation package)
+                   person + dress + fixed try-on prompt (Nano Banana-style)
+  3. kling_vton  — Kling Kolors dedicated virtual try-on (separate billing)
+  4. fal         — legacy fal.ai VTON
+
+Alias: TRYON_PROVIDER=kling → same as kling_omni.
 
 The local provider is intentionally size-aware: garment scale / placement
 changes with the fit verdict so "too small" and "too large" are visible.
@@ -27,7 +31,7 @@ from typing import Optional
 
 import numpy as np
 import requests
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 from size_fit_engine import evaluate_fit
 
@@ -36,6 +40,10 @@ TRYON_OUT_DIR = os.path.join(BASE_DIR, "uploads", "tryon")
 os.makedirs(TRYON_OUT_DIR, exist_ok=True)
 
 PROVIDER = (os.environ.get("TRYON_PROVIDER") or "local").strip().lower()
+if PROVIDER == "kling":
+    # "kling" now means Omni multi-image (uses Image Generation package)
+    PROVIDER = "kling_omni"
+
 FAL_KEY = os.environ.get("FAL_KEY") or os.environ.get("FAL_API_KEY") or ""
 
 # Kling AI — Bearer API key OR Access Key + Secret Key (JWT)
@@ -43,9 +51,30 @@ KLING_API_KEY = (os.environ.get("KLING_API_KEY") or "").strip()
 KLING_ACCESS_KEY = (os.environ.get("KLING_ACCESS_KEY") or "").strip()
 KLING_SECRET_KEY = (os.environ.get("KLING_SECRET_KEY") or "").strip()
 KLING_API_BASE = (os.environ.get("KLING_API_BASE") or "https://api.klingai.com").rstrip("/")
-KLING_MODEL = (os.environ.get("KLING_TRYON_MODEL") or "kolors-virtual-try-on-v1-5").strip()
+# Dedicated Kolors VTON (separate product)
+KLING_VTON_MODEL = (
+    os.environ.get("KLING_VTON_MODEL")
+    or os.environ.get("KLING_TRYON_MODEL")
+    or "kolors-virtual-try-on-v1-5"
+).strip()
+# Omni Image model for Image Generation package
+KLING_OMNI_MODEL = (os.environ.get("KLING_OMNI_MODEL") or "kling-image-o1").strip()
+# omni = /v1/images/omni-image ; multi = /v1/images/multi-image2image
+KLING_IMAGE_MODE = (os.environ.get("KLING_IMAGE_MODE") or "omni").strip().lower()
 KLING_POLL_INTERVAL_SEC = float(os.environ.get("KLING_POLL_INTERVAL_SEC") or "2")
 KLING_POLL_TIMEOUT_SEC = float(os.environ.get("KLING_POLL_TIMEOUT_SEC") or "180")
+
+DEFAULT_TRYON_PROMPT = (
+    "Virtual try-on: keep the exact same person from <<<image_1>>> "
+    "(same face, body, skin tone, hair, and pose). "
+    "Dress them in the wedding garment from <<<image_2>>> "
+    "(preserve fabric, color, embroidery, and silhouette). "
+    "Realistic full-body bridal photo, natural lighting, photorealistic, "
+    "no watermark, no text overlay."
+)
+KLING_TRYON_PROMPT = (os.environ.get("KLING_TRYON_PROMPT") or DEFAULT_TRYON_PROMPT).strip()
+# Backward-compat alias used by older VTON path
+KLING_MODEL = KLING_VTON_MODEL
 
 
 def kling_configured() -> bool:
@@ -114,65 +143,6 @@ def _prepare_garment(garment: Image.Image, target_w: int, target_h: int) -> Imag
     return out
 
 
-def _badge_color(verdict: str) -> tuple[int, int, int, int]:
-    return {
-        "FIT": (16, 185, 129, 220),       # green
-        "TOO_SMALL": (239, 68, 68, 220),  # red
-        "TOO_LARGE": (245, 158, 11, 220), # amber
-    }.get(verdict, (99, 102, 241, 220))
-
-
-def _draw_overlay(canvas: Image.Image, fit: dict) -> Image.Image:
-    draw = ImageDraw.Draw(canvas, "RGBA")
-    w, h = canvas.size
-    label = fit["label"]
-    verdict = fit["verdict"]
-    conf = int(round(fit["confidence"] * 100))
-
-    # Top banner
-    banner_h = max(42, h // 16)
-    draw.rectangle([0, 0, w, banner_h], fill=(15, 10, 20, 200))
-    color = _badge_color(verdict)
-    draw.rounded_rectangle(
-        [12, 8, min(w - 12, 12 + 280), banner_h - 8],
-        radius=12,
-        fill=color,
-    )
-    try:
-        font = ImageFont.truetype("arial.ttf", size=max(14, banner_h // 3))
-        small = ImageFont.truetype("arial.ttf", size=max(11, banner_h // 4))
-    except Exception:
-        font = ImageFont.load_default()
-        small = font
-
-    draw.text((24, banner_h // 2 - 8), f"{label}  ·  {conf}%", fill=(255, 255, 255, 255), font=font)
-
-    # Corner size chips
-    ps = fit.get("product_size") or "?"
-    bs = fit.get("buyer_size") or "?"
-    chip = f"You: {bs}   Dress: {ps}"
-    tw = int(w * 0.42)
-    draw.rounded_rectangle(
-        [w - tw - 12, 8, w - 12, banner_h - 8],
-        radius=12,
-        fill=(255, 255, 255, 230),
-    )
-    draw.text((w - tw + 8, banner_h // 2 - 6), chip, fill=(40, 40, 40, 255), font=small)
-
-    # Fit cue lines for mismatch
-    if verdict == "TOO_SMALL":
-        # Short-hem cue near lower garment
-        y = int(h * 0.62)
-        draw.line([(int(w * 0.28), y), (int(w * 0.72), y)], fill=(239, 68, 68, 180), width=3)
-        draw.text((int(w * 0.30), y + 6), "Hem sits high — length short for you", fill=(239, 68, 68, 230), font=small)
-    elif verdict == "TOO_LARGE":
-        y = int(h * 0.88)
-        draw.line([(int(w * 0.22), y), (int(w * 0.78), y)], fill=(245, 158, 11, 180), width=3)
-        draw.text((int(w * 0.24), y + 6), "Extra length / oversized drape", fill=(180, 100, 0, 230), font=small)
-
-    return canvas
-
-
 def generate_local_tryon(
     person_bytes: bytes,
     garment_bytes: bytes,
@@ -183,7 +153,6 @@ def generate_local_tryon(
       - Estimates person torso box
       - Scales garment by fit.garment_scale (small/large/fit)
       - Soft-composites onto the person photo
-      - Draws size-awareness overlays
     """
     person = _open_rgb(person_bytes)
     garment = _open_rgb(garment_bytes)
@@ -232,9 +201,7 @@ def generate_local_tryon(
     rgb = canvas.convert("RGB")
     rgb = ImageEnhance.Color(rgb).enhance(1.06)
     rgb = ImageEnhance.Contrast(rgb).enhance(1.04)
-    out = rgb.convert("RGBA")
-    out = _draw_overlay(out, fit)
-    return out.convert("RGB")
+    return rgb
 
 
 def _b64url(data: bytes) -> str:
@@ -314,16 +281,19 @@ def _kling_image_payload(data: bytes) -> str:
 def _kling_extract_image_url(task_data: dict) -> Optional[str]:
     if not isinstance(task_data, dict):
         return None
-    # Official: data.task_result.images[].url
     result = task_data.get("task_result") or {}
-    images = result.get("images") if isinstance(result, dict) else None
-    if isinstance(images, list) and images:
-        first = images[0]
-        if isinstance(first, dict) and first.get("url"):
-            return first["url"]
-        if isinstance(first, str):
-            return first
-    # Some gateways: data.url
+    if not isinstance(result, dict):
+        result = {}
+
+    for key in ("images", "series_images"):
+        images = result.get(key)
+        if isinstance(images, list) and images:
+            first = images[0]
+            if isinstance(first, dict) and first.get("url"):
+                return first["url"]
+            if isinstance(first, str):
+                return first
+
     if task_data.get("url"):
         return task_data["url"]
     outputs = task_data.get("outputs")
@@ -341,25 +311,125 @@ def _kling_error_message(payload) -> str:
         msg = str(payload.get("message") or payload)[:400]
         if code == 1102 or "balance" in msg.lower() or "not enough" in msg.lower():
             return (
-                "Kling account balance is empty. "
-                "Top up credits at https://app.klingai.com (Open Platform), then retry."
+                "Kling account balance is empty for this API product. "
+                "Check Resource Packages at https://app.klingai.com (Open Platform)."
             )
         return msg
     text = str(payload)[:400]
     if "balance" in text.lower() or "1102" in text:
         return (
-            "Kling account balance is empty. "
-            "Top up credits at https://app.klingai.com (Open Platform), then retry."
+            "Kling account balance is empty for this API product. "
+            "Check Resource Packages at https://app.klingai.com (Open Platform)."
         )
     return text
 
 
-def _try_kling_tryon(
+def _kling_build_tryon_prompt(fit: dict) -> str:
+    """Fixed try-on prompt + light fit hint so size awareness still shows."""
+    prompt = KLING_TRYON_PROMPT
+    verdict = (fit or {}).get("verdict") or "FIT"
+    if verdict == "TOO_SMALL":
+        prompt += (
+            " Fit cue: the dress should look slightly too small / short / tight "
+            "for this person."
+        )
+    elif verdict == "TOO_LARGE":
+        prompt += (
+            " Fit cue: the dress should look slightly too large / long / oversized "
+            "for this person."
+        )
+    else:
+        prompt += " Fit cue: the dress should fit this person naturally."
+    return prompt[:2500]
+
+
+def _kling_create_and_poll(
+    *,
+    create_path: str,
+    poll_path_template: str,
+    payload: dict,
+    headers: dict,
+    label: str,
+) -> tuple[Optional[bytes], Optional[str]]:
+    """
+    Shared Kling async flow: POST create → poll until succeed → download image bytes.
+    Returns (image_bytes, error_message).
+    """
+    create_url = f"{KLING_API_BASE}{create_path}"
+    print(f"[tryon] {label}: POST {create_url}")
+    resp = requests.post(create_url, headers=headers, json=payload, timeout=90)
+    if resp.status_code >= 400:
+        try:
+            msg = _kling_error_message(resp.json())
+        except Exception:
+            msg = _kling_error_message(resp.text)
+        print(f"[tryon] {label} create error {resp.status_code}: {msg}")
+        return None, msg
+
+    body = resp.json() if resp.content else {}
+    code = body.get("code")
+    if isinstance(code, int) and code != 0:
+        msg = _kling_error_message(body)
+        print(f"[tryon] {label} create business error: {msg}")
+        return None, msg
+
+    data = body.get("data") if isinstance(body.get("data"), dict) else body
+    task_id = data.get("task_id") or body.get("task_id")
+    if not task_id:
+        image_url = _kling_extract_image_url(data) or _kling_extract_image_url(body)
+        if image_url:
+            return requests.get(image_url, timeout=60).content, None
+        msg = f"{label} create response missing task_id"
+        print(f"[tryon] {msg}:", str(body)[:300])
+        return None, msg
+
+    print(f"[tryon] {label}: polling task_id={task_id}")
+    poll_url = f"{KLING_API_BASE}{poll_path_template.format(task_id=task_id)}"
+    deadline = time.time() + KLING_POLL_TIMEOUT_SEC
+    while time.time() < deadline:
+        time.sleep(KLING_POLL_INTERVAL_SEC)
+        pr = requests.get(poll_url, headers=headers, timeout=30)
+        if pr.status_code >= 400:
+            msg = f"{label} poll error {pr.status_code}: {pr.text[:300]}"
+            print(f"[tryon] {msg}")
+            return None, msg
+        pbody = pr.json() if pr.content else {}
+        pdata = pbody.get("data") if isinstance(pbody.get("data"), dict) else pbody
+        status = (
+            (pdata.get("task_status") if isinstance(pdata, dict) else None)
+            or pdata.get("status")
+            or pbody.get("task_status")
+            or ""
+        )
+        status = str(status).lower()
+        if status in ("succeed", "succeeded", "success", "completed"):
+            image_url = _kling_extract_image_url(pdata) or _kling_extract_image_url(pbody)
+            if not image_url:
+                msg = f"{label} succeeded but returned no image URL"
+                print(f"[tryon] {msg}:", str(pbody)[:400])
+                return None, msg
+            print(f"[tryon] {label}: success")
+            return requests.get(image_url, timeout=60).content, None
+        if status in ("failed", "fail", "error", "canceled", "cancelled"):
+            msg = (pdata.get("task_status_msg") if isinstance(pdata, dict) else None) or str(pbody)[:300]
+            print(f"[tryon] {label} task failed: {msg}")
+            return None, f"{label} task failed: {msg}"
+
+    msg = f"{label} timed out after {int(KLING_POLL_TIMEOUT_SEC)}s"
+    print(f"[tryon] {msg} (task_id={task_id})")
+    return None, msg
+
+
+def _bytes_to_tryon_image(img_bytes: bytes, fit: dict) -> Image.Image:
+    return Image.open(io.BytesIO(img_bytes)).convert("RGB")
+
+
+def _try_kling_omni_tryon(
     person_bytes: bytes, garment_bytes: bytes, fit: dict
 ) -> tuple[Optional[Image.Image], Optional[str]]:
     """
-    Kling AI Kolors virtual try-on (async create + poll).
-    Returns (image_or_None, error_message_or_None).
+    Kling Omni / multi-image try-on using Image Generation credits.
+    Sends person + dress as references with a fixed virtual-try-on prompt.
     """
     auth = _kling_auth_header()
     if not auth:
@@ -372,83 +442,122 @@ def _try_kling_tryon(
             "Authorization": auth,
             "Content-Type": "application/json",
         }
-        print("[tryon] kling: preparing images…")
+        print("[tryon] kling_omni: preparing person + dress images…")
+        person_ref = _kling_image_payload(person_bytes)
+        dress_ref = _kling_image_payload(garment_bytes)
+        prompt = _kling_build_tryon_prompt(fit)
+
+        mode = KLING_IMAGE_MODE
+        last_err = None
+
+        # Prefer Omni; fall back to multi-image2image if Omni rejects the model/path
+        attempts = []
+        if mode == "multi":
+            attempts = ["multi", "omni"]
+        else:
+            attempts = ["omni", "multi"]
+
+        for attempt in attempts:
+            if attempt == "omni":
+                payload = {
+                    "model_name": KLING_OMNI_MODEL,
+                    "prompt": prompt,
+                    "image_list": [
+                        {"image": person_ref},
+                        {"image": dress_ref},
+                    ],
+                    "n": 1,
+                    "result_type": "single",
+                    "aspect_ratio": "2:3",
+                }
+                img_bytes, err = _kling_create_and_poll(
+                    create_path="/v1/images/omni-image",
+                    poll_path_template="/v1/images/omni-image/{task_id}",
+                    payload=payload,
+                    headers=headers,
+                    label="kling_omni",
+                )
+            else:
+                # multi-image2image: subject images + prompt
+                payload = {
+                    "model_name": os.environ.get("KLING_MULTI_MODEL") or "kling-v2-1",
+                    "prompt": (
+                        "Virtual try-on: keep the person from the first subject image and "
+                        "dress them in the wedding garment from the second subject image. "
+                        "Photorealistic bridal photo, preserve face and outfit details."
+                    ),
+                    "subject_image_list": [
+                        {"subject_image": person_ref},
+                        {"subject_image": dress_ref},
+                    ],
+                    "n": 1,
+                    "aspect_ratio": "2:3",
+                }
+                img_bytes, err = _kling_create_and_poll(
+                    create_path="/v1/images/multi-image2image",
+                    poll_path_template="/v1/images/multi-image2image/{task_id}",
+                    payload=payload,
+                    headers=headers,
+                    label="kling_multi",
+                )
+
+            if img_bytes:
+                return _bytes_to_tryon_image(img_bytes, fit), None
+            last_err = err
+            # If balance empty, don't bother with second mode
+            if err and ("balance" in err.lower() or "not enough" in err.lower()):
+                break
+            print(f"[tryon] {attempt} failed ({err}); trying next mode…")
+
+        return None, last_err or "Kling Omni/multi-image try-on failed"
+    except Exception as exc:
+        msg = f"Kling Omni try-on failed: {exc}"
+        print(f"[tryon] {msg}")
+        return None, msg
+
+
+def _try_kling_vton_tryon(
+    person_bytes: bytes, garment_bytes: bytes, fit: dict
+) -> tuple[Optional[Image.Image], Optional[str]]:
+    """
+    Kling Kolors dedicated virtual try-on API (separate billing from Image Gen).
+    """
+    auth = _kling_auth_header()
+    if not auth:
+        msg = "Kling not configured (set KLING_API_KEY or ACCESS+SECRET)."
+        print(f"[tryon] {msg}")
+        return None, msg
+
+    try:
+        headers = {
+            "Authorization": auth,
+            "Content-Type": "application/json",
+        }
+        print("[tryon] kling_vton: preparing images…")
         payload = {
-            "model_name": KLING_MODEL,
+            "model_name": KLING_VTON_MODEL,
             "human_image": _kling_image_payload(person_bytes),
             "cloth_image": _kling_image_payload(garment_bytes),
         }
-        create_url = f"{KLING_API_BASE}/v1/images/kolors-virtual-try-on"
-        print(f"[tryon] kling: POST {create_url}")
-        resp = requests.post(create_url, headers=headers, json=payload, timeout=60)
-        if resp.status_code >= 400:
-            try:
-                msg = _kling_error_message(resp.json())
-            except Exception:
-                msg = _kling_error_message(resp.text)
-            print(f"[tryon] kling create error {resp.status_code}: {msg}")
-            return None, msg
-
-        body = resp.json() if resp.content else {}
-        code = body.get("code")
-        if isinstance(code, int) and code != 0:
-            msg = _kling_error_message(body)
-            print(f"[tryon] kling create business error: {msg}")
-            return None, msg
-
-        data = body.get("data") if isinstance(body.get("data"), dict) else body
-        task_id = data.get("task_id") or body.get("task_id")
-        if not task_id:
-            image_url = _kling_extract_image_url(data) or _kling_extract_image_url(body)
-            if image_url:
-                img_bytes = requests.get(image_url, timeout=60).content
-                img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-                return _draw_overlay(img, fit).convert("RGB"), None
-            msg = "Kling create response missing task_id"
-            print(f"[tryon] {msg}:", str(body)[:300])
-            return None, msg
-
-        print(f"[tryon] kling: polling task_id={task_id}")
-        poll_url = f"{KLING_API_BASE}/v1/images/kolors-virtual-try-on/{task_id}"
-        deadline = time.time() + KLING_POLL_TIMEOUT_SEC
-        while time.time() < deadline:
-            time.sleep(KLING_POLL_INTERVAL_SEC)
-            pr = requests.get(poll_url, headers=headers, timeout=30)
-            if pr.status_code >= 400:
-                msg = f"Kling poll error {pr.status_code}: {pr.text[:300]}"
-                print(f"[tryon] {msg}")
-                return None, msg
-            pbody = pr.json() if pr.content else {}
-            pdata = pbody.get("data") if isinstance(pbody.get("data"), dict) else pbody
-            status = (
-                (pdata.get("task_status") if isinstance(pdata, dict) else None)
-                or pdata.get("status")
-                or pbody.get("task_status")
-                or ""
-            )
-            status = str(status).lower()
-            if status in ("succeed", "succeeded", "success", "completed"):
-                image_url = _kling_extract_image_url(pdata) or _kling_extract_image_url(pbody)
-                if not image_url:
-                    msg = "Kling succeeded but returned no image URL"
-                    print(f"[tryon] {msg}:", str(pbody)[:400])
-                    return None, msg
-                img_bytes = requests.get(image_url, timeout=60).content
-                img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-                print("[tryon] kling: success")
-                return _draw_overlay(img, fit).convert("RGB"), None
-            if status in ("failed", "fail", "error", "canceled", "cancelled"):
-                msg = (pdata.get("task_status_msg") if isinstance(pdata, dict) else None) or str(pbody)[:300]
-                print(f"[tryon] kling task failed: {msg}")
-                return None, f"Kling task failed: {msg}"
-
-        msg = f"Kling timed out after {int(KLING_POLL_TIMEOUT_SEC)}s"
-        print(f"[tryon] {msg} (task_id={task_id})")
-        return None, msg
+        img_bytes, err = _kling_create_and_poll(
+            create_path="/v1/images/kolors-virtual-try-on",
+            poll_path_template="/v1/images/kolors-virtual-try-on/{task_id}",
+            payload=payload,
+            headers=headers,
+            label="kling_vton",
+        )
+        if img_bytes:
+            return _bytes_to_tryon_image(img_bytes, fit), None
+        return None, err
     except Exception as exc:
-        msg = f"Kling provider failed: {exc}"
+        msg = f"Kling VTON provider failed: {exc}"
         print(f"[tryon] {msg}")
         return None, msg
+
+
+# Back-compat name used by older imports / mental model
+def _try_kling_tryon(person_bytes: bytes, garment_bytes: bytes, fit: dict):
+    return _try_kling_omni_tryon(person_bytes, garment_bytes, fit)
 
 
 def _try_fal_tryon(person_bytes: bytes, garment_bytes: bytes, fit: dict) -> Optional[Image.Image]:
@@ -494,8 +603,7 @@ def _try_fal_tryon(person_bytes: bytes, garment_bytes: bytes, fit: dict) -> Opti
             print("[tryon] fal response missing image url:", str(data)[:200])
             return None
         img_bytes = requests.get(image_url, timeout=60).content
-        img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-        return _draw_overlay(img, fit).convert("RGB")
+        return Image.open(io.BytesIO(img_bytes)).convert("RGB")
     except Exception as exc:
         print(f"[tryon] fal provider failed: {exc}")
         return None
@@ -544,10 +652,15 @@ def run_tryon(
     provider_used = "local"
     fallback_reason = None
     img = None
-    if PROVIDER == "kling":
-        img, fallback_reason = _try_kling_tryon(person_bytes, garment_bytes, fit)
+    if PROVIDER in ("kling_omni", "kling"):
+        img, fallback_reason = _try_kling_omni_tryon(person_bytes, garment_bytes, fit)
         if img is not None:
-            provider_used = "kling"
+            provider_used = "kling_omni"
+            fallback_reason = None
+    elif PROVIDER in ("kling_vton", "kling_kolors"):
+        img, fallback_reason = _try_kling_vton_tryon(person_bytes, garment_bytes, fit)
+        if img is not None:
+            provider_used = "kling_vton"
             fallback_reason = None
     elif PROVIDER == "fal":
         img = _try_fal_tryon(person_bytes, garment_bytes, fit)

@@ -96,6 +96,7 @@ def tryon_health():
         "feature": "size-aware-virtual-tryon",
         "provider": PROVIDER,
         "kling_configured": kling_configured(),
+        "kling_mode": "omni_multi_image" if PROVIDER == "kling_omni" else PROVIDER,
         "fal_configured": bool(FAL_KEY),
         "sizes_supported": SIZE_ORDER,
     })
