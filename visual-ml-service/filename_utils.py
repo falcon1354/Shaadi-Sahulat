@@ -2,7 +2,10 @@
 ShaadiSahulat - UUID-based Filename Utilities
 =============================================
 Single source of truth for seller image filenames.
-All image records are generated here so MongoDB and filesystem stay in sync.
+When Cloudinary is configured, files are uploaded under
+shaadisahulat/products/{category}/{product_id}/ and image_url
+becomes the Cloudinary HTTPS URL. A local copy is still written
+under uploads/ so embedding extraction can read the file.
 """
 
 import os
@@ -10,6 +13,15 @@ import uuid
 from datetime import datetime
 
 from config import UPLOADS_DIR
+
+try:
+    from cloudinary_storage import is_configured as cloudinary_ready, upload_bytes as cloudinary_upload
+except Exception:
+    def cloudinary_ready():
+        return False
+
+    def cloudinary_upload(*_a, **_k):
+        raise RuntimeError("cloudinary_storage unavailable")
 
 
 def generate_image_record(
@@ -21,24 +33,9 @@ def generate_image_record(
     """
     Create a complete image record dict and prepare the destination path.
 
-    Parameters
-    ----------
-    original_name : original filename from the upload (e.g. "my_dress.jpg")
-    category      : category ID (e.g. "bridal_lehenga")
-    product_id    : product ID (e.g. "sp_a1b2c3d4")
-    is_primary    : True for the first / main image
-
-    Returns
-    -------
-    dict with keys:
-        image_id        — UUID string for this specific image
-        original_name   — original filename
-        stored_filename — "uuid.ext" saved on disk
-        relative_path   — "bridal_lehenga/sp_xxx/uuid.ext" (relative to UPLOADS_DIR)
-        abs_path        — absolute filesystem path
-        image_url       — Flask-served URL e.g. "/images/bridal_lehenga/sp_xxx/uuid.ext"
-        is_primary      — bool
-        uploaded_at     — ISO datetime string
+    Returns dict with keys:
+        image_id, original_name, stored_filename, relative_path, abs_path,
+        image_url, is_primary, uploaded_at
     """
     image_id  = str(uuid.uuid4())
     ext       = _safe_ext(original_name)
@@ -65,13 +62,28 @@ def generate_image_record(
 
 
 def save_image_bytes(record: dict, image_bytes: bytes) -> None:
-    """Write raw image bytes to the path specified in the record."""
+    """Write image bytes locally, then mirror to Cloudinary when configured."""
     with open(record["abs_path"], "wb") as fh:
         fh.write(image_bytes)
 
+    if not cloudinary_ready():
+        return
+
+    folder = f"products/{record['relative_path'].rsplit('/', 1)[0]}"
+    public_id = os.path.splitext(record["stored_filename"])[0]
+    result = cloudinary_upload(
+        image_bytes,
+        folder=folder,
+        public_id=public_id,
+        filename=record.get("original_name") or record["stored_filename"],
+        resource_type="image",
+    )
+    record["image_url"] = result.get("secure_url") or record["image_url"]
+    record["cloudinary_public_id"] = result.get("public_id", "")
+
 
 def delete_image_file(record: dict) -> bool:
-    """Delete the image file. Returns True if deleted, False if not found."""
+    """Delete the local image file. Returns True if deleted, False if not found."""
     path = record.get("abs_path") or os.path.join(
         UPLOADS_DIR, record.get("relative_path", "")
     )

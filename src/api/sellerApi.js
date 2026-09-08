@@ -169,8 +169,18 @@ export async function approveThriftProduct(productId, { approved, suggested_pric
 
 export function resolveImageUrl(imageUrl) {
   if (!imageUrl) return "";
-  if (imageUrl.startsWith("http")) return imageUrl;
-  return `${ML_URL}${imageUrl}`;
+  if (/^https?:\/\//i.test(imageUrl) || imageUrl.startsWith("//")) {
+    return imageUrl.startsWith("//") ? `https:${imageUrl}` : imageUrl;
+  }
+  // Legacy local Flask paths
+  if (imageUrl.startsWith("/images/") || imageUrl.startsWith("images/")) {
+    return `${ML_URL}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+  }
+  // Legacy Node uploads
+  if (imageUrl.startsWith("/uploads/") || imageUrl.startsWith("uploads/")) {
+    return `http://localhost:5000${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+  }
+  return `${ML_URL}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
 }
 
 export default {

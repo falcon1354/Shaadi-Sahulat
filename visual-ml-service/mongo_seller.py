@@ -75,7 +75,7 @@ from pymongo import MongoClient, ASCENDING
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from config import MONGO_URI, MONGO_DB, SELLERS_COLLECTION, PRODUCTS_COLLECTION
+from config import MONGO_URI, MONGO_DB, SELLERS_COLLECTION, PRODUCTS_COLLECTION, RETIRED_CAT_RE
 
 # ── Connection singleton ───────────────────────────────────────────────────
 
@@ -510,6 +510,10 @@ def get_public_products(
         return {"products": [], "total": 0, "page": page, "limit": limit}
 
     query: dict = {"availability_status": "available"}
+    query["$nor"] = [
+        {"major_category": RETIRED_CAT_RE},
+        {"category": RETIRED_CAT_RE},
+    ]
     if major_category:
         query["major_category"] = major_category
     if subcategory:

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { isRetiredCategory } from '../lib/dowryDisplay';
 
 const BASE = 'http://localhost:5000/api/categories';
 const BACKEND_BASE = 'http://localhost:5000';  // for resolving admin-uploaded icon paths
@@ -15,7 +16,10 @@ function fetchCategories() {
         if (!r.ok) throw new Error(`Failed to fetch categories: ${r.status}`);
         return r.json();
       })
-      .then(d => { _cache = d.categories || []; return _cache; })
+      .then(d => {
+        _cache = (d.categories || []).filter(c => !isRetiredCategory(c.category_id, c.label));
+        return _cache;
+      })
       .catch(err => {
         _error = err?.message || 'Failed to load categories';
         _promise = null;
@@ -43,8 +47,9 @@ export function invalidateCategoryCache() {
 export function resolveCategoryIconUrl(icon) {
   if (!icon || typeof icon !== 'string') return null;
   const trimmed = icon.trim();
-  // Already a fully-qualified URL
+  // Already a fully-qualified URL (Cloudinary or other CDN)
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
   // Looks like a path (contains "/" or ends with image extension)
   if (trimmed.includes('/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(trimmed)) {
     // Normalise: strip leading "uploads/" or leading slash to build the URL

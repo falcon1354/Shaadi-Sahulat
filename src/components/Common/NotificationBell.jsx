@@ -76,7 +76,7 @@ export default function NotificationBell({ userId, role, onNavigate }) {
         else if (role === 'seller') onNavigate(`/seller/orders`);
         else if (role === 'admin')  onNavigate(`/admin/orders`);
       } else if (n.type === 'dispute') {
-        onNavigate(`/disputes/${n.ref_id}`);
+        onNavigate(`/disputes/${n.ref_id}?as=${role}`);
       } else if (n.type === 'review') {
         if (role === 'seller') onNavigate('/seller/reviews');
         else if (role === 'admin') onNavigate('/admin/reviews');

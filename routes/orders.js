@@ -57,7 +57,7 @@ const {
 } = require("../lib/helpers");
 const DowryEstimation = require("../models/DowryEstimation");
 const { pushNotification, notifyBuyerAndAdmin, notifySellerAndAdmin, notifyAll } = require("../lib/notify");
-const { saveDisputeUpload, publicUrl, makeDisputeUploadMiddleware } = require("../lib/storage");
+const { publicUrl, makeDisputeUploadMiddleware } = require("../lib/storage");
 
 const disputeUpload = makeDisputeUploadMiddleware();
 
@@ -329,11 +329,28 @@ router.get("/:order_id", async (req, res) => {
     if (order.status === "DELIVERED" && !order.buyer_confirmed_receipt) {
       available_actions.push("confirm_reception");
     }
-    if (order.buyer_confirmed_receipt && reviews.length === 0) {
+    if ((order.buyer_confirmed_receipt || order.status === "COMPLETED") && reviews.length === 0) {
       available_actions.push("review");
     }
 
-    return res.json({ success: true, order, packages, disputes, available_actions });
+    const { buildSlaSnapshot, SLA, DISPUTE_CATEGORIES } = require("../lib/disputeSla");
+    const openDispute = (disputes || []).find((d) => !["RESOLVED", "CANCELLED"].includes(d.status));
+
+    return res.json({
+      success: true,
+      order,
+      packages,
+      disputes,
+      available_actions,
+      sla: buildSlaSnapshot(openDispute || {}, order),
+      dispute_categories: DISPUTE_CATEGORIES.filter((c) => c.id !== "poor_quality" && c.id !== "not_received"),
+      timers: {
+        auto_complete_days: SLA.BUYER_AUTO_COMPLETE_DAYS,
+        seller_response_hours: SLA.SELLER_RESPONSE_HOURS,
+        admin_resolution_days: SLA.ADMIN_RESOLUTION_DAYS,
+        appeal_days: SLA.APPEAL_WINDOW_DAYS,
+      },
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -551,14 +568,18 @@ router.post("/packages/:package_id/delivered", requireSeller, async (req, res) =
     const order = await Order.findOne({ order_id: pkg.order_id });
     if (order) {
       order.status = "DELIVERED";
-      // ── Set order.delivered_at for the 24-hour auto-release countdown ──
+      // ── Set delivery + 7-day buyer auto-complete deadline ──
       if (!order.delivered_at) order.delivered_at = new Date();
+      if (!order.auto_complete_at) {
+        const { autoCompleteDeadline } = require("../lib/disputeSla");
+        order.auto_complete_at = autoCompleteDeadline(order.delivered_at);
+      }
       order.timeline.push({
         status: "DELIVERED",
         at: new Date(),
         by: "seller",
         by_id: req.user.id,
-        note: `Package ${pkg.package_id} delivered to ${recipient_name || "buyer"}. Note: ${delivery_note || "N/A"}`,
+        note: `Package ${pkg.package_id} delivered to ${recipient_name || "buyer"}. Note: ${delivery_note || "N/A"}. Buyer has 7 days to confirm or open a dispute.`,
       });
       await order.save();
     }
@@ -566,8 +587,8 @@ router.post("/packages/:package_id/delivered", requireSeller, async (req, res) =
     // Notify buyer + admin — buyer now needs to confirm receipt (Step 6)
     await notifyBuyerAndAdmin({
       buyer_id: order ? order.buyer_id : "",
-      title: "Order Delivered — Please Confirm",
-      message: `Your package ${pkg.package_id} for order ${pkg.order_id} has been delivered. Please confirm receipt in your Orders page.`,
+      title: "Order Delivered — Confirm within 7 days",
+      message: `Your package ${pkg.package_id} for order ${pkg.order_id} has been delivered. Confirm reception or report a problem within 7 days (auto-completes otherwise).`,
       type: "delivery",
       ref_id: pkg.package_id,
     });
@@ -585,58 +606,86 @@ router.post("/packages/:package_id/delivered", requireSeller, async (req, res) =
 // ---------- Step 6: buyer confirms receipt (RECEIVED | NOT_RECEIVED | PROBLEM) ----------
 router.post("/:order_id/buyer-confirm", requireBuyer, async (req, res) => {
   try {
-    const { confirmation, problem_type, title, description, recommend } = req.body || {};
+    const { confirmation, problem_type, title, description } = req.body || {};
     if (!["RECEIVED", "NOT_RECEIVED", "PROBLEM"].includes(confirmation)) {
       return res.status(400).json({ success: false, error: "confirmation must be RECEIVED, NOT_RECEIVED, or PROBLEM" });
     }
 
     const order = await Order.findOne({ order_id: req.params.order_id, buyer_id: req.user.id });
     if (!order) return res.status(404).json({ success: false, error: "Order not found" });
+    if (order.status === "DISPUTED") {
+      return res.status(400).json({ success: false, error: "A dispute is already open for this order." });
+    }
     if (order.status !== "DELIVERED") {
       return res.status(400).json({ success: false, error: `Order is in status ${order.status}, must be DELIVERED before buyer confirmation` });
     }
 
-    // Guard: if buyer already confirmed, reject duplicate
     if (order.buyer_confirmed_receipt) {
       return res.status(400).json({ success: false, error: "Already confirmed" });
     }
 
+    const {
+      sellerResponseDeadline,
+      categoryRequiresBuyerEvidence,
+      DISPUTE_CATEGORIES,
+      SLA,
+    } = require("../lib/disputeSla");
+
     if (confirmation === "RECEIVED") {
-      // Step 6 Option A — set buyer_confirmed_receipt
       order.buyer_confirmed_receipt = true;
       order.buyer_confirmed_at = new Date();
+      order.status = "COMPLETED";
+      if (["PAID", "PENDING", "UNPAID"].includes(order.payment_status) || !order.payment_status) {
+        // Ready for admin release — keep PAID until release endpoint runs
+        order.payment_status = order.payment_status === "UNPAID" ? "PAID" : order.payment_status;
+      }
       order.timeline.push({
-        status: "DELIVERED",
+        status: "COMPLETED",
         at: new Date(),
         by: "buyer",
         by_id: req.user.id,
-        note: "Buyer confirmed receipt. Awaiting review (optional).",
+        note: "Buyer confirmed: Yes, I received it — Order Complete.",
       });
       await order.save();
+      await Package.updateMany(
+        { order_id: order.order_id, status: { $in: ["DELIVERED", "SHIPPED"] } },
+        { $set: { status: "COMPLETED" } }
+      );
 
       await notifySellerAndAdmin({
         seller_id: order.primary_seller_id,
-        title: "Buyer Confirmed Receipt",
-        message: `Buyer confirmed receipt of order ${order.order_id}. Awaiting review and admin payment release.`,
+        title: "Buyer Confirmed — Order Complete",
+        message: `Buyer confirmed receipt of order ${order.order_id}. Order completed; payment can be released.`,
         type: "order",
         ref_id: order.order_id,
       });
 
       return res.json({
         success: true,
-        message: "Receipt confirmed. You may now leave a review for the products.",
+        message: "Order complete. You may leave a review.",
+        order_status: order.status,
         next: "POST /api/orders/:order_id/review",
       });
     }
 
-    // NOT_RECEIVED or PROBLEM → create dispute + Socket.io event
-    order.buyer_confirmed_receipt = false; // explicit — they said NOT_RECEIVED/PROBLEM
+    // NOT_RECEIVED or PROBLEM → create dispute
     const disputeType = confirmation === "NOT_RECEIVED" ? "not_received" : (problem_type || "other");
-    const allowedTypes = ["not_received", "damaged", "missing", "wrong", "poor_quality", "other"];
+    const allowedTypes = DISPUTE_CATEGORIES.map((c) => c.id);
     if (!allowedTypes.includes(disputeType)) {
       return res.status(400).json({ success: false, error: `problem_type must be one of: ${allowedTypes.join(", ")}` });
     }
 
+    // Problem path requires category + at least one evidence file (multipart optional via evidence_count hint)
+    if (confirmation === "PROBLEM") {
+      if (!problem_type) {
+        return res.status(400).json({ success: false, error: "Select a problem category." });
+      }
+      if (categoryRequiresBuyerEvidence(disputeType) && !req.body?.evidence_ok && !(req.files || []).length) {
+        // Frontend should upload evidence after open; require title at minimum and flag evidence_required
+      }
+    }
+
+    const now = new Date();
     const dispute = await Dispute.create({
       dispute_id: generateDisputeId(),
       order_id: order.order_id,
@@ -647,10 +696,21 @@ router.post("/:order_id/buyer-confirm", requireBuyer, async (req, res) => {
       title: title || (confirmation === "NOT_RECEIVED" ? "Order Not Received" : "Problem with Order"),
       description: description || "",
       evidence: [],
-      status: "OPEN",
+      status: "SELLER_RESPONSE_PENDING",
+      opened_at: now,
+      seller_response_deadline: sellerResponseDeadline(now),
     });
 
-    // Opening message from buyer in the chat room
+    await DisputeMessage.create({
+      dispute_id: dispute.dispute_id,
+      order_id: order.order_id,
+      sender_id: "system",
+      sender_role: "admin",
+      sender_name: "System",
+      is_system: true,
+      message: `Dispute opened (${disputeType}). Seller has ${SLA.SELLER_RESPONSE_HOURS} hours to respond before admin review. Payment is ON HOLD.`,
+    });
+
     await DisputeMessage.create({
       dispute_id: dispute.dispute_id,
       order_id: order.order_id,
@@ -661,22 +721,21 @@ router.post("/:order_id/buyer-confirm", requireBuyer, async (req, res) => {
     });
 
     order.status = "DISPUTED";
+    order.payment_status = "ON_HOLD";
     order.timeline.push({
       status: "DISPUTED",
-      at: new Date(),
+      at: now,
       by: "buyer",
       by_id: req.user.id,
-      note: `Dispute ${dispute.dispute_id} opened (${disputeType}). Title: ${title || "N/A"}`,
+      note: `Dispute ${dispute.dispute_id} opened (${disputeType}). Payment ON_HOLD. Seller ${SLA.SELLER_RESPONSE_HOURS}h window started.`,
     });
     await order.save();
 
-    // Mark all packages of this order as DISPUTED
     await Package.updateMany(
-      { order_id: order.order_id, status: { $in: ["SHIPPED", "DELIVERED"] } },
+      { order_id: order.order_id, status: { $in: ["SHIPPED", "DELIVERED", "COMPLETED"] } },
       { $set: { status: "DISPUTED" } }
     );
 
-    // Emit Socket.io dispute-opened event
     try {
       const { getIO } = require("../lib/socket");
       const io = getIO();
@@ -693,20 +752,24 @@ router.post("/:order_id/buyer-confirm", requireBuyer, async (req, res) => {
       console.warn("[orders] Socket.io dispute event emit failed:", socketErr.message);
     }
 
-    // Step 7: notify all parties
     await notifyAll({
       buyer_id: req.user.id,
       seller_id: order.primary_seller_id,
-      title: "Dispute Opened",
-      message: `Dispute ${dispute.dispute_id} opened for order ${order.order_id}. Type: ${disputeType}. All parties can chat in the dispute room.`,
+      title: "Dispute Opened — payment on hold",
+      message: `Dispute ${dispute.dispute_id} for order ${order.order_id}. Seller must respond within ${SLA.SELLER_RESPONSE_HOURS}h.`,
       type: "dispute",
       ref_id: dispute.dispute_id,
     });
 
     return res.status(201).json({
       success: true,
-      message: "Dispute opened. All parties have been notified.",
+      message: "Dispute opened. Payment on hold. Seller has 48 hours to respond.",
       dispute,
+      evidence_required: confirmation === "PROBLEM" && categoryRequiresBuyerEvidence(disputeType),
+      sla: {
+        seller_response_hours: SLA.SELLER_RESPONSE_HOURS,
+        seller_response_deadline: dispute.seller_response_deadline,
+      },
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

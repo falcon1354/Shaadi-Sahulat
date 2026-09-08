@@ -8,7 +8,6 @@ const ADMIN_VIEWS = [
   { id: 'buyers',      label: 'Buyers',            icon: '👰' },
   { id: 'marketplace', label: 'Marketplace',       icon: '🛍️' },
   { id: 'categories',  label: 'Category Manager',  icon: '🗂️' },
-  { id: 'banners',     label: 'Deal of the Day',   icon: '🎯' },
   { id: 'orders',      label: 'Orders',            icon: '📦' },
   { id: 'disputes',    label: 'Disputes',          icon: '⚠️' },
   { id: 'wallet',      label: 'Wallet',            icon: '💰' },

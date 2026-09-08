@@ -284,6 +284,10 @@ router.get(
       }).lean();
       if (!doc) return res.status(404).json({ success: false, error: "Document not found" });
 
+      if (/^https?:\/\//i.test(doc.file_path || "")) {
+        return res.redirect(doc.file_path);
+      }
+
       const abs = resolvePath(doc.file_path);
       if (!fs.existsSync(abs)) return res.status(404).json({ success: false, error: "File missing on disk" });
 

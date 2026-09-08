@@ -10,6 +10,7 @@ const mongoose      = require("mongoose");
 const bcrypt        = require("bcryptjs");
 const Admin         = require("../models/Admin");
 const AdminCategory = require("../models/AdminCategory");
+const { isRetiredCategory } = require("../lib/retiredCategories");
 
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
@@ -141,12 +142,13 @@ async function seed() {
   }
   console.log(`Seeded ${seeded} categories into admin_categories.`);
 
-  const retired = await AdminCategory.updateMany(
-    { category_id: { $in: ["jewelry", "jewellery", "accessories", "second_hand", "second_hand_gear", "second-hand", "jweley"] } },
-    { $set: { is_active: false } }
-  );
-  if (retired.modifiedCount) {
-    console.log(`Deactivated ${retired.modifiedCount} retired categor${retired.modifiedCount === 1 ? "y" : "ies"} (jewelry / accessories / second-hand).`);
+  const allCats = await AdminCategory.find({}).lean();
+  const retiredIds = allCats
+    .filter((c) => isRetiredCategory(c.category_id, c.label))
+    .map((c) => c._id);
+  if (retiredIds.length) {
+    const retired = await AdminCategory.deleteMany({ _id: { $in: retiredIds } });
+    console.log(`Removed ${retired.deletedCount} retired categor${retired.deletedCount === 1 ? "y" : "ies"} (jewelry / accessories / second-hand).`);
   }
 
   await mongoose.disconnect();

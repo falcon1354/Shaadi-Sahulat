@@ -287,11 +287,19 @@ def _try_fal_tryon(person_bytes: bytes, garment_bytes: bytes, fit: dict) -> Opti
 
 
 def save_tryon_image(img: Image.Image) -> tuple[str, str]:
-    """Save to uploads/tryon and return (filename, relative url)."""
+    """Save to uploads/tryon (and Cloudinary when configured); return (filename, url)."""
     name = f"tryon_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.jpg"
     path = os.path.join(TRYON_OUT_DIR, name)
     img.convert("RGB").save(path, format="JPEG", quality=92)
-    return name, f"/images/tryon/{name}"
+    url = f"/images/tryon/{name}"
+    try:
+        from cloudinary_storage import is_configured, upload_file
+        if is_configured():
+            result = upload_file(path, folder="tryon", public_id=os.path.splitext(name)[0])
+            url = result.get("secure_url") or url
+    except Exception as exc:
+        print(f"[tryon] Cloudinary upload skipped: {exc}")
+    return name, url
 
 
 def run_tryon(

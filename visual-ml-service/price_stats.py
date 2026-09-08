@@ -32,14 +32,10 @@ if _root_env.is_file():
 
 from pymongo import MongoClient
 
-from config import DATA_DIR, MONGO_DB, MONGO_URI, PRODUCTS_COLLECTION
+from config import DATA_DIR, MONGO_DB, MONGO_URI, PRODUCTS_COLLECTION, is_retired_category
 
 STATS_COLLECTION = "category_price_stats"
 MARKET_PRICES_FILE = os.path.join(DATA_DIR, "market_prices.json")
-RETIRED_CATEGORIES = {
-    "jewelry", "jewellery", "jweley", "accessories",
-    "second_hand", "second_hand_gear", "second-hand",
-}
 
 PRIORITY_BANDS = {
     "High":   (1.10, 1.45),
@@ -98,7 +94,11 @@ def rebuild_price_stats(db=None) -> dict:
 
     try:
         cursor = db[PRODUCTS_COLLECTION].find(
-            {"availability_status": "available"},
+            {
+                "availability_status": "available",
+                "marketplace_type": {"$ne": "thrift"},
+                "condition": {"$nin": ["Thrift", "Used", "thrift", "used"]},
+            },
             {"major_category": 1, "subcategory": 1, "item_type": 1, "price": 1, "_id": 0},
         )
         by_cat: dict[str, list[float]] = {}
@@ -110,7 +110,7 @@ def rebuild_price_stats(db=None) -> dict:
             sub = (doc.get("subcategory") or "").strip()
             item = (doc.get("item_type") or "").strip()
             price = doc.get("price")
-            if not cat or cat.lower() in RETIRED_CATEGORIES:
+            if not cat or is_retired_category(cat, sub, item):
                 continue
             if not isinstance(price, (int, float)) or price <= 0:
                 continue

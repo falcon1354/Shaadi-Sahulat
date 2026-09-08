@@ -1,14 +1,6 @@
 /**
- * Dispute — created when buyer reports "not received" or "received with problem".
- *
- * Per BNPL&Delivery.md Module 2 Step 6 Option B & C:
- *   - "NO, Not Received" → dispute_type = "not_received"
- *   - "YES, but PROBLEM" → dispute_type = one of damaged / missing / wrong / poor_quality / other
- *
- * Each dispute has:
- *   - a chat room (DisputeChat collection) for buyer/seller/admin real-time messaging
- *   - evidence files stored under uploads/disputes/{order_id}/{dispute_id}/
- *   - admin decision: RESOLVED (original deal stands) | CANCELLED (order cancelled)
+ * Dispute — buyer confirmation / seller 48h window / admin resolution.
+ * Spec: Dispute & Order Confirmation System (condensed).
  */
 const mongoose = require("mongoose");
 
@@ -18,6 +10,7 @@ const disputeEvidenceSchema = new mongoose.Schema({
   mime_type:     { type: String, default: "" },
   uploaded_by:   { type: String, default: "" }, // buyer / seller / admin
   uploaded_at:   { type: Date,   default: Date.now },
+  description:   { type: String, default: "" },
 }, { _id: false });
 
 const disputeSchema = new mongoose.Schema(
@@ -30,7 +23,16 @@ const disputeSchema = new mongoose.Schema(
 
     dispute_type:  {
       type: String,
-      enum: ["not_received", "damaged", "missing", "wrong", "poor_quality", "other"],
+      enum: [
+        "not_received",
+        "item_not_as_described",
+        "damaged",
+        "wrong",
+        "missing",
+        "quality_issue",
+        "other",
+        "poor_quality", // legacy
+      ],
       required: true,
     },
     title:         { type: String, default: "" },
@@ -39,15 +41,43 @@ const disputeSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["OPEN", "UNDER_REVIEW", "RESOLVED", "CANCELLED"],
-      default: "OPEN",
+      enum: [
+        "OPEN",
+        "SELLER_RESPONSE_PENDING",
+        "SELLER_RESPONDED",
+        "BUYER_REVIEW_PENDING",
+        "ADMIN_REVIEW_PENDING",
+        "UNDER_REVIEW",
+        "RESOLVED",
+        "CANCELLED",
+        "APPEALED",
+      ],
+      default: "SELLER_RESPONSE_PENDING",
       index: true,
     },
 
-    // Admin decision (Step 8)
+    // SLA deadlines
+    opened_at:                 { type: Date, default: Date.now },
+    seller_response_deadline:  { type: Date, default: null },
+    seller_responded_at:       { type: Date, default: null },
+    seller_response_action:    { type: String, default: "" },
+    seller_response_note:      { type: String, default: "" },
+    seller_offer_percent:      { type: Number, default: null },
+    seller_replacement_tracking: { type: String, default: "" },
+    seller_non_responsive:     { type: Boolean, default: false },
+    escalated_at:              { type: Date, default: null },
+    escalation_reason:         { type: String, default: "" },
+    admin_resolution_deadline: { type: Date, default: null },
+    appeal_deadline:           { type: Date, default: null },
+    chat_locked:               { type: Boolean, default: false },
+    muted_roles:               { type: [String], default: [] },
+
+    // Admin decision
     admin_id:      { type: String, default: "" },
     admin_notes:   { type: String, default: "" },
-    decision:      { type: String, enum: ["", "RESOLVED", "CANCELLED"], default: "" },
+    decision:      { type: String, default: "" },
+    outcome_code:  { type: String, default: "" },
+    refund_percent:{ type: Number, default: null },
     decided_at:    { type: Date,   default: null },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }

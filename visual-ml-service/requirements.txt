@@ -12,3 +12,4 @@ requests>=2.31.0
 vaderSentiment>=3.3.2
 # v3.2 — AI Review Voice Agent (edge-tts for MP3 generation)
 edge-tts>=6.1.0
+cloudinary>=1.41.0

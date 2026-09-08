@@ -3,18 +3,22 @@ export const RETIRED_CATEGORY_IDS = [
   'jewelry',
   'jewellery',
   'accessories',
+  'accessaries',
   'second_hand',
   'second_hand_gear',
   'second-hand',
   'jweley',
 ];
 
-export function isRetiredCategory(id) {
-  const k = String(id || '').toLowerCase();
-  if (RETIRED_CATEGORY_IDS.includes(k)) return true;
+export function isRetiredCategory(id, label) {
+  const k = `${id || ''} ${label || ''}`.toLowerCase();
+  if (!k.trim()) return false;
+  if (RETIRED_CATEGORY_IDS.includes(k.trim())) return true;
   if (k.includes('jewel') || k.includes('jwel')) return true;
-  if (k.includes('accessor')) return true;
-  if (k.includes('second_hand') || k.includes('second-hand')) return true;
+  if (k.includes('accessor') || k.includes('accessar')) return true;
+  if (k.includes('second') && (k.includes('hand') || k.includes('life') || k.includes('gear'))) {
+    return true;
+  }
   return false;
 }
 

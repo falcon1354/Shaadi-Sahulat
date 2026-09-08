@@ -13,7 +13,6 @@ import SellerFinancialProj from './components/Seller/SellerFinancialProjection';
 import MarketplacePage     from './components/Marketplace/MarketplacePage';
 import ProductDetailPage   from './components/Marketplace/ProductDetailPage';
 import ThriftHomePage      from './components/Thrift/ThriftHomePage';
-import SellerBannerOffer   from './components/Seller/SellerBannerOffer';
 import DowryPage           from './components/Dowry/DowryPage';
 import BuyerAuthPage       from './components/Buyer/BuyerAuthPage';
 import BuyerDashboard      from './components/Buyer/BuyerDashboard';
@@ -21,7 +20,6 @@ import FinalProjection     from './components/Buyer/FinalProjection';
 import CartDrawer          from './components/Cart/CartDrawer';
 import LandingPage         from './components/LandingPage';
 import AdminLogin          from './components/Admin/AdminLogin';
-import BannerManager       from './components/Admin/BannerManager';
 import AdminLayout         from './components/Admin/AdminLayout';
 import FinancialDashboard  from './components/Admin/FinancialDashboard';
 import SellerManagement    from './components/Admin/SellerManagement';
@@ -53,7 +51,7 @@ import {
 } from './api/buyerApi';
 import {
   LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User,
-  ShoppingCart, PlusCircle, Package, LineChart, Star, Image as ImageIcon
+  ShoppingCart, PlusCircle, Package, LineChart, Star
 } from 'lucide-react';
 import logo from './assets/ShaadiSahulat Logo PNG.png';
 
@@ -82,6 +80,7 @@ function AuthProvider({ children }) {
   };
 
   const loginBuyer = (b) => {
+    try { sessionStorage.setItem("ss_active_role", "buyer"); } catch {}
     saveBuyerToStorage(b);
     setBuyerState(b);
     if (b?.buyer_id) {
@@ -123,12 +122,14 @@ function AuthProvider({ children }) {
   };
 
   const loginSeller = (s) => {
+    try { sessionStorage.setItem("ss_active_role", "seller"); } catch {}
     localStorage.setItem('ss_seller', JSON.stringify(s));
     setSellerState(s);
     fireAuthChanged();
   };
 
   const loginAdmin = (a) => {
+    try { sessionStorage.setItem("ss_active_role", "admin"); } catch {}
     localStorage.setItem('ss_admin', JSON.stringify(a));
     setAdminState(a);
     fireAuthChanged();
@@ -379,7 +380,6 @@ const SELLER_VIEWS = [
   { id: 'dashboard', label: 'Dashboard',            icon: <LayoutDashboard size={20} /> },
   { id: 'upload',    label: 'Upload Product',       icon: <PlusCircle size={20} /> },
   { id: 'products',  label: 'My Products',          icon: <Package size={20} /> },
-  { id: 'offers',    label: 'Banner Requests',      icon: <ImageIcon size={20} /> },
   { id: 'orders',    label: 'Orders to Fulfill',    icon: <ShoppingCart size={20} /> },
   { id: 'reviews',   label: 'Reviews',              icon: <Star size={20} /> },
   { id: 'finance',   label: 'Financial Projection', icon: <LineChart size={20} /> },
@@ -399,16 +399,19 @@ const SELLER_NAV_MAP = {
 
 function RequireBuyer() {
   const { buyer } = useAuth();
+  try { if (buyer) sessionStorage.setItem("ss_active_role", "buyer"); } catch {}
   return buyer ? <Outlet /> : <Navigate to="/buyer/login" replace />;
 }
 
 function RequireSeller() {
   const { seller } = useAuth();
+  try { if (seller) sessionStorage.setItem("ss_active_role", "seller"); } catch {}
   return seller ? <Outlet /> : <Navigate to="/seller/login" replace />;
 }
 
 function RequireAdmin() {
   const { admin } = useAuth();
+  try { if (admin) sessionStorage.setItem("ss_active_role", "admin"); } catch {}
   return admin ? <Outlet /> : <Navigate to="/admin/login" replace />;
 }
 
@@ -684,10 +687,6 @@ function BuyerDashboardPage() {
   );
 }
 
-function AdminBannerManagerWrapper() {
-  return <BannerManager />;
-}
-
 function BuyerMarketplacePage() {
   const { buyer } = useAuth();
   const navigate  = useNavigate();
@@ -796,11 +795,6 @@ function SellerAccountPage() {
   return <SellerAccountView seller={seller} />;
 }
 
-function SellerBannerOfferPageWrapper() {
-  const { seller } = useAuth();
-  return <SellerBannerOffer seller={seller} />;
-}
-
 // ── Wrapper pages for new modules (inject auth from context) ──────────────────
 
 function BuyerOrdersPageWrapper() {
@@ -866,10 +860,36 @@ function AdminReviewsPageWrapper() {
 }
 function DisputeChatWrapper() {
   const { buyer, seller, admin } = useAuth();
-  // Pick whichever role is logged in (buyer first, then seller, then admin)
-  if (buyer)  return <DisputeChatPage user={{ id: buyer.buyer_id,  role: 'buyer',  name: buyer.name }} />;
-  if (seller) return <DisputeChatPage user={{ id: seller.seller_id, role: 'seller', name: seller.name }} />;
-  if (admin)  return <DisputeChatPage user={{ id: admin.admin_id || admin._id, role: 'admin', name: admin.name || 'Admin' }} />;
+  const location = useLocation();
+  // Prefer explicit role (query/state) so admin isn't forced to "buyer" when both sessions exist
+  const preferred =
+    location.state?.asRole ||
+    new URLSearchParams(location.search).get("as") ||
+    sessionStorage.getItem("ss_active_role");
+
+  const sessions = {
+    buyer: buyer
+      ? { id: buyer.buyer_id, role: "buyer", name: buyer.name || "Buyer" }
+      : null,
+    seller: seller
+      ? { id: seller.seller_id, role: "seller", name: seller.name || "Seller" }
+      : null,
+    admin: admin
+      ? { id: admin.admin_id || admin._id, role: "admin", name: admin.name || "Admin" }
+      : null,
+  };
+
+  if (preferred && sessions[preferred]) {
+    return <DisputeChatPage user={sessions[preferred]} />;
+  }
+
+  const present = ["admin", "seller", "buyer"]
+    .map((r) => sessions[r])
+    .filter(Boolean);
+  if (present.length === 1) return <DisputeChatPage user={present[0]} />;
+  if (sessions.admin) return <DisputeChatPage user={sessions.admin} />;
+  if (sessions.seller) return <DisputeChatPage user={sessions.seller} />;
+  if (sessions.buyer) return <DisputeChatPage user={sessions.buyer} />;
   return <Navigate to="/" replace />;
 }
 
@@ -985,7 +1005,7 @@ export default function App() {
                 <Route path="orders/:orderId" element={<SellerOrderDetailPageWrapper />} />
                 <Route path="reviews"   element={<SellerReviewsPageWrapper />} />
                 <Route path="account"   element={<SellerAccountPage />} />
-                <Route path="offers"    element={<SellerBannerOfferPageWrapper />} />
+                <Route path="offers"    element={<Navigate to="dashboard" replace />} />
               </Route>
             </Route>
 
@@ -999,7 +1019,7 @@ export default function App() {
                 <Route path="buyers"      element={<BuyerManagement />} />
                 <Route path="marketplace" element={<MarketplacePage isAdminView={true} />} />
                 <Route path="categories"  element={<CategoryManager />} />
-                <Route path="banners"     element={<AdminBannerManagerWrapper />} />
+                <Route path="banners"     element={<Navigate to="dashboard" replace />} />
                 <Route path="orders"      element={<AdminOrdersPageWrapper />} />
                 <Route path="disputes"    element={<AdminDisputesPageWrapper />} />
                 <Route path="reviews"     element={<AdminReviewsPageWrapper />} />

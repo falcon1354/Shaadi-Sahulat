@@ -65,7 +65,16 @@ const orderSchema = new mongoose.Schema(
     payment_method:  { type: String, enum: ["COD", "BNPL"], required: true },
     payment_status:  {
       type: String,
-      enum: ["UNPAID", "PENDING", "PAID", "REFUNDED", "CANCELLED"],
+      enum: [
+        "UNPAID",
+        "PENDING",
+        "PAID",
+        "ON_HOLD",
+        "RELEASED",
+        "PARTIAL_RELEASED",
+        "REFUNDED",
+        "CANCELLED",
+      ],
       default: "UNPAID",
     },
     status: {
@@ -93,9 +102,13 @@ const orderSchema = new mongoose.Schema(
     buyer_confirmed_at:      { type: Date,   default: null },
     delivery_method:         { type: String, default: "standard" },
 
-    // When the order was delivered — used by the 24-hour auto-release
-    // payment countdown on the Admin Orders page.
+    // When the order was delivered — used by the 7-day buyer auto-complete
+    // countdown and the admin payment-release window.
     delivered_at:            { type: Date,   default: null },
+    // Auto-complete at delivered_at + 7 days (unless disputed).
+    auto_complete_at:        { type: Date,   default: null },
+    auto_complete_reminder_day3: { type: Boolean, default: false },
+    auto_complete_reminder_day6: { type: Boolean, default: false },
     // When payment was released to the seller (null = still pending).
     payment_released_at:     { type: Date,   default: null },
 

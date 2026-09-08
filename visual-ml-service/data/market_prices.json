@@ -1,113 +1,113 @@
 {
-  "updated_at": "2026-09-07T15:52:11.539664+00:00",
+  "updated_at": "2026-09-08T08:58:00.487691+00:00",
   "categories": {
     "wedding_dress": {
-      "avg": 84423,
-      "median": 53484,
+      "avg": 86277,
+      "median": 49686,
       "min": 12500,
       "max": 395000,
-      "count": 50,
+      "count": 46,
       "avg_top5_cheapest": 17100,
       "priority_ranges": {
         "High": {
-          "min": 92865,
-          "max": 122413
+          "min": 94905,
+          "max": 125102
         },
         "Medium": {
-          "min": 69227,
-          "max": 99619
+          "min": 70747,
+          "max": 101807
         },
         "Low": {
-          "min": 54875,
-          "max": 75981
+          "min": 56080,
+          "max": 77649
         }
       },
       "subcategories": {
         "bridal": {
-          "avg": 46876,
-          "median": 49179,
+          "avg": 44782,
+          "median": 46664,
           "min": 23500,
-          "max": 74592,
-          "count": 35,
+          "max": 73368,
+          "count": 31,
           "avg_top5_cheapest": 25100,
           "priority_ranges": {
             "High": {
-              "min": 51564,
-              "max": 67970
+              "min": 49260,
+              "max": 64934
             },
             "Medium": {
-              "min": 38438,
-              "max": 55314
+              "min": 36721,
+              "max": 52843
             },
             "Low": {
-              "min": 30469,
-              "max": 42188
+              "min": 29108,
+              "max": 40304
             }
           },
           "item_types": {
             "bridal_lehenga": {
-              "avg": 59323,
-              "median": 58996,
+              "avg": 55998,
+              "median": 57541,
               "min": 46664,
-              "max": 74592,
-              "count": 8,
+              "max": 66870,
+              "count": 6,
               "avg_top5_cheapest": 53823,
               "priority_ranges": {
                 "High": {
-                  "min": 65255,
-                  "max": 86018
+                  "min": 61598,
+                  "max": 81197
                 },
                 "Medium": {
-                  "min": 48645,
-                  "max": 70001
+                  "min": 45918,
+                  "max": 66078
                 },
                 "Low": {
-                  "min": 38560,
-                  "max": 53391
+                  "min": 36399,
+                  "max": 50398
                 }
               }
             },
             "bridal_sharara": {
-              "avg": 45318,
-              "median": 41461,
+              "avg": 44269,
+              "median": 39980,
               "min": 24500,
               "max": 73368,
-              "count": 13,
+              "count": 12,
               "avg_top5_cheapest": 26103,
               "priority_ranges": {
                 "High": {
-                  "min": 49850,
-                  "max": 65711
+                  "min": 48696,
+                  "max": 64190
                 },
                 "Medium": {
-                  "min": 37161,
-                  "max": 53475
+                  "min": 36301,
+                  "max": 52237
                 },
                 "Low": {
-                  "min": 29457,
-                  "max": 40786
+                  "min": 28775,
+                  "max": 39842
                 }
               }
             },
             "bridal_saree": {
-              "avg": 50618,
-              "median": 53484,
+              "avg": 49862,
+              "median": 51053,
               "min": 26926,
               "max": 61585,
-              "count": 8,
-              "avg_top5_cheapest": 44469,
+              "count": 7,
+              "avg_top5_cheapest": 45225,
               "priority_ranges": {
                 "High": {
-                  "min": 55680,
-                  "max": 73396
+                  "min": 54848,
+                  "max": 72300
                 },
                 "Medium": {
-                  "min": 41507,
-                  "max": 59729
+                  "min": 40887,
+                  "max": 58837
                 },
                 "Low": {
-                  "min": 32902,
-                  "max": 45556
+                  "min": 32410,
+                  "max": 44876
                 }
               }
             },
@@ -228,73 +228,27 @@
       }
     },
     "furniture": {
-      "avg": 112258,
-      "median": 85000,
+      "avg": 116048,
+      "median": 88000,
       "min": 18000,
       "max": 420000,
-      "count": 33,
-      "avg_top5_cheapest": 23600,
+      "count": 31,
+      "avg_top5_cheapest": 25800,
       "priority_ranges": {
         "High": {
-          "min": 123484,
-          "max": 162774
+          "min": 127653,
+          "max": 168270
         },
         "Medium": {
-          "min": 92052,
-          "max": 132464
+          "min": 95159,
+          "max": 136937
         },
         "Low": {
-          "min": 72968,
-          "max": 101032
+          "min": 75431,
+          "max": 104443
         }
       },
       "subcategories": {
-        "sofa_set": {
-          "avg": 50667,
-          "median": 46000,
-          "min": 18000,
-          "max": 85000,
-          "count": 6,
-          "avg_top5_cheapest": 43800,
-          "priority_ranges": {
-            "High": {
-              "min": 55734,
-              "max": 73467
-            },
-            "Medium": {
-              "min": 41547,
-              "max": 59787
-            },
-            "Low": {
-              "min": 32934,
-              "max": 45600
-            }
-          },
-          "item_types": {
-            "sofa_set": {
-              "avg": 50667,
-              "median": 46000,
-              "min": 18000,
-              "max": 85000,
-              "count": 6,
-              "avg_top5_cheapest": 43800,
-              "priority_ranges": {
-                "High": {
-                  "min": 55734,
-                  "max": 73467
-                },
-                "Medium": {
-                  "min": 41547,
-                  "max": 59787
-                },
-                "Low": {
-                  "min": 32934,
-                  "max": 45600
-                }
-              }
-            }
-          }
-        },
         "bed_set": {
           "avg": 227500,
           "median": 200000,
@@ -387,47 +341,47 @@
             }
           }
         },
-        "dressing_table": {
-          "avg": 79750,
-          "median": 90750,
-          "min": 22000,
-          "max": 104500,
-          "count": 6,
-          "avg_top5_cheapest": 74800,
+        "sofa_set": {
+          "avg": 43800,
+          "median": 40000,
+          "min": 18000,
+          "max": 75000,
+          "count": 5,
+          "avg_top5_cheapest": 43800,
           "priority_ranges": {
             "High": {
-              "min": 87725,
-              "max": 115638
+              "min": 48180,
+              "max": 63510
             },
             "Medium": {
-              "min": 65395,
-              "max": 94105
+              "min": 35916,
+              "max": 51684
             },
             "Low": {
-              "min": 51838,
-              "max": 71775
+              "min": 28470,
+              "max": 39420
             }
           },
           "item_types": {
-            "dressing_table": {
-              "avg": 79750,
-              "median": 90750,
-              "min": 22000,
-              "max": 104500,
-              "count": 6,
-              "avg_top5_cheapest": 74800,
+            "sofa_set": {
+              "avg": 43800,
+              "median": 40000,
+              "min": 18000,
+              "max": 75000,
+              "count": 5,
+              "avg_top5_cheapest": 43800,
               "priority_ranges": {
                 "High": {
-                  "min": 87725,
-                  "max": 115638
+                  "min": 48180,
+                  "max": 63510
                 },
                 "Medium": {
-                  "min": 65395,
-                  "max": 94105
+                  "min": 35916,
+                  "max": 51684
                 },
                 "Low": {
-                  "min": 51838,
-                  "max": 71775
+                  "min": 28470,
+                  "max": 39420
                 }
               }
             }
@@ -478,210 +432,48 @@
               }
             }
           }
-        }
-      }
-    },
-    "electronics": {
-      "avg": 130720,
-      "median": 101450,
-      "min": 17500,
-      "max": 840000,
-      "count": 30,
-      "avg_top5_cheapest": 30060,
-      "priority_ranges": {
-        "High": {
-          "min": 143792,
-          "max": 189544
         },
-        "Medium": {
-          "min": 107190,
-          "max": 154250
-        },
-        "Low": {
-          "min": 84968,
-          "max": 117648
-        }
-      },
-      "subcategories": {
-        "refrigerator": {
-          "avg": 99036,
-          "median": 89900,
-          "min": 32300,
-          "max": 299900,
-          "count": 11,
-          "avg_top5_cheapest": 55780,
+        "dressing_table": {
+          "avg": 91300,
+          "median": 93500,
+          "min": 77000,
+          "max": 104500,
+          "count": 5,
+          "avg_top5_cheapest": 91300,
           "priority_ranges": {
             "High": {
-              "min": 108940,
-              "max": 143602
+              "min": 100430,
+              "max": 132385
             },
             "Medium": {
-              "min": 81210,
-              "max": 116862
+              "min": 74866,
+              "max": 107734
             },
             "Low": {
-              "min": 64373,
-              "max": 89132
+              "min": 59345,
+              "max": 82170
             }
           },
           "item_types": {
-            "refrigerator": {
-              "avg": 99036,
-              "median": 89900,
-              "min": 32300,
-              "max": 299900,
-              "count": 11,
-              "avg_top5_cheapest": 55780,
+            "dressing_table": {
+              "avg": 91300,
+              "median": 93500,
+              "min": 77000,
+              "max": 104500,
+              "count": 5,
+              "avg_top5_cheapest": 91300,
               "priority_ranges": {
                 "High": {
-                  "min": 108940,
-                  "max": 143602
+                  "min": 100430,
+                  "max": 132385
                 },
                 "Medium": {
-                  "min": 81210,
-                  "max": 116862
+                  "min": 74866,
+                  "max": 107734
                 },
                 "Low": {
-                  "min": 64373,
-                  "max": 89132
-                }
-              }
-            }
-          }
-        },
-        "washing_machine": {
-          "avg": 69128,
-          "median": 79900,
-          "min": 17500,
-          "max": 119999,
-          "count": 7,
-          "avg_top5_cheapest": 53880,
-          "priority_ranges": {
-            "High": {
-              "min": 76041,
-              "max": 100236
-            },
-            "Medium": {
-              "min": 56685,
-              "max": 81571
-            },
-            "Low": {
-              "min": 44933,
-              "max": 62215
-            }
-          },
-          "item_types": {
-            "washing_machine": {
-              "avg": 69128,
-              "median": 79900,
-              "min": 17500,
-              "max": 119999,
-              "count": 7,
-              "avg_top5_cheapest": 53880,
-              "priority_ranges": {
-                "High": {
-                  "min": 76041,
-                  "max": 100236
-                },
-                "Medium": {
-                  "min": 56685,
-                  "max": 81571
-                },
-                "Low": {
-                  "min": 44933,
-                  "max": 62215
-                }
-              }
-            }
-          }
-        },
-        "led_tv": {
-          "avg": 256000,
-          "median": 158000,
-          "min": 35000,
-          "max": 840000,
-          "count": 6,
-          "avg_top5_cheapest": 139200,
-          "priority_ranges": {
-            "High": {
-              "min": 281600,
-              "max": 371200
-            },
-            "Medium": {
-              "min": 209920,
-              "max": 302080
-            },
-            "Low": {
-              "min": 166400,
-              "max": 230400
-            }
-          },
-          "item_types": {
-            "led_tv": {
-              "avg": 256000,
-              "median": 158000,
-              "min": 35000,
-              "max": 840000,
-              "count": 6,
-              "avg_top5_cheapest": 139200,
-              "priority_ranges": {
-                "High": {
-                  "min": 281600,
-                  "max": 371200
-                },
-                "Medium": {
-                  "min": 209920,
-                  "max": 302080
-                },
-                "Low": {
-                  "min": 166400,
-                  "max": 230400
-                }
-              }
-            }
-          }
-        },
-        "ac": {
-          "avg": 135383,
-          "median": 126500,
-          "min": 112000,
-          "max": 169900,
-          "count": 6,
-          "avg_top5_cheapest": 128480,
-          "priority_ranges": {
-            "High": {
-              "min": 148921,
-              "max": 196305
-            },
-            "Medium": {
-              "min": 111014,
-              "max": 159752
-            },
-            "Low": {
-              "min": 87999,
-              "max": 121845
-            }
-          },
-          "item_types": {
-            "ac": {
-              "avg": 135383,
-              "median": 126500,
-              "min": 112000,
-              "max": 169900,
-              "count": 6,
-              "avg_top5_cheapest": 128480,
-              "priority_ranges": {
-                "High": {
-                  "min": 148921,
-                  "max": 196305
-                },
-                "Medium": {
-                  "min": 111014,
-                  "max": 159752
-                },
-                "Low": {
-                  "min": 87999,
-                  "max": 121845
+                  "min": 59345,
+                  "max": 82170
                 }
               }
             }
@@ -690,46 +482,46 @@
       }
     },
     "kitchen_items": {
-      "avg": 23004,
-      "median": 16900,
+      "avg": 23842,
+      "median": 17500,
       "min": 4490,
       "max": 87100,
-      "count": 39,
-      "avg_top5_cheapest": 5958,
+      "count": 37,
+      "avg_top5_cheapest": 6256,
       "priority_ranges": {
         "High": {
-          "min": 25304,
-          "max": 33356
+          "min": 26226,
+          "max": 34571
         },
         "Medium": {
-          "min": 18863,
-          "max": 27145
+          "min": 19550,
+          "max": 28134
         },
         "Low": {
-          "min": 14953,
-          "max": 20704
+          "min": 15497,
+          "max": 21458
         }
       },
       "subcategories": {
         "general_kitchen": {
-          "avg": 16915,
-          "median": 9740,
+          "avg": 18072,
+          "median": 11490,
           "min": 4490,
           "max": 34900,
-          "count": 10,
-          "avg_top5_cheapest": 6992,
+          "count": 9,
+          "avg_top5_cheapest": 7990,
           "priority_ranges": {
             "High": {
-              "min": 18606,
-              "max": 24527
+              "min": 19879,
+              "max": 26204
             },
             "Medium": {
-              "min": 13870,
-              "max": 19960
+              "min": 14819,
+              "max": 21325
             },
             "Low": {
-              "min": 10995,
-              "max": 15224
+              "min": 11747,
+              "max": 16265
             }
           },
           "item_types": {
@@ -754,50 +546,28 @@
                   "max": 16265
                 }
               }
-            },
-            "cooking_set": {
-              "avg": 6500,
-              "median": 6500,
-              "min": 6500,
-              "max": 6500,
-              "count": 1,
-              "avg_top5_cheapest": 6500,
-              "priority_ranges": {
-                "High": {
-                  "min": 7150,
-                  "max": 9425
-                },
-                "Medium": {
-                  "min": 5330,
-                  "max": 7670
-                },
-                "Low": {
-                  "min": 4225,
-                  "max": 5850
-                }
-              }
             }
           }
         },
         "large_appliances": {
-          "avg": 25104,
+          "avg": 25697,
           "median": 17500,
           "min": 5300,
           "max": 87100,
-          "count": 29,
-          "avg_top5_cheapest": 7218,
+          "count": 28,
+          "avg_top5_cheapest": 7618,
           "priority_ranges": {
             "High": {
-              "min": 27614,
-              "max": 36401
+              "min": 28267,
+              "max": 37261
             },
             "Medium": {
-              "min": 20585,
-              "max": 29623
+              "min": 21072,
+              "max": 30322
             },
             "Low": {
-              "min": 16318,
-              "max": 22594
+              "min": 16703,
+              "max": 23127
             }
           },
           "item_types": {
@@ -820,28 +590,6 @@
                 "Low": {
                   "min": 13690,
                   "max": 18956
-                }
-              }
-            },
-            "juicer_blender": {
-              "avg": 13859,
-              "median": 10500,
-              "min": 7000,
-              "max": 36550,
-              "count": 7,
-              "avg_top5_cheapest": 9246,
-              "priority_ranges": {
-                "High": {
-                  "min": 15245,
-                  "max": 20096
-                },
-                "Medium": {
-                  "min": 11364,
-                  "max": 16354
-                },
-                "Low": {
-                  "min": 9008,
-                  "max": 12473
                 }
               }
             },
@@ -888,30 +636,52 @@
                   "max": 36731
                 }
               }
+            },
+            "juicer_blender": {
+              "avg": 14752,
+              "median": 10970,
+              "min": 7000,
+              "max": 36550,
+              "count": 6,
+              "avg_top5_cheapest": 10392,
+              "priority_ranges": {
+                "High": {
+                  "min": 16227,
+                  "max": 21390
+                },
+                "Medium": {
+                  "min": 12097,
+                  "max": 17407
+                },
+                "Low": {
+                  "min": 9589,
+                  "max": 13277
+                }
+              }
             }
           }
         }
       }
     },
     "decoration": {
-      "avg": 11439,
-      "median": 5400,
+      "avg": 9939,
+      "median": 5195,
       "min": 1800,
-      "max": 44444,
-      "count": 23,
+      "max": 29900,
+      "count": 22,
       "avg_top5_cheapest": 2458,
       "priority_ranges": {
         "High": {
-          "min": 12583,
-          "max": 16587
+          "min": 10933,
+          "max": 14412
         },
         "Medium": {
-          "min": 9380,
-          "max": 13498
+          "min": 8150,
+          "max": 11728
         },
         "Low": {
-          "min": 7435,
-          "max": 10295
+          "min": 6460,
+          "max": 8945
         }
       },
       "subcategories": {
@@ -1030,24 +800,24 @@
           }
         },
         "stage_setup": {
-          "avg": 23907,
-          "median": 23500,
+          "avg": 19800,
+          "median": 22000,
           "min": 7500,
-          "max": 44444,
-          "count": 6,
+          "max": 28000,
+          "count": 5,
           "avg_top5_cheapest": 19800,
           "priority_ranges": {
             "High": {
-              "min": 26298,
-              "max": 34665
+              "min": 21780,
+              "max": 28710
             },
             "Medium": {
-              "min": 19604,
-              "max": 28210
+              "min": 16236,
+              "max": 23364
             },
             "Low": {
-              "min": 15540,
-              "max": 21516
+              "min": 12870,
+              "max": 17820
             }
           },
           "item_types": {
@@ -1238,93 +1008,49 @@
       }
     },
     "miscellaneous": {
-      "avg": 5400,
-      "median": 4200,
-      "min": 3500,
+      "avg": 8500,
+      "median": 8500,
+      "min": 8500,
       "max": 8500,
-      "count": 3,
-      "avg_top5_cheapest": 5400,
+      "count": 1,
+      "avg_top5_cheapest": 8500,
       "priority_ranges": {
         "High": {
-          "min": 5940,
-          "max": 7830
+          "min": 9350,
+          "max": 12325
         },
         "Medium": {
-          "min": 4428,
-          "max": 6372
+          "min": 6970,
+          "max": 10030
         },
         "Low": {
-          "min": 3510,
-          "max": 4860
+          "min": 5525,
+          "max": 7650
         }
       },
       "subcategories": {
         "small_appliances": {
-          "avg": 5400,
-          "median": 4200,
-          "min": 3500,
+          "avg": 8500,
+          "median": 8500,
+          "min": 8500,
           "max": 8500,
-          "count": 3,
-          "avg_top5_cheapest": 5400,
+          "count": 1,
+          "avg_top5_cheapest": 8500,
           "priority_ranges": {
             "High": {
-              "min": 5940,
-              "max": 7830
+              "min": 9350,
+              "max": 12325
             },
             "Medium": {
-              "min": 4428,
-              "max": 6372
+              "min": 6970,
+              "max": 10030
             },
             "Low": {
-              "min": 3510,
-              "max": 4860
+              "min": 5525,
+              "max": 7650
             }
           },
           "item_types": {
-            "iron": {
-              "avg": 3500,
-              "median": 3500,
-              "min": 3500,
-              "max": 3500,
-              "count": 1,
-              "avg_top5_cheapest": 3500,
-              "priority_ranges": {
-                "High": {
-                  "min": 3850,
-                  "max": 5075
-                },
-                "Medium": {
-                  "min": 2870,
-                  "max": 4130
-                },
-                "Low": {
-                  "min": 2275,
-                  "max": 3150
-                }
-              }
-            },
-            "pedestal_fan": {
-              "avg": 4200,
-              "median": 4200,
-              "min": 4200,
-              "max": 4200,
-              "count": 1,
-              "avg_top5_cheapest": 4200,
-              "priority_ranges": {
-                "High": {
-                  "min": 4620,
-                  "max": 6090
-                },
-                "Medium": {
-                  "min": 3444,
-                  "max": 4956
-                },
-                "Low": {
-                  "min": 2730,
-                  "max": 3780
-                }
-              }
-            },
             "vacuum_cleaner": {
               "avg": 8500,
               "median": 8500,
@@ -1344,6 +1070,214 @@
                 "Low": {
                   "min": 5525,
                   "max": 7650
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "electronics": {
+      "avg": 135057,
+      "median": 107400,
+      "min": 17500,
+      "max": 840000,
+      "count": 28,
+      "avg_top5_cheapest": 30060,
+      "priority_ranges": {
+        "High": {
+          "min": 148563,
+          "max": 195833
+        },
+        "Medium": {
+          "min": 110747,
+          "max": 159367
+        },
+        "Low": {
+          "min": 87787,
+          "max": 121551
+        }
+      },
+      "subcategories": {
+        "led_tv": {
+          "avg": 256000,
+          "median": 158000,
+          "min": 35000,
+          "max": 840000,
+          "count": 6,
+          "avg_top5_cheapest": 139200,
+          "priority_ranges": {
+            "High": {
+              "min": 281600,
+              "max": 371200
+            },
+            "Medium": {
+              "min": 209920,
+              "max": 302080
+            },
+            "Low": {
+              "min": 166400,
+              "max": 230400
+            }
+          },
+          "item_types": {
+            "led_tv": {
+              "avg": 256000,
+              "median": 158000,
+              "min": 35000,
+              "max": 840000,
+              "count": 6,
+              "avg_top5_cheapest": 139200,
+              "priority_ranges": {
+                "High": {
+                  "min": 281600,
+                  "max": 371200
+                },
+                "Medium": {
+                  "min": 209920,
+                  "max": 302080
+                },
+                "Low": {
+                  "min": 166400,
+                  "max": 230400
+                }
+              }
+            }
+          }
+        },
+        "washing_machine": {
+          "avg": 71483,
+          "median": 85700,
+          "min": 17500,
+          "max": 119999,
+          "count": 6,
+          "avg_top5_cheapest": 61780,
+          "priority_ranges": {
+            "High": {
+              "min": 78631,
+              "max": 103650
+            },
+            "Medium": {
+              "min": 58616,
+              "max": 84350
+            },
+            "Low": {
+              "min": 46464,
+              "max": 64335
+            }
+          },
+          "item_types": {
+            "washing_machine": {
+              "avg": 71483,
+              "median": 85700,
+              "min": 17500,
+              "max": 119999,
+              "count": 6,
+              "avg_top5_cheapest": 61780,
+              "priority_ranges": {
+                "High": {
+                  "min": 78631,
+                  "max": 103650
+                },
+                "Medium": {
+                  "min": 58616,
+                  "max": 84350
+                },
+                "Low": {
+                  "min": 46464,
+                  "max": 64335
+                }
+              }
+            }
+          }
+        },
+        "ac": {
+          "avg": 135383,
+          "median": 126500,
+          "min": 112000,
+          "max": 169900,
+          "count": 6,
+          "avg_top5_cheapest": 128480,
+          "priority_ranges": {
+            "High": {
+              "min": 148921,
+              "max": 196305
+            },
+            "Medium": {
+              "min": 111014,
+              "max": 159752
+            },
+            "Low": {
+              "min": 87999,
+              "max": 121845
+            }
+          },
+          "item_types": {
+            "ac": {
+              "avg": 135383,
+              "median": 126500,
+              "min": 112000,
+              "max": 169900,
+              "count": 6,
+              "avg_top5_cheapest": 128480,
+              "priority_ranges": {
+                "High": {
+                  "min": 148921,
+                  "max": 196305
+                },
+                "Medium": {
+                  "min": 111014,
+                  "max": 159752
+                },
+                "Low": {
+                  "min": 87999,
+                  "max": 121845
+                }
+              }
+            }
+          }
+        },
+        "refrigerator": {
+          "avg": 100440,
+          "median": 92950,
+          "min": 32300,
+          "max": 299900,
+          "count": 10,
+          "avg_top5_cheapest": 56760,
+          "priority_ranges": {
+            "High": {
+              "min": 110484,
+              "max": 145638
+            },
+            "Medium": {
+              "min": 82361,
+              "max": 118519
+            },
+            "Low": {
+              "min": 65286,
+              "max": 90396
+            }
+          },
+          "item_types": {
+            "refrigerator": {
+              "avg": 100440,
+              "median": 92950,
+              "min": 32300,
+              "max": 299900,
+              "count": 10,
+              "avg_top5_cheapest": 56760,
+              "priority_ranges": {
+                "High": {
+                  "min": 110484,
+                  "max": 145638
+                },
+                "Medium": {
+                  "min": 82361,
+                  "max": 118519
+                },
+                "Low": {
+                  "min": 65286,
+                  "max": 90396
                 }
               }
             }

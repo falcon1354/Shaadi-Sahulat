@@ -32,7 +32,7 @@ const Notification = require("../models/Notification");
 
 const { requireBuyer } = require("../lib/auth");
 const { encrypt, decrypt, maskCnic, maskIban } = require("../lib/crypto");
-const { saveBnplUpload, resolvePath, publicUrl, makeBnplUploadMiddleware } = require("../lib/storage");
+const { saveBnplUploadAsync, resolvePath, publicUrl, makeBnplUploadMiddleware, materializeLocal } = require("../lib/storage");
 const { runOcrPipeline } = require("../lib/ocr");
 const { checkBnplEligibility } = require("../lib/eligibility");
 const {
@@ -195,7 +195,7 @@ router.post("/applications", requireBuyer, upload, async (req, res) => {
     for (const spec of fileSpecs) {
       const f = files[spec.field][0];
       const ext = path.extname(f.originalname) || (f.mimetype === "application/pdf" ? ".pdf" : ".jpg");
-      const relPath = saveBnplUpload(req.user.id, applicationNo, spec.name + ext, f.buffer);
+      const relPath = await saveBnplUploadAsync(req.user.id, applicationNo, spec.name + ext, f.buffer);
       
       const doc = await BnplDocument.create({
         application_id: applicationNo,
@@ -223,7 +223,7 @@ router.post("/applications", requireBuyer, upload, async (req, res) => {
     let ocrConfidence = 0;
     try {
       const cnicFrontDoc = await BnplDocument.findById(docIds.cnic_front);
-      const absPath = resolvePath(cnicFrontDoc.file_path);
+      const absPath = await materializeLocal(cnicFrontDoc.file_path);
       const ocr = await runOcrPipeline(absPath, cnicFrontDoc.mime_type);
       ocrCnic = ocr.extracted_cnic;
       ocrConfidence = ocr.confidence;
@@ -241,7 +241,7 @@ router.post("/applications", requireBuyer, upload, async (req, res) => {
 
       // Also OCR CNIC back for completeness
       const cnicBackDoc = await BnplDocument.findById(docIds.cnic_back);
-      const ocrBack = await runOcrPipeline(resolvePath(cnicBackDoc.file_path), cnicBackDoc.mime_type);
+      const ocrBack = await runOcrPipeline(await materializeLocal(cnicBackDoc.file_path), cnicBackDoc.mime_type);
       cnicBackDoc.ocr_raw_text = ocrBack.raw_text || "";
       cnicBackDoc.ocr_confidence = ocrBack.confidence || 0;
       cnicBackDoc.ocr_completed_at = new Date();

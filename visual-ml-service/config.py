@@ -6,6 +6,7 @@ MongoDB connection, TF-IDF, and hybrid search weights.
 """
 
 import os
+import re
 
 # ── ML Model Category Definitions (used by classifier & embedding search) ──
 # Do NOT change CATEGORIES without retraining the CNN — these map to model output indices.
@@ -137,6 +138,16 @@ SELLER_CATEGORY_TREE = [
 
 # Flat list of valid major category IDs for validation
 SELLER_MAJOR_CATEGORY_IDS = [cat["id"] for cat in SELLER_CATEGORY_TREE]
+
+RETIRED_CAT_RE = re.compile(
+    r"(jewel|jwel|accessar|second[_\-\s]?(hand|life|gear))",
+    re.I,
+)
+
+def is_retired_category(*parts) -> bool:
+    """Jewelry, accessories, and second-hand / second-life gear are removed from the catalog."""
+    text = " ".join(str(p or "") for p in parts)
+    return bool(RETIRED_CAT_RE.search(text))
 
 # All valid wedding-dress subcategory IDs (for embedding category mapping)
 WEDDING_DRESS_SUBCATEGORY_IDS = [
