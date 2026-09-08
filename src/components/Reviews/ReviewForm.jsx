@@ -22,6 +22,13 @@ const TITLE_TAGS = [
   'Comfortable Fit', 'Loved It', 'Needs Improvement', 'Not as Expected',
 ];
 
+const VOICE_AGENTS = [
+  { id: 'en_female', label: 'English · Female' },
+  { id: 'en_male', label: 'English · Male' },
+  { id: 'hi_female', label: 'Urdu/Hindi · Female' },
+  { id: 'hi_male', label: 'Urdu/Hindi · Male' },
+];
+
 export default function ReviewForm({
   productTitle, productDescription,
   buyerId, productId,
@@ -30,6 +37,7 @@ export default function ReviewForm({
   const [rating, setRating] = useState(0);
   const [selectedTags, setSelectedTags] = useState([]);
   const [comment, setComment] = useState('');
+  const [voiceAgent, setVoiceAgent] = useState('en_female');
 
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -90,6 +98,7 @@ export default function ReviewForm({
       rating,
       title: selectedTags.join(', '),
       comment: comment.trim(),
+      voice_agent: voiceAgent,
       ai_suggested_rating: aiSuggestion?.suggested_rating ?? null,
       ai_used: aiUsed,
       ai_generated: aiGenerated,
@@ -219,6 +228,32 @@ export default function ReviewForm({
             </span>
           )}
         </div>
+      </div>
+
+      {/* Voice agent for review TTS */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-600 mb-2">
+          REVIEW VOICE (spoken aloud for shoppers)
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {VOICE_AGENTS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => setVoiceAgent(a.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                voiceAgent === a.id
+                  ? 'bg-[#a37b3d] text-white border-[#a37b3d]'
+                  : 'bg-white text-gray-700 border-gray-200 hover:border-[#ECD4A8]'
+              }`}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-400 mt-1.5">
+          A tone-aware voice clip is generated when you submit (needs tone-voice on port 8000).
+        </p>
       </div>
 
       <div className="flex gap-2 pt-2">

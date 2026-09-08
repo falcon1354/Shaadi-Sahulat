@@ -23,6 +23,7 @@
 const express = require("express");
 const router = express.Router();
 const Review = require("../models/Review");
+const { publicUrl } = require("../lib/storage");
 
 const { suggestRating, generateReviews, isGroqConfigured } = require("../lib/aiReviewClient");
 
@@ -34,8 +35,16 @@ function isValidHalfStepRating(r) {
   return Math.abs(n * 2 - Math.round(n * 2)) < 1e-9;
 }
 
+function withVoiceUrl(review) {
+  if (!review) return review;
+  return {
+    ...review,
+    voice_url: publicUrl(review.voice_url) || review.voice_url || "",
+  };
+}
+
 function withVoiceUrlMany(reviews) {
-  return reviews || [];
+  return (reviews || []).map(withVoiceUrl);
 }
 
 // ── AI status endpoint — tells the frontend which AI provider is active

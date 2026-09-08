@@ -60,6 +60,7 @@ export async function buyerConfirm({
 export async function submitReview({
   buyerId, orderId, rating, comment, recommend,
   title, ai_suggested_rating, ai_used, ai_generated, ai_provider,
+  voice_agent,
 }) {
   const res = await fetch(`${BASE}/${orderId}/review`, {
     method: "POST",
@@ -67,6 +68,7 @@ export async function submitReview({
     body: JSON.stringify({
       rating, comment, recommend,
       title, ai_suggested_rating, ai_used, ai_generated, ai_provider,
+      voice_agent,
     }),
   });
   return res.json();

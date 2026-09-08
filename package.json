@@ -8,6 +8,7 @@
     "dev:backend": "node server.js",
     "dev:ml": "ml-service\\.venv\\Scripts\\python.exe ml-service\\app.py",
     "dev:visual": "cmd /c \"set PYTHONIOENCODING=utf-8&& visual-ml-service\\.venv\\Scripts\\python.exe visual-ml-service\\app.py\"",
+    "dev:tone": "cmd /c \"cd tone-voice && (if exist .venv\\Scripts\\uvicorn.exe (.venv\\Scripts\\uvicorn.exe app:app --host 0.0.0.0 --port 8000) else (uvicorn app:app --host 0.0.0.0 --port 8000))\"",
     "dev:all": "concurrently -k -n frontend,backend,ml,visual -c cyan,magenta,green,yellow \"vite\" \"node server.js\" \"ml-service\\.venv\\Scripts\\python.exe ml-service\\app.py\" \"cmd /c set PYTHONIOENCODING=utf-8&& visual-ml-service\\.venv\\Scripts\\python.exe visual-ml-service\\app.py\"",
     "start": "node server.js",
     "build": "vite build",
