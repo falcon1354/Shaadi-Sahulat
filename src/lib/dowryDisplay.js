@@ -45,9 +45,50 @@ export function filterDisplayBudgetEntries(catBudgets, originalIds) {
   );
 }
 
+/** Active admin category ids (is_active !== false). */
+export function activeCategoryIdSet(categories = []) {
+  return new Set(
+    (categories || [])
+      .filter((c) => c && c.is_active !== false)
+      .map((c) => c.category_id)
+  );
+}
+
+/**
+ * Split allocated budget entries into still-active vs soft-deleted admin categories.
+ * Deleted cats stay visible in Fine-Tune / dashboard as a separate group.
+ */
+export function splitAllocatedAndDeleted(catBudgets, originalIds, categories = []) {
+  const activeIds = activeCategoryIdSet(categories);
+  const allocated = filterDisplayBudgetEntries(catBudgets, originalIds);
+  const live = [];
+  const deleted = [];
+  for (const entry of allocated) {
+    const [key] = entry;
+    if (activeIds.size === 0 || activeIds.has(key)) live.push(entry);
+    else deleted.push(entry);
+  }
+  return { live, deleted };
+}
+
+/** New admin categories not yet in original estimation (candidates for Reallocate → To). */
+export function newUnallocatedCategories(categories = [], originalIds = [], catBudgets = {}) {
+  const originals = new Set(originalIds || []);
+  return (categories || []).filter((c) => {
+    if (!c || c.is_active === false || isRetiredCategory(c.category_id)) return false;
+    if (originals.has(c.category_id)) return false;
+    const info = catBudgets[c.category_id];
+    const funded = (info?.estimated || 0) > 0 || (info?.spent || 0) > 0;
+    return !funded;
+  });
+}
+
 export default {
   RETIRED_CATEGORY_IDS,
   isRetiredCategory,
   isAllocatedBudgetCategory,
   filterDisplayBudgetEntries,
+  activeCategoryIdSet,
+  splitAllocatedAndDeleted,
+  newUnallocatedCategories,
 };

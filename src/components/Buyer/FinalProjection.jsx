@@ -7,7 +7,8 @@ import { useCategories } from '../../hooks/useCategories';
 import { getFullBuyerData } from '../../api/buyerApi';
 import orderApi from '../../api/orderApi';
 import bnplApi from '../../api/bnplApi';
-import { filterDisplayBudgetEntries, isRetiredCategory } from '../../lib/dowryDisplay';
+import { filterDisplayBudgetEntries, isRetiredCategory, splitAllocatedAndDeleted } from '../../lib/dowryDisplay';
+import CategoryThumb from '../Dowry/CategoryThumb';
 import {
   Sparkles, DollarSign, Wallet, ArrowUpRight, Info, HelpCircle,
   CheckCircle2, ChevronRight, BarChart3, PieChart as PieIcon, AlertCircle, ShoppingBag,
@@ -34,7 +35,7 @@ const CHART_COLORS = ['#a37b3d', '#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f
 
 export default function FinalProjection({ buyer }) {
   const buyerId = buyer?.buyer_id;
-  const { categories } = useCategories();
+  const { categories } = useCategories({ includeInactive: true });
   const catLabel = (key) =>
     categories.find(c => c.category_id === key)?.label || key.replace(/_/g, ' ');
   
@@ -232,19 +233,24 @@ export default function FinalProjection({ buyer }) {
   const mergedBudgets = { ...catBudgets };
   categories.forEach(c => {
     if (isRetiredCategory(c.category_id)) return;
+    if (c.is_active === false) return;
     if (!(c.category_id in mergedBudgets)) {
       mergedBudgets[c.category_id] = { estimated: 0, spent: 0, remaining: 0, active: true };
     }
   });
 
-  const allocatedCats = filterDisplayBudgetEntries(mergedBudgets, originalIds)
-    .filter(([key]) => dbCatIds.length === 0 || dbCatIds.includes(key));
+  const allocatedCats = filterDisplayBudgetEntries(mergedBudgets, originalIds);
+  const { live: liveAllocated, deleted: deletedAllocated } = splitAllocatedAndDeleted(
+    mergedBudgets,
+    originalIds,
+    categories
+  );
 
-  const activeCats = allocatedCats;
+  const activeCats = liveAllocated;
 
-  const totalEst    = activeCats.reduce((s, [, v]) => s + (v.estimated || 0), 0);
-  const totalSpent  = activeCats.reduce((s, [, v]) => s + (v.spent || 0), 0);
-  const totalRemain = activeCats.reduce((s, [, v]) => s + (v.remaining ?? (v.estimated - (v.spent || 0))), 0);
+  const totalEst    = [...liveAllocated, ...deletedAllocated].reduce((s, [, v]) => s + (v.estimated || 0), 0);
+  const totalSpent  = [...liveAllocated, ...deletedAllocated].reduce((s, [, v]) => s + (v.spent || 0), 0);
+  const totalRemain = [...liveAllocated, ...deletedAllocated].reduce((s, [, v]) => s + (v.remaining ?? (v.estimated - (v.spent || 0))), 0);
   const spentPct    = totalEst > 0 ? Math.round((totalSpent / totalEst) * 100) : 0;
 
   // Bar-chart data — keep ALL active categories so the comparison grid
@@ -274,6 +280,7 @@ export default function FinalProjection({ buyer }) {
       estimated: info.estimated || 0,
       actual:    info.spent     || 0,
       remaining: info.remaining ?? (info.estimated - (info.spent || 0)),
+      deleted:   deletedAllocated.some(([k]) => k === cat),
     }));
 
   return (
@@ -494,14 +501,16 @@ export default function FinalProjection({ buyer }) {
             {categoryComparison.map((item, idx) => {
               const pct    = item.estimated > 0 ? Math.min(100, Math.round((item.actual / item.estimated) * 100)) : 0;
               const isOver = item.actual > item.estimated;
-              const icon   = catIcon(item.cat);
               return (
-                <div key={idx} className="p-5 bg-[#FCFBFB] border border-[#FBEFF1] rounded-2xl hover:bg-[#FFF5F8]/50 transition-all duration-200">
+                <div key={idx} className={`p-5 border rounded-2xl hover:bg-[#FFF5F8]/50 transition-all duration-200 ${item.deleted ? 'bg-rose-50/50 border-rose-100' : 'bg-[#FCFBFB] border-[#FBEFF1]'}`}>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                     <div className="flex items-center gap-2.5">
-                      <span className="text-xl p-2 bg-white rounded-xl shadow-sm border border-[#FBEFF1]">{icon}</span>
+                      <CategoryThumb categoryId={item.cat} categories={categories} size={40} />
                       <div>
-                        <h4 className="text-sm font-bold text-gray-900 capitalize">{item.category}</h4>
+                        <h4 className="text-sm font-bold text-gray-900 capitalize">
+                          {item.category}
+                          {item.deleted && <span className="ml-2 text-[9px] uppercase text-rose-600 font-bold">Removed</span>}
+                        </h4>
                         <span className="text-[10px] text-gray-400 font-medium">Tracking category code: {item.cat}</span>
                       </div>
                     </div>

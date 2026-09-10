@@ -36,4 +36,18 @@ export async function getAiStatus() {
   }
 }
 
-export default { suggestRating, generateReviews, getAiStatus };
+/** Preview review TTS via tone-voice (4 agents). Returns audio_data_url. */
+export async function previewReviewVoice({
+  text, rating, agent, buyer_id, product_id, order_id, persist = false,
+}) {
+  const res = await fetch(`${BASE.replace('/ai', '')}/preview-voice`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text, rating, agent, buyer_id, product_id, order_id, persist,
+    }),
+  });
+  return res.json();
+}
+
+export default { suggestRating, generateReviews, getAiStatus, previewReviewVoice };

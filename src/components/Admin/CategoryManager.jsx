@@ -138,6 +138,8 @@ export default function CategoryManager() {
 
   // Forms
   const [newCat,   setNewCat]   = useState({ category_id: '', label: '', icon: '📦', price_min: '', price_max: '', storefront: 'both' });
+  const [placeholderFile, setPlaceholderFile] = useState(null);
+  const [placeholderPreview, setPlaceholderPreview] = useState('');
   const [newSub,   setNewSub]   = useState({ id: '', label: '' });
   const [newField, setNewField] = useState({ field_id: '', label: '', type: 'text', options: '', required: false });
   const [subPriceEdit, setSubPriceEdit] = useState({ price_min: '', price_max: '' });
@@ -183,18 +185,36 @@ export default function CategoryManager() {
 
   const addCat = async () => {
     if (!newCat.category_id || !newCat.label) { showCatMsg('ID and Label are required.'); return; }
-    const r = await adminApi.addCategory({
+    const payload = {
       ...newCat,
       price_min: Number(newCat.price_min) || 1000,
       price_max: Number(newCat.price_max) || 500000,
       storefront: newCat.storefront || 'both',
-    });
+    };
+    const r = await adminApi.addCategory(payload, placeholderFile);
     if (r.success) {
-      showCatMsg('Category added!');
+      showCatMsg(placeholderFile ? 'Category added with Cloudinary placeholder!' : 'Category added!');
       setNewCat({ category_id: '', label: '', icon: '📦', price_min: '', price_max: '', storefront: 'both' });
+      setPlaceholderFile(null);
+      setPlaceholderPreview('');
       await reload();
     } else {
       showCatMsg(r.error);
+    }
+  };
+
+  const removeCat = async (category_id) => {
+    if (!window.confirm(`Remove category "${category_id}"? Existing dowry plans will keep it under Removed Categories.`)) return;
+    const r = await adminApi.deleteCategory(category_id);
+    if (r.success) {
+      showCatMsg('Category deactivated (soft-deleted in DB).');
+      if (selected?.category_id === category_id) {
+        setSelected(null);
+        setSelectedSub(null);
+      }
+      await reload();
+    } else {
+      showCatMsg(r.error || 'Delete failed');
     }
   };
 
@@ -290,32 +310,61 @@ export default function CategoryManager() {
         <div className="space-y-2">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Categories</p>
           {cats.map(cat => (
-            <button
+            <div
               key={cat.category_id}
-              onClick={() => { setSelected(cat); setSelectedSub(null); }}
               className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
                 selected?.category_id === cat.category_id
                   ? 'border-orange-400 bg-orange-50'
+                  : cat.is_active === false
+                  ? 'border-rose-100 bg-rose-50/40 opacity-80'
                   : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <span>{cat.icon}</span>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{cat.label}</p>
-                  <p className="text-xs text-gray-400">
-                    {cat.subcategories?.length || 0} subcategories
-                    <span className={`ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                      cat.storefront === 'thrift' ? 'bg-emerald-50 text-emerald-700' :
-                      cat.storefront === 'new' ? 'bg-blue-50 text-blue-700' :
-                      'bg-purple-50 text-purple-700'
-                    }`}>
-                      {cat.storefront === 'thrift' ? '♻️ Thrift' : cat.storefront === 'new' ? '🛍️ New' : '🔄 Both'}
-                    </span>
-                  </p>
+              <button
+                type="button"
+                onClick={() => { setSelected(cat); setSelectedSub(null); }}
+                className="w-full text-left"
+              >
+                <div className="flex items-center gap-2">
+                  {(cat.placeholder_image || cat.placeholder_url) ? (
+                    <img
+                      src={cat.placeholder_url || cat.placeholder_image}
+                      alt=""
+                      className="w-9 h-9 rounded-lg object-cover border border-gray-100"
+                    />
+                  ) : (
+                    <span className="text-lg">{cat.icon}</span>
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {cat.label}
+                      {cat.is_active === false && (
+                        <span className="ml-2 text-[9px] uppercase tracking-wider text-rose-600 font-bold">Removed</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {cat.subcategories?.length || 0} subcategories
+                      <span className={`ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        cat.storefront === 'thrift' ? 'bg-emerald-50 text-emerald-700' :
+                        cat.storefront === 'new' ? 'bg-blue-50 text-blue-700' :
+                        'bg-purple-50 text-purple-700'
+                      }`}>
+                        {cat.storefront === 'thrift' ? '♻️ Thrift' : cat.storefront === 'new' ? '🛍️ New' : '🔄 Both'}
+                      </span>
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+              {cat.is_active !== false && (
+                <button
+                  type="button"
+                  onClick={() => removeCat(cat.category_id)}
+                  className="mt-2 text-[10px] font-bold text-rose-600 hover:underline"
+                >
+                  Soft-delete category
+                </button>
+              )}
+            </div>
           ))}
 
           {/* ── Add new category ─────────────────────────────── */}
@@ -333,6 +382,22 @@ export default function CategoryManager() {
               onChange={e => setNewCat(p => ({ ...p, icon: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
             />
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Placeholder image (Cloudinary → CategoryPlaceholders)</label>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  setPlaceholderFile(f);
+                  setPlaceholderPreview(f ? URL.createObjectURL(f) : '');
+                }}
+                className="mt-1 w-full text-xs"
+              />
+              {placeholderPreview && (
+                <img src={placeholderPreview} alt="preview" className="mt-2 w-16 h-16 rounded-lg object-cover border" />
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <input type="number" placeholder="Min Price" value={newCat.price_min}
                 onChange={e => setNewCat(p => ({ ...p, price_min: e.target.value }))}
@@ -357,7 +422,7 @@ export default function CategoryManager() {
               + Add Category
             </button>
             {catMsg && (
-              <p className={`text-xs mt-1 ${catMsg.includes('!') ? 'text-green-600' : 'text-red-500'}`}>{catMsg}</p>
+              <p className={`text-xs mt-1 ${catMsg.includes('!') || catMsg.includes('deactivated') ? 'text-green-600' : 'text-red-500'}`}>{catMsg}</p>
             )}
           </div>
         </div>

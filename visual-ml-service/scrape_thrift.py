@@ -334,12 +334,27 @@ def scrape_thrift() -> None:
             if already_exists(db, row["title"], row.get("source_url") or ""):
                 skipped += 1
                 continue
-            db[PRODUCTS_COLLECTION].insert_one(to_thrift_doc(row, src, seller))
+            doc = to_thrift_doc(row, src, seller)
+            db[PRODUCTS_COLLECTION].insert_one(doc)
+            if src.get("major") == "wedding_dress":
+                try:
+                    from dress_embedding import embed_dress_product
+                    emb_res = embed_dress_product(doc, db=db)
+                    if not emb_res.get("ok"):
+                        log(f"  ! embed {doc['product_id']}: {emb_res.get('reason')}")
+                except Exception as emb_exc:
+                    log(f"  ! embed error: {emb_exc}")
             inserted += 1
             by_cat[src["major"]] = by_cat.get(src["major"], 0) + 1
 
     log("\nRebuilding new-catalog price stats (thrift excluded)...")
     rebuild_price_stats(db)
+    try:
+        from embedding_index import invalidate_cache
+        invalidate_cache()
+        log("Visual search cache invalidated.")
+    except Exception:
+        pass
     total = db[PRODUCTS_COLLECTION].count_documents({"marketplace_type": "thrift"})
     client.close()
 

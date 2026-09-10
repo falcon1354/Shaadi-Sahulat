@@ -815,6 +815,14 @@ def scrape_all() -> None:
                 continue
             doc = to_product_doc(row, src, seller)
             db[PRODUCTS_COLLECTION].insert_one(doc)
+            if src.get("major") == "wedding_dress":
+                try:
+                    from dress_embedding import embed_dress_product
+                    emb_res = embed_dress_product(doc, db=db)
+                    if not emb_res.get("ok"):
+                        log(f"  ! embed {doc['product_id']}: {emb_res.get('reason')}")
+                except Exception as emb_exc:
+                    log(f"  ! embed error: {emb_exc}")
             inserted += 1
             by_cat[src["major"]] = by_cat.get(src["major"], 0) + 1
             key = f"{src['major']}/{src['sub']}"
@@ -850,6 +858,12 @@ def scrape_all() -> None:
 
     log("\nRebuilding market price stats…")
     stats = rebuild_price_stats(db)
+    try:
+        from embedding_index import invalidate_cache
+        invalidate_cache()
+        log("Visual search cache invalidated.")
+    except Exception:
+        pass
     client.close()
 
     log(f"\nInserted {inserted} new products, skipped {skipped} duplicates")

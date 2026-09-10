@@ -80,6 +80,13 @@ export async function getWallet(adminId) {
   return res.json();
 }
 
+export async function getWalletOrderLedger(adminId, orderId) {
+  const res = await fetch(`${BASE}/wallet/orders/${encodeURIComponent(orderId)}`, {
+    headers: _headers(adminId),
+  });
+  return res.json();
+}
+
 export async function getSellerPayouts(adminId, sellerId) {
   const res = await fetch(`${BASE}/sellers/${sellerId}/payouts`, {
     headers: _headers(adminId),
@@ -97,6 +104,6 @@ export async function listBnplApplications(adminId, status) {
 
 export default {
   listOrders, listPendingReleaseOrders, getOrderDetail, listDisputes,
-  releasePayment, getWallet, getSellerPayouts, listBnplApplications,
+  releasePayment, getWallet, getWalletOrderLedger, getSellerPayouts, listBnplApplications,
   getSalesTimeline, getBreakdown, removeSeller,
 };

@@ -18,9 +18,14 @@ const {
   removeCustomField,
   updateSubcategoryPrices,
   updateCategoryIcon,
+  updateCategoryPlaceholder,
+  deleteCategory,
   editCategory,
 } = require("../controllers/adminController");
-const { makeCategoryIconUploadMiddleware } = require("../lib/storage");
+const {
+  makeCategoryIconUploadMiddleware,
+  makeCategoryPlaceholderUploadMiddleware,
+} = require("../lib/storage");
 
 // BNPL + Order Processing admin extensions
 const adminExtRoutes = require("./adminExt");
@@ -44,8 +49,16 @@ router.get("/products", getAllProducts);
 
 // Categories
 router.get( "/categories",                                           getCategories);
-router.post("/categories",                                           addCategory);
+router.post("/categories", (req, res, next) => {
+  const ct = req.headers["content-type"] || "";
+  if (ct.includes("multipart/form-data")) {
+    return makeCategoryPlaceholderUploadMiddleware()(req, res, next);
+  }
+  return next();
+}, addCategory);
 router.post("/categories/:category_id/icon", makeCategoryIconUploadMiddleware(), updateCategoryIcon);
+router.post("/categories/:category_id/placeholder", makeCategoryPlaceholderUploadMiddleware(), updateCategoryPlaceholder);
+router.delete("/categories/:category_id",                            deleteCategory);
 router.put( "/categories/:category_id",                              editCategory);
 router.post("/categories/:category_id/subcategory",                  addSubcategory);
 router.patch("/categories/:category_id/prices",                      updateCategoryPrices);
