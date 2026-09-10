@@ -526,7 +526,15 @@ function ProductDetailModal({ product, onClose, onAddToCart, isWishlisted, onTog
 
 // ── Main MarketplacePage ──────────────────────────────────────────────────
 
-export default function MarketplacePage({ highlightProductId, onHighlightCleared, buyer, isAdminView = false, onViewProduct }) {
+export default function MarketplacePage({
+  highlightProductId,
+  onHighlightCleared,
+  buyer,
+  isAdminView = false,
+  onViewProduct,
+  initialCategory = '',
+  initialSubcategory = '',
+}) {
   const cartCtx = useCart();
   const addItem = cartCtx?.addItem || (() => {});
   const { categories, getCategoryIcon, getSubcategoriesFor } = useCategories();
@@ -548,13 +556,20 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
     ...categories.map(c => ({ id: c.category_id, label: c.label, icon: renderCategoryIcon(c.category_id) })),
   ];
 
-  const [activeCat,   setActiveCat]   = useState('');
-  const [activeSub,   setActiveSub]   = useState('');  // subcategory filter
+  const [activeCat,   setActiveCat]   = useState(initialCategory || '');
+  const [activeSub,   setActiveSub]   = useState(initialSubcategory || '');  // subcategory filter
   const [products,    setProducts]    = useState([]);
   const [total,       setTotal]       = useState(0);
   const [page,        setPage]        = useState(1);
   const [loading,     setLoading]     = useState(false);
   const [viewProduct, setViewProduct] = useState(null);
+
+  // Apply category when arriving from product-page breadcrumb navigation
+  useEffect(() => {
+    setActiveCat(initialCategory || '');
+    setActiveSub(initialSubcategory || '');
+    setPage(1);
+  }, [initialCategory, initialSubcategory]);
 
   // Filters
   const [sortBy,     setSortBy]     = useState('newest');
@@ -760,10 +775,17 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
 
   // Lookup for the currently-active category object (for subcategory pill display)
   const activeCatObj = activeCat ? categories.find(c => c.category_id === activeCat) : null;
+  const activeCatLabel = activeCat
+    ? (MAJOR_CATS.find(c => c.id === activeCat)?.label || activeCat.replace(/_/g, ' '))
+    : null;
+  const activeSubList = activeCat ? (getSubcategoriesFor?.(activeCat) || []) : [];
   const activeSubLabel = activeSub && activeCatObj
-    ? (getSubcategoriesFor(activeCat).find(s => (s.id || s.subcategory_id) === activeSub)?.label
+    ? (activeSubList.find(s => (s.id || s.subcategory_id) === activeSub)?.label
         || activeSub.replace(/_/g, ' '))
     : null;
+
+  const goMarketplaceRoot = () => { setActiveCat(''); setActiveSub(''); setPage(1); };
+  const goCategoryOnly = () => { setActiveSub(''); setPage(1); };
 
   return (
     <div className="animate-fade-in">
@@ -809,74 +831,101 @@ export default function MarketplacePage({ highlightProductId, onHighlightCleared
         <>
       {/* Search bar has been moved to the global Navbar (GlobalSearch component) */}
 
-      {/* Category tabs — with hover-dropdown for subcategories */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
+      {/* Clickable breadcrumb — Marketplace › category › subcategory */}
+      <nav
+        aria-label="Category breadcrumb"
+        className="mb-3 flex flex-wrap items-center gap-1.5 text-sm text-gray-500"
+      >
+        <button
+          type="button"
+          onClick={goMarketplaceRoot}
+          className="inline-flex items-center gap-1 font-semibold text-[#a37b3d] hover:underline"
+        >
+          <span aria-hidden>🛍️</span> Marketplace
+        </button>
+        {activeCatLabel && (
+          <>
+            <span className="text-gray-300" aria-hidden>›</span>
+            <button
+              type="button"
+              onClick={goCategoryOnly}
+              className={`capitalize hover:underline ${
+                activeSub ? 'text-[#a37b3d] font-semibold' : 'text-gray-800 font-bold'
+              }`}
+            >
+              {activeCatLabel}
+            </button>
+          </>
+        )}
+        {activeSubLabel && (
+          <>
+            <span className="text-gray-300" aria-hidden>›</span>
+            <span className="capitalize text-gray-800 font-bold">{activeSubLabel}</span>
+          </>
+        )}
+      </nav>
+
+      {/* Category tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
         {MAJOR_CATS.map(cat => {
-          const subs = cat.id ? (getSubcategoriesFor ? getSubcategoriesFor(cat.id) : []) : [];
           const isActive = activeCat === cat.id;
           return (
-            <div key={cat.id || 'all'} className="relative group flex-shrink-0">
-              <button
-                onClick={() => handleCatChange(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all w-full ${
-                  isActive
-                    ? 'bg-[#a37b3d] text-white shadow-md'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-[#ECD4A8]'
-                }`}
-              >
-                <span className="flex items-center justify-center w-5 h-5">{cat.icon}</span>
-                <span>{cat.label}</span>
-                {subs.length > 0 && (
-                  <span className={`text-[10px] ml-0.5 transition-transform group-hover:rotate-180 ${isActive ? 'text-white/70' : 'text-gray-400'}`}>▾</span>
-                )}
-              </button>
-              {/* Hover flyout — subcategories */}
-              {subs.length > 0 && (
-                <div className="absolute top-full left-0 mt-1 min-w-[12rem] bg-white rounded-xl shadow-2xl border border-gray-100 p-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-30 max-h-80 overflow-y-auto">
-                  <button
-                    onClick={() => handleCatChange(cat.id)}
-                    className={`block w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                      isActive && !activeSub
-                        ? 'bg-[#FFF5F8] text-[#a37b3d] font-bold'
-                        : 'text-gray-600 hover:bg-[#FFF5F8] hover:text-[#a37b3d]'
-                    }`}
-                  >
-                    All {cat.label}
-                  </button>
-                  {subs.map(sub => {
-                    const subId = sub.id || sub.subcategory_id || sub.value;
-                    const subLabel = sub.label || sub.name || (typeof subId === 'string' ? subId.replace(/_/g, ' ') : '—');
-                    if (!subId) return null;
-                    const isSubActive = isActive && activeSub === subId;
-                    return (
-                      <button
-                        key={subId}
-                        onClick={() => handleSubcategorySelect(cat.id, subId)}
-                        className={`block w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors capitalize ${
-                          isSubActive
-                            ? 'bg-[#FFF5F8] text-[#a37b3d] font-bold'
-                            : 'text-gray-600 hover:bg-[#FFF5F8] hover:text-[#a37b3d]'
-                        }`}
-                      >
-                        {subLabel.replace(/_/g, ' ')}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <button
+              key={cat.id || 'all'}
+              type="button"
+              onClick={() => handleCatChange(cat.id)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-[#a37b3d] text-white shadow-md'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-[#ECD4A8]'
+              }`}
+            >
+              <span className="flex items-center justify-center w-5 h-5">{cat.icon}</span>
+              <span>{cat.label}</span>
+            </button>
           );
         })}
       </div>
 
-      {/* Active subcategory pill — quick way to clear the sub filter */}
-      {activeSub && (
-        <div className="mb-4 flex items-center gap-2">
-          <span className="text-xs text-gray-500">Filtered by:</span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#FFF5F8] border border-[#FBEFF1] rounded-full text-xs font-semibold text-[#a37b3d] capitalize">
-            {(MAJOR_CATS.find(c => c.id === activeCat)?.label || '')} › {activeSubLabel}
-            <button onClick={clearSubcategory} className="text-[#a37b3d] hover:text-gray-700 ml-1" aria-label="Clear subcategory filter">×</button>
-          </span>
+      {/* Subcategories — always visible on screen when a category is selected */}
+      {activeCat && activeSubList.length > 0 && (
+        <div className="mb-5 rounded-2xl border border-[#F3E4D0] bg-[#FFF8F3] p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">
+            Subcategories in {activeCatLabel}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={goCategoryOnly}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                !activeSub
+                  ? 'bg-[#a37b3d] text-white border-[#a37b3d] shadow-sm'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#ECD4A8]'
+              }`}
+            >
+              All {activeCatLabel}
+            </button>
+            {activeSubList.map((sub) => {
+              const subId = sub.id || sub.subcategory_id || sub.value;
+              const subLabel = sub.label || sub.name || (typeof subId === 'string' ? subId.replace(/_/g, ' ') : '—');
+              if (!subId) return null;
+              const isSubActive = activeSub === subId;
+              return (
+                <button
+                  key={subId}
+                  type="button"
+                  onClick={() => handleSubcategorySelect(activeCat, subId)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border capitalize transition-all ${
+                    isSubActive
+                      ? 'bg-[#a37b3d] text-white border-[#a37b3d] shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-[#ECD4A8]'
+                  }`}
+                >
+                  {String(subLabel).replace(/_/g, ' ')}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

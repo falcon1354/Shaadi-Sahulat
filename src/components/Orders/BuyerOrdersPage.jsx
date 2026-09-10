@@ -78,7 +78,14 @@ export default function BuyerOrdersPage({ buyer }) {
   const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Which orders already have a BNPL application submitted?
-  const bnplOrderIds = useMemo(() => new Set(bnplApps.map(a => a.order_id)), [bnplApps]);
+  const bnplByOrderId = useMemo(() => {
+    const map = new Map();
+    for (const a of bnplApps) {
+      if (a?.order_id) map.set(a.order_id, a);
+    }
+    return map;
+  }, [bnplApps]);
+  const bnplOrderIds = useMemo(() => new Set(bnplByOrderId.keys()), [bnplByOrderId]);
 
   if (loading) return <div className="p-8 text-center text-gray-500">Loading orders...</div>;
 
@@ -121,6 +128,12 @@ export default function BuyerOrdersPage({ buyer }) {
           <div className="grid gap-4">
             {paged.map(o => {
               const hasBnpl = bnplOrderIds.has(o.order_id);
+              const bnplApp = bnplByOrderId.get(o.order_id);
+              const bnplStatus = bnplApp?.status || "";
+              const bnplStillPendingBank =
+                !bnplStatus ||
+                bnplStatus === "PENDING_BANK_VERIFICATION" ||
+                bnplStatus === "PENDING_BNPL_APPROVAL";
               const productLabel = (o.items?.[0]?.title || 'Order') +
                 (o.items && o.items.length > 1 ? ` +${o.items.length - 1}` : '');
               return (
@@ -159,9 +172,19 @@ export default function BuyerOrdersPage({ buyer }) {
                       Complete BNPL Application →
                     </button>
                   )}
-                  {o.status === "PENDING_BNPL_APPROVAL" && (hasBnpl || o.bnpl_application_id) && (
+                  {o.status === "PENDING_BNPL_APPROVAL" && (hasBnpl || o.bnpl_application_id) && bnplStillPendingBank && (
                     <p className="mt-3 text-xs text-green-700 font-semibold">
                       ✓ BNPL application submitted — awaiting bank decision.
+                    </p>
+                  )}
+                  {o.payment_method === "BNPL" && bnplStatus === "APPROVED" && (
+                    <p className="mt-3 text-xs text-emerald-700 font-semibold">
+                      ✓ BNPL approved — accept your offer in My BNPL.
+                    </p>
+                  )}
+                  {o.payment_method === "BNPL" && bnplStatus === "REJECTED" && (
+                    <p className="mt-3 text-xs text-red-600 font-semibold">
+                      BNPL application was rejected by the bank.
                     </p>
                   )}
                 </div>

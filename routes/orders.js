@@ -60,6 +60,7 @@ const { pushNotification, notifyBuyerAndAdmin, notifySellerAndAdmin, notifyAll }
 const { publicUrl, makeDisputeUploadMiddleware } = require("../lib/storage");
 const { attachReviewVoices } = require("../lib/reviewVoice");
 const { normalizeAgent } = require("../lib/toneVoiceClient");
+const { deductStockForOrderItems, restoreStockForOrderItems } = require("../lib/inventory");
 
 const disputeUpload = makeDisputeUploadMiddleware();
 
@@ -139,41 +140,54 @@ router.post("/", requireBuyer, async (req, res) => {
       .digest("hex")
       .slice(0, 24);
 
-    const order = await Order.create({
-      order_id: orderId,
-      buyer_id: req.user.id,
-      buyer_name: buyer.name,
-      buyer_email: buyer.email,
-      buyer_phone: buyer.phone,
-      items: orderItems,
-      items_count: orderItems.reduce((n, i) => n + i.qty, 0),
-      subtotal,
-      shipping_total: buyer_shipping_cost, // buyer-chosen shipping cost, locked at checkout
-      total_amount: totalWithFeeAndShipping, // subtotal + shipping + bank fee
-      bank_processing_fee,
-      delivery_method,
-      seller_view_token,
-      shipping_address: {
-        line1: shipping_address.line1 || "",
-        city: shipping_address.city || "",
-        province: shipping_address.province || "",
-        house_number: shipping_address.house_number || "",
-        phone: shipping_address.phone || buyer.phone || "",
-        notes: shipping_address.notes || "",
-      },
-      payment_method,
-      payment_status: payment_method === "BNPL" ? "PENDING" : "UNPAID",
-      status: initialStatus,
-      bnpl_application_id: bnpl_application_id || "",
-      primary_seller_id: orderItems[0].seller_id,
-      timeline: [{
+    // Deduct inventory at sale time (before order row is written)
+    try {
+      await deductStockForOrderItems(orderItems);
+    } catch (stockErr) {
+      return res.status(409).json({ success: false, error: stockErr.message });
+    }
+
+    let order;
+    try {
+      order = await Order.create({
+        order_id: orderId,
+        buyer_id: req.user.id,
+        buyer_name: buyer.name,
+        buyer_email: buyer.email,
+        buyer_phone: buyer.phone,
+        items: orderItems,
+        items_count: orderItems.reduce((n, i) => n + i.qty, 0),
+        subtotal,
+        shipping_total: buyer_shipping_cost, // buyer-chosen shipping cost, locked at checkout
+        total_amount: totalWithFeeAndShipping, // subtotal + shipping + bank fee
+        bank_processing_fee,
+        delivery_method,
+        seller_view_token,
+        shipping_address: {
+          line1: shipping_address.line1 || "",
+          city: shipping_address.city || "",
+          province: shipping_address.province || "",
+          house_number: shipping_address.house_number || "",
+          phone: shipping_address.phone || buyer.phone || "",
+          notes: shipping_address.notes || "",
+        },
+        payment_method,
+        payment_status: payment_method === "BNPL" ? "PENDING" : "UNPAID",
         status: initialStatus,
-        at: new Date(),
-        by: "buyer",
-        by_id: req.user.id,
-        note: `Order placed by buyer (${payment_method}). ${orderItems.length} item line(s), subtotal PKR ${subtotal.toLocaleString()}, shipping PKR ${buyer_shipping_cost.toLocaleString()}.`,
-      }],
-    });
+        bnpl_application_id: bnpl_application_id || "",
+        primary_seller_id: orderItems[0].seller_id,
+        timeline: [{
+          status: initialStatus,
+          at: new Date(),
+          by: "buyer",
+          by_id: req.user.id,
+          note: `Order placed by buyer (${payment_method}). ${orderItems.length} item line(s), subtotal PKR ${subtotal.toLocaleString()}, shipping PKR ${buyer_shipping_cost.toLocaleString()}.`,
+        }],
+      });
+    } catch (createErr) {
+      await restoreStockForOrderItems(orderItems).catch(() => {});
+      throw createErr;
+    }
 
     // Split into packages by seller_id
     const bySeller = new Map();

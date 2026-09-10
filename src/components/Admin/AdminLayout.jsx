@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import NotificationBell from '../Common/NotificationBell';
+import NavBadge from '../Common/NavBadge';
+import { useNotifications, NAV_BADGE_TYPES } from '../../hooks/useNotifications';
 
 const ADMIN_VIEWS = [
   { id: 'dashboard',   label: 'Dashboard',        icon: '📊' },
@@ -18,6 +20,15 @@ export default function AdminLayout({ admin, onLogout }) {
   const location   = useLocation();
   const currentSeg = location.pathname.split('/')[2] || 'dashboard';
   const adminId    = admin?.admin_id || admin?._id;
+  const { navBadges, markTypesRead } = useNotifications(adminId, 'admin');
+
+  useEffect(() => {
+    const types = NAV_BADGE_TYPES.admin?.[currentSeg];
+    if (!types?.length) return;
+    if ((navBadges[currentSeg] || 0) <= 0) return;
+    markTypesRead(types);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSeg]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -54,7 +65,8 @@ export default function AdminLayout({ admin, onLogout }) {
               }`}
             >
               <span>{v.icon}</span>
-              {v.label}
+              <span className="flex-1 text-left">{v.label}</span>
+              <NavBadge count={navBadges[v.id]} />
             </button>
           ))}
         </nav>

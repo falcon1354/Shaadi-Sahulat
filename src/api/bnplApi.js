@@ -28,6 +28,17 @@ export async function getProfile(buyerId) {
   return res.json();
 }
 
+export async function previewCnicOcr(buyerId, cnicFrontFile) {
+  const fd = new FormData();
+  fd.append("cnic_front", cnicFrontFile);
+  const res = await fetch(`${BASE}/ocr-preview`, {
+    method: "POST",
+    headers: _headers(buyerId),
+    body: fd,
+  });
+  return res.json();
+}
+
 export async function submitApplication({
   buyerId,
   orderId,
@@ -89,7 +100,7 @@ export async function declineOffer(buyerId, applicationNo) {
 }
 
 export default {
-  checkEligibility, listBanks, getProfile,
+  checkEligibility, listBanks, getProfile, previewCnicOcr,
   submitApplication, listMyApplications, getApplication,
   acceptOffer, declineOffer,
 };

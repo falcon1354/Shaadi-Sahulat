@@ -23,13 +23,100 @@ const DELIVERY_OPTIONS = [
   { id: 'same_day', label: 'Same Day Delivery',  desc: 'Delivery today',     price: 500 },
 ];
 
+const PK_PROVINCES = [
+  "Punjab",
+  "Sindh",
+  "Khyber Pakhtunkhwa",
+  "Balochistan",
+  "Islamabad Capital Territory",
+  "Gilgit-Baltistan",
+  "Azad Jammu and Kashmir",
+];
+
+/** Normalize Nominatim state names to common Pakistani province labels. */
+function normalizeProvince(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  const lower = s.toLowerCase();
+  if (/punjab/.test(lower)) return "Punjab";
+  if (/sindh/.test(lower)) return "Sindh";
+  if (/khyber|kpk|nwfp|pakhtunkhwa/.test(lower)) return "Khyber Pakhtunkhwa";
+  if (/baloch/.test(lower)) return "Balochistan";
+  if (/islamabad|capital territory|ict/.test(lower)) return "Islamabad Capital Territory";
+  if (/gilgit/.test(lower)) return "Gilgit-Baltistan";
+  if (/azad|kashmir|ajk/.test(lower)) return "Azad Jammu and Kashmir";
+  const known = PK_PROVINCES.find((p) => p.toLowerCase() === lower);
+  return known || s;
+}
+
+/**
+ * Pull city + province (+ a clean street line) from a Nominatim result.
+ * Prefers structured `address` (needs addressdetails=1); falls back to display_name.
+ */
+function parseNominatimResult(result) {
+  const addr = result?.address || {};
+  const displayParts = String(result?.display_name || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  let city =
+    addr.city ||
+    addr.town ||
+    addr.municipality ||
+    addr.city_district ||
+    addr.county ||
+    addr.state_district ||
+    addr.village ||
+    addr.suburb ||
+    "";
+
+  let province = normalizeProvince(addr.state || addr.province || "");
+
+  // Fallback: scrape from display_name when address details are missing
+  if (!province) {
+    const fromName = displayParts.find((p) =>
+      /punjab|sindh|khyber|kpk|baloch|gilgit|islamabad|azad|kashmir/i.test(p)
+    );
+    province = normalizeProvince(fromName);
+  }
+  if (!city) {
+    // Prefer a part that is not province/country/road noise
+    const skip = /pakistan|punjab|sindh|khyber|kpk|baloch|gilgit|islamabad|azad|kashmir|division|tehsil/i;
+    const candidate =
+      displayParts.find((p) => /city|town|district/i.test(p) && !skip.test(p)) ||
+      displayParts.find((p, i) => i > 0 && i < displayParts.length - 1 && !skip.test(p));
+    city = (candidate || "").replace(/\s+City$/i, "").replace(/\s+District$/i, "");
+  }
+
+  city = String(city).replace(/\s+City$/i, "").replace(/\s+District$/i, "").trim();
+
+  // Street / area line: drop trailing city, province, country from display_name
+  const drop = new Set(
+    [city, province, "Pakistan", addr.country, addr.state, addr.province]
+      .filter(Boolean)
+      .map((x) => String(x).toLowerCase())
+  );
+  let line1 = displayParts
+    .filter((p) => !drop.has(p.toLowerCase()))
+    .filter((p) => !/^(pakistan)$/i.test(p))
+    .join(", ");
+  if (!line1) line1 = result?.display_name || "";
+
+  return {
+    line1,
+    city: city || "",
+    province: province || "",
+  };
+}
+
 export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const [address, setAddress] = useState({
     line1: buyer?.address || "",
     house_number: "",
-    city: buyer?.city || "Lahore",
-    province: "Punjab",
+    city: buyer?.city || "",
+    province: buyer?.province || "",
     phone: buyer?.phone || "",
     notes: "",
   });
@@ -38,15 +125,13 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
   const [error, setError] = useState("");
   const [placedOrder, setPlacedOrder] = useState(null);
 
-  // Address autocomplete state — Nominatim suggestions shown as a dropdown
-  // beneath the Address (line1) field. Typing in line1 triggers the debounced
-  // search; selecting a suggestion auto-fills city + province from the
-  // Nominatim address components.
+  // Address autocomplete — selecting a suggestion autofills city + province
   const [addressResults, setAddressResults] = useState([]);
   const [showAddressDropdown, setShowAddressDropdown] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const addressTimer = useRef(null);
   const addressLineRef = useRef(null);
+  const skipNextSearch = useRef(false);
 
   // Load saved addresses
   useEffect(() => {
@@ -64,43 +149,49 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
     addressTimer.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=pk`
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5&countrycodes=pk`,
+          { headers: { Accept: "application/json" } }
         );
         const data = await res.json();
-        setAddressResults(data);
-        setShowAddressDropdown(data.length > 0);
-      } catch { setAddressResults([]); }
+        setAddressResults(Array.isArray(data) ? data : []);
+        setShowAddressDropdown(Array.isArray(data) && data.length > 0);
+      } catch { setAddressResults([]); setShowAddressDropdown(false); }
     }, 400);
   }, []);
 
   useEffect(() => {
+    if (skipNextSearch.current) {
+      skipNextSearch.current = false;
+      return;
+    }
     searchAddress(address.line1);
     return () => clearTimeout(addressTimer.current);
   }, [address.line1, searchAddress]);
 
   const selectAddressResult = (result) => {
-    const parts = result.display_name.split(', ');
-    // Auto-fill city and province from the selected suggestion
-    const city = parts.find(p => /city|town|district/i.test(p)) || parts[parts.length - 3] || '';
-    const province = parts.find(p => /punjab|sindh|kpk|balochistan|gilgit/i.test(p)) || 'Punjab';
-    setAddress(prev => ({
+    const parsed = parseNominatimResult(result);
+    skipNextSearch.current = true;
+    setAddress((prev) => ({
       ...prev,
-      line1: result.display_name,
-      city: city.replace(/ City/i, '') || prev.city,
-      province: province || prev.province,
+      line1: parsed.line1 || result.display_name || prev.line1,
+      city: parsed.city || prev.city,
+      province: parsed.province || prev.province,
     }));
     setShowAddressDropdown(false);
     setAddressResults([]);
   };
 
   const selectSavedAddress = (sa) => {
-    setAddress({
-      ...address,
-      line1: sa.line1 || '',
-      house_number: sa.house_number || '',
-      city: sa.city || '',
-      province: sa.province || 'Punjab',
-    });
+    skipNextSearch.current = true;
+    setAddress((prev) => ({
+      ...prev,
+      line1: sa.line1 || "",
+      house_number: sa.house_number || "",
+      city: sa.city || "",
+      province: sa.province || "",
+    }));
+    setShowAddressDropdown(false);
+    setAddressResults([]);
   };
 
   const handlePhoneChange = (e) => {
@@ -118,8 +209,8 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
 
   const handlePlaceOrder = async () => {
     setError("");
-    if (!address.line1 || !address.city) {
-      setError("Please fill in address line1 and city.");
+    if (!address.line1 || !address.city || !address.province) {
+      setError("Please fill in address, city, and province (or pick a suggested address).");
       return;
     }
     if (!items.length) {
@@ -242,8 +333,15 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
           <div className="mb-3">
             <p className="text-xs text-gray-400 mb-1">Saved addresses:</p>
             {savedAddresses.map((sa, i) => (
-              <button key={i} onClick={() => selectSavedAddress(sa)}
-                className="text-xs text-left w-full px-3 py-2 border border-gray-200 rounded-lg mb-1 hover:bg-[#FFF5F8] hover:border-[#ECD4A8] transition-colors">
+              <button
+                key={i}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  selectSavedAddress(sa);
+                }}
+                className="text-xs text-left w-full px-3 py-2 border border-gray-200 rounded-lg mb-1 hover:bg-[#FFF5F8] hover:border-[#ECD4A8] transition-colors"
+              >
                 {sa.line1}, {sa.city}, {sa.province}
               </button>
             ))}
@@ -281,16 +379,28 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
           />
           {showAddressDropdown && addressResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 max-h-72 overflow-y-auto">
-              {addressResults.map((r, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => selectAddressResult(r)}
-                  className="w-full text-left px-4 py-3 text-base text-gray-800 hover:bg-[#FFF5F8] hover:text-[#a37b3d] border-b border-gray-100 last:border-0 transition-colors leading-snug"
-                >
-                  {r.display_name}
-                </button>
-              ))}
+              {addressResults.map((r, i) => {
+                const hint = parseNominatimResult(r);
+                return (
+                  <button
+                    key={`${r.place_id || i}-${r.osm_id || i}`}
+                    type="button"
+                    onMouseDown={(e) => {
+                      // Prevent input blur from closing the menu before click applies
+                      e.preventDefault();
+                      selectAddressResult(r);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-800 hover:bg-[#FFF5F8] hover:text-[#a37b3d] border-b border-gray-100 last:border-0 transition-colors leading-snug"
+                  >
+                    <span className="block font-medium">{r.display_name}</span>
+                    {(hint.city || hint.province) && (
+                      <span className="block text-[11px] text-gray-500 mt-0.5">
+                        Will fill: {[hint.city, hint.province].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

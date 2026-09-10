@@ -6,7 +6,7 @@
  * Endpoints:
  *   GET  /?user_id=&role=                list notifications (newest first)
  *   POST /:id/read                       mark one as read
- *   POST /read-all?user_id=&role=        mark all as read
+ *   POST /read-all?user_id=&role=&type=  mark all (optionally one type) as read
  */
 const express = require("express");
 const router = express.Router();
@@ -25,8 +25,20 @@ router.get("/", async (req, res) => {
       .sort({ created_at: -1 })
       .limit(100)
       .lean();
-    const unread = notifications.filter(n => !n.read).length;
-    return res.json({ success: true, count: notifications.length, unread, notifications });
+    const unread = notifications.filter((n) => !n.read).length;
+    const unread_by_type = {};
+    for (const n of notifications) {
+      if (n.read) continue;
+      const t = n.type || "general";
+      unread_by_type[t] = (unread_by_type[t] || 0) + 1;
+    }
+    return res.json({
+      success: true,
+      count: notifications.length,
+      unread,
+      unread_by_type,
+      notifications,
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -48,14 +60,23 @@ router.post("/:id/read", async (req, res) => {
 
 router.post("/read-all", async (req, res) => {
   try {
-    const { user_id, role } = req.query;
+    const { user_id, role, type, types } = req.query;
     if (!user_id || !role) {
       return res.status(400).json({ success: false, error: "user_id and role are required" });
     }
-    const result = await Notification.updateMany(
-      { recipient_id: user_id, recipient_role: role, read: false },
-      { $set: { read: true, read_at: new Date() } }
-    );
+    const filter = { recipient_id: user_id, recipient_role: role, read: false };
+    if (types) {
+      const list = String(types)
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+      if (list.length) filter.type = { $in: list };
+    } else if (type) {
+      filter.type = String(type);
+    }
+    const result = await Notification.updateMany(filter, {
+      $set: { read: true, read_at: new Date() },
+    });
     return res.json({ success: true, modified: result.modifiedCount || 0 });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
