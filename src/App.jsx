@@ -41,6 +41,8 @@ import DisputeChatPage      from './components/Disputes/DisputeChatPage';
 import SellerReviewsPage    from './components/Seller/SellerReviewsPage';
 import AdminReviewsPage     from './components/Admin/AdminReviewsPage';
 import NotificationBell     from './components/Common/NotificationBell';
+import NavBadge             from './components/Common/NavBadge';
+import { useNotifications, NAV_BADGE_TYPES } from './hooks/useNotifications';
 import GlobalSearch         from './components/Common/GlobalSearch';
 import { listBuyerOrders } from './api/orderApi';
 import { CartProvider, useCart } from './context/CartContext';
@@ -423,12 +425,23 @@ function BuyerLayout() {
   const location   = useLocation();
   const { totalItems, setBuyerId, items, addItem } = useCart();
   const [cartOpen, setCart] = useState(false);
+  const { navBadges, markTypesRead } = useNotifications(buyer?.buyer_id, 'buyer');
 
   useEffect(() => {
     setBuyerId(buyer?.buyer_id || null);
   }, [buyer?.buyer_id, setBuyerId]);
 
   const seg = location.pathname.split('/')[2] || 'dashboard';
+
+  // Clear sidebar badge when the buyer opens that section
+  useEffect(() => {
+    const types = NAV_BADGE_TYPES.buyer?.[seg];
+    if (!types?.length) return;
+    if ((navBadges[seg] || 0) <= 0) return;
+    markTypesRead(types);
+    // only when route section changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seg]);
 
   // Hide the Notification bell on the dashboard only (other pages keep it).
   const isDashboard = seg === 'dashboard';
@@ -475,6 +488,7 @@ function BuyerLayout() {
             >
               <span className={`text-lg transition-transform duration-300 ${seg === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
               <span>{v.label}</span>
+              <NavBadge count={navBadges[v.id]} />
             </button>
           ))}
         </nav>
@@ -577,8 +591,17 @@ function SellerLayout() {
   const { seller, logoutSeller } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { navBadges, markTypesRead } = useNotifications(seller?.seller_id, 'seller');
 
   const seg = location.pathname.split('/')[2] || 'dashboard';
+
+  useEffect(() => {
+    const types = NAV_BADGE_TYPES.seller?.[seg];
+    if (!types?.length) return;
+    if ((navBadges[seg] || 0) <= 0) return;
+    markTypesRead(types);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seg]);
 
   const handleLogout = () => {
     logoutSeller();
@@ -611,6 +634,7 @@ function SellerLayout() {
             >
               <span className={`text-lg transition-transform duration-300 ${seg === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
               <span>{v.label}</span>
+              <NavBadge count={navBadges[v.id]} />
             </button>
           ))}
         </nav>
@@ -698,6 +722,8 @@ function BuyerMarketplacePage() {
       highlightProductId={highlightId}
       onHighlightCleared={() => setHighlightId(null)}
       buyer={buyer}
+      initialCategory={location.state?.major_category || ''}
+      initialSubcategory={location.state?.subcategory || ''}
       onViewProduct={(p) => navigate(`/buyer/retail/product/${p.product_id}`, { state: { product: p, from: 'marketplace' } })}
     />
   );
@@ -753,12 +779,27 @@ function BuyerProductDetailPage() {
   const pathSegments = location.pathname.split('/');
   const from         = pathSegments.includes('thrift') ? 'thrift' : 'marketplace';
 
+  const goListing = (crumb) => {
+    if (from === 'thrift') {
+      navigate('/buyer/thrift');
+      return;
+    }
+    const level = crumb?.level || 'root';
+    navigate('/buyer/marketplace', {
+      state: {
+        major_category: level === 'root' ? '' : (crumb.major_category || ''),
+        subcategory: level === 'subcategory' ? (crumb.subcategory || '') : '',
+      },
+    });
+  };
+
   return (
     <ProductDetailPage
       product={product}
       productId={productId}
       buyer={buyer}
       onBack={() => navigate(`/buyer/${from}`)}
+      onBreadcrumbNavigate={goListing}
     />
   );
 }

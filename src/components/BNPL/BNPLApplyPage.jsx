@@ -46,6 +46,8 @@ export default function BNPLApplyPage({ buyer }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");    // surfaces INSIDE step 2 now
   const [result, setResult] = useState(null);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrHint, setOcrHint] = useState("");
 
   useEffect(() => {
     if (!buyer?.buyer_id) return;
@@ -107,6 +109,28 @@ export default function BNPLApplyPage({ buyer }) {
     }
 
     setStep(3);
+  };
+
+  const handleDocChange = async (key, file) => {
+    setFiles((prev) => ({ ...prev, [key]: file || null }));
+    setError("");
+    if (key !== "cnic_front" || !file || !buyer?.buyer_id) return;
+
+    setOcrBusy(true);
+    setOcrHint("Reading CNIC from image…");
+    try {
+      const r = await bnplApi.previewCnicOcr(buyer.buyer_id, file);
+      if (r?.found && r.extracted_cnic) {
+        setForm((prev) => ({ ...prev, cnicNumber: formatCnic(r.extracted_cnic) }));
+        setOcrHint(`CNIC detected: ${formatCnic(r.extracted_cnic)}. You can edit if incorrect.`);
+      } else {
+        setOcrHint("Could not read CNIC from the image — please type it below.");
+      }
+    } catch {
+      setOcrHint("Could not read CNIC from the image — please type it below.");
+    } finally {
+      setOcrBusy(false);
+    }
   };
 
   const submit = async () => {
@@ -216,17 +240,8 @@ export default function BNPLApplyPage({ buyer }) {
               ))}
             </div>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-600">
-              CNIC NUMBER (must match your account CNIC + uploaded document)
-            </label>
-            <input
-              value={form.cnicNumber}
-              onChange={e => setForm({ ...form, cnicNumber: formatCnic(e.target.value) })}
-              maxLength={15}
-              placeholder="35202-1234567-1"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono" />
-          </div>
+
+          {/* Upload docs first — CNIC front triggers OCR autofill into the field below */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-gray-600 block">REQUIRED DOCUMENTS</label>
             {[
@@ -234,13 +249,34 @@ export default function BNPLApplyPage({ buyer }) {
               { key: "cnic_back", label: "CNIC (Back)" },
               { key: "utility_bill", label: "Utility Bill (Electricity/Gas)" },
             ].map(doc => (
-              <div key={doc.key} className="flex items-center justify-between border border-gray-200 rounded-lg p-2">
-                <span className="text-sm">{doc.label}</span>
-                <input type="file" accept="image/*,application/pdf"
-                  onChange={e => setFiles({ ...files, [doc.key]: e.target.files[0] })}
-                  className="text-xs" />
+              <div key={doc.key} className="flex items-center justify-between border border-gray-200 rounded-lg p-2 gap-2">
+                <span className="text-sm shrink-0">{doc.label}</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => handleDocChange(doc.key, e.target.files?.[0] || null)}
+                  className="text-xs min-w-0"
+                />
               </div>
             ))}
+            {(ocrBusy || ocrHint) && (
+              <p className={`text-xs ${ocrBusy ? "text-amber-700" : "text-gray-600"}`}>
+                {ocrBusy ? "Reading CNIC from image…" : ocrHint}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-600">
+              CNIC NUMBER (auto-filled from front image when possible — you can type/edit)
+            </label>
+            <input
+              value={form.cnicNumber}
+              onChange={e => setForm({ ...form, cnicNumber: formatCnic(e.target.value) })}
+              maxLength={15}
+              placeholder="35202-1234567-1"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono"
+            />
           </div>
 
           {/* IBAN / CNIC errors surface here — inside Step 2 */}

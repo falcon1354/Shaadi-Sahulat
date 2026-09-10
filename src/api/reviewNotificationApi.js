@@ -45,8 +45,11 @@ export async function markNotificationRead(id) {
   return res.json();
 }
 
-export async function markAllNotificationsRead(userId, role) {
-  const res = await fetch(`${NTF_BASE}/read-all?user_id=${userId}&role=${role}`, {
+export async function markAllNotificationsRead(userId, role, { type, types } = {}) {
+  const params = new URLSearchParams({ user_id: userId, role });
+  if (types?.length) params.set("types", types.join(","));
+  else if (type) params.set("type", type);
+  const res = await fetch(`${NTF_BASE}/read-all?${params}`, {
     method: "POST",
   });
   return res.json();

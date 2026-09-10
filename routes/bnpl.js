@@ -32,8 +32,8 @@ const Notification = require("../models/Notification");
 
 const { requireBuyer } = require("../lib/auth");
 const { encrypt, decrypt, maskCnic, maskIban } = require("../lib/crypto");
-const { saveBnplUploadAsync, resolvePath, publicUrl, makeBnplUploadMiddleware, materializeLocal } = require("../lib/storage");
-const { runOcrPipeline } = require("../lib/ocr");
+const { saveBnplUploadAsync, resolvePath, publicUrl, makeBnplUploadMiddleware, makeBnplOcrPreviewMiddleware, materializeLocal } = require("../lib/storage");
+const { runOcrPipeline, runOcrOnBuffer } = require("../lib/ocr");
 const { checkBnplEligibility } = require("../lib/eligibility");
 const {
   generateApplicationNo,
@@ -46,6 +46,39 @@ const {
 const { pushNotification, notifyBuyerAndAdmin } = require("../lib/notify");
 
 const upload = makeBnplUploadMiddleware();
+const ocrPreviewUpload = makeBnplOcrPreviewMiddleware();
+
+// ---------- CNIC OCR preview (autofill CNIC number after front upload) ----------
+router.post("/ocr-preview", requireBuyer, ocrPreviewUpload, async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file?.buffer) {
+      return res.status(400).json({ success: false, error: "cnic_front image is required" });
+    }
+    const ocr = await runOcrOnBuffer(file.buffer, file.mimetype || "image/jpeg");
+    let extracted = ocr.extracted_cnic || null;
+    // Drop incomplete OCR like 35202-1234567-?
+    if (extracted && !/^\d{5}-\d{7}-\d$/.test(extracted)) {
+      extracted = null;
+    }
+    return res.json({
+      success: true,
+      extracted_cnic: extracted,
+      confidence: ocr.confidence || 0,
+      ocr_error: ocr.ocr_error || null,
+      found: Boolean(extracted),
+    });
+  } catch (err) {
+    console.error("[bnpl] ocr-preview error:", err.message);
+    return res.json({
+      success: true,
+      extracted_cnic: null,
+      confidence: 0,
+      found: false,
+      ocr_error: err.message,
+    });
+  }
+});
 
 // ---------- Step 2: eligibility ----------
 router.get("/eligibility", requireBuyer, async (req, res) => {
@@ -308,21 +341,25 @@ router.post("/applications", requireBuyer, upload, async (req, res) => {
     }
 
     // --- update order status + timeline ---
+    // Auto-approved apps should not remain PENDING_BNPL_APPROVAL.
+    const nextOrderStatus = elig.auto_approve ? "CONFIRMED" : "PENDING_BNPL_APPROVAL";
     await Order.updateOne(
       { order_id: order.order_id },
       {
         $set: {
-          status: "PENDING_BNPL_APPROVAL",
+          status: nextOrderStatus,
           payment_method: "BNPL",
           bnpl_application_id: applicationNo,
         },
         $push: {
           timeline: {
-            status: "PENDING_BNPL_APPROVAL",
+            status: nextOrderStatus,
             at: new Date(),
             by: "buyer",
             by_id: req.user.id,
-            note: `BNPL application ${applicationNo} submitted (plan: ${plan} months)`,
+            note: elig.auto_approve
+              ? `BNPL application ${applicationNo} auto-approved (plan: ${plan} months). Order confirmed.`
+              : `BNPL application ${applicationNo} submitted (plan: ${plan} months)`,
           },
         },
       }
@@ -482,6 +519,16 @@ router.post("/applications/:application_no/decline-offer", requireBuyer, async (
         },
       }
     );
+
+    try {
+      const cancelledOrder = await Order.findOne({ order_id: app.order_id }).lean();
+      if (cancelledOrder?.items?.length) {
+        const { restoreStockForOrderItems } = require("../lib/inventory");
+        await restoreStockForOrderItems(cancelledOrder.items);
+      }
+    } catch (invErr) {
+      console.warn("[bnpl] stock restore on offer decline failed:", invErr.message);
+    }
 
     await notifyBuyerAndAdmin({
       buyer_id: req.user.id,

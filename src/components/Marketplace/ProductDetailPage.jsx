@@ -70,7 +70,14 @@ function Toast({ message, visible }) {
 
 // ── Product Detail Page ───────────────────────────────────────────────────
 
-export default function ProductDetailPage({ productId, product: initialProduct, onBack, buyer, isAdminView = false }) {
+export default function ProductDetailPage({
+  productId,
+  product: initialProduct,
+  onBack,
+  onBreadcrumbNavigate,
+  buyer,
+  isAdminView = false,
+}) {
   const cartCtx = useCart();
   const addItem = cartCtx?.addItem || (() => {});
   const buyerId = buyer?.buyer_id || null;
@@ -269,27 +276,67 @@ export default function ProductDetailPage({ productId, product: initialProduct, 
   const totalSold = product.completed_orders || product.orders_count || 0;
   const ratingVal = avgRating > 0 ? avgRating.toFixed(1) : (product.rating || 0);
 
+  const goBreadcrumb = (level) => {
+    const payload = {
+      level, // 'root' | 'category' | 'subcategory'
+      major_category: product.major_category || '',
+      subcategory: product.subcategory || '',
+      isThrift,
+    };
+    if (onBreadcrumbNavigate) {
+      onBreadcrumbNavigate(payload);
+      return;
+    }
+    // Fallback: any breadcrumb goes back to listing
+    onBack?.();
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="animate-fade-in space-y-4">
 
-      {/* Top Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs text-gray-500 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
-        <button onClick={onBack} className="hover:text-[#a37b3d] font-bold">← Back</button>
+      {/* Top Breadcrumb — each segment is clickable to step back */}
+      <nav
+        aria-label="Product breadcrumb"
+        className="flex flex-wrap items-center gap-2 text-xs text-gray-500 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm"
+      >
+        <button type="button" onClick={onBack} className="hover:text-[#a37b3d] font-bold">
+          ← Back
+        </button>
         <span>·</span>
-        <span>{isThrift ? '♻️ Thrift' : '🛍️ Marketplace'}</span>
-        <span>›</span>
-        <span className="capitalize text-[#a37b3d] font-medium">
-          {product.major_category?.replace(/_/g, ' ')}
-        </span>
-        {product.subcategory && (
+        <button
+          type="button"
+          onClick={() => goBreadcrumb('root')}
+          className="hover:text-[#a37b3d] hover:underline font-semibold text-[#a37b3d]"
+        >
+          {isThrift ? '♻️ Thrift' : '🛍️ Marketplace'}
+        </button>
+        {product.major_category && (
           <>
-            <span>›</span>
-            <span className="capitalize">{product.subcategory.replace(/_/g, ' ')}</span>
+            <span aria-hidden>›</span>
+            <button
+              type="button"
+              onClick={() => goBreadcrumb('category')}
+              className="capitalize hover:text-[#a37b3d] hover:underline font-medium text-[#a37b3d]"
+            >
+              {product.major_category.replace(/_/g, ' ')}
+            </button>
           </>
         )}
-      </div>
+        {product.subcategory && (
+          <>
+            <span aria-hidden>›</span>
+            <button
+              type="button"
+              onClick={() => goBreadcrumb('subcategory')}
+              className="capitalize hover:text-[#a37b3d] hover:underline font-medium text-gray-700"
+            >
+              {product.subcategory.replace(/_/g, ' ')}
+            </button>
+          </>
+        )}
+      </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 

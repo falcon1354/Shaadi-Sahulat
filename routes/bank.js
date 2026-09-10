@@ -498,6 +498,17 @@ router.post(
           }
         );
 
+        // Return reserved inventory from the cancelled BNPL sale
+        try {
+          const cancelledOrder = await Order.findOne({ order_id: app.order_id }).lean();
+          if (cancelledOrder?.items?.length) {
+            const { restoreStockForOrderItems } = require("../lib/inventory");
+            await restoreStockForOrderItems(cancelledOrder.items);
+          }
+        } catch (invErr) {
+          console.warn("[bank] stock restore on BNPL reject failed:", invErr.message);
+        }
+
         // Log to admin activity log via notification
         const Notification = require("../models/Notification");
         await Notification.create([{

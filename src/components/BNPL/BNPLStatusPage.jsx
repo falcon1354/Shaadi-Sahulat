@@ -9,11 +9,12 @@ const PAGE_SIZE = 5;
 // Filter tabs — map BNPL application statuses to the four buckets the
 // spec asks for (plus "All").
 const FILTER_TABS = [
-  { id: 'all',           label: 'All',             statuses: null },
-  { id: 'rejected',      label: 'Rejected',         statuses: ['REJECTED'] },
-  { id: 'offer_accepted',label: 'Offer Accepted',   statuses: ['OFFER_ACCEPTED'] },
-  { id: 'pending',       label: 'Pending',          statuses: ['PENDING_BANK_VERIFICATION', 'APPROVED'] },
-  { id: 'cancelled',     label: 'Cancelled',        statuses: ['CANCELLED', 'OFFER_DECLINED', 'OFFER_EXPIRED'] },
+  { id: 'all',            label: 'All',             statuses: null },
+  { id: 'pending',        label: 'Pending',         statuses: ['PENDING_BANK_VERIFICATION', 'PENDING_BNPL_APPROVAL'] },
+  { id: 'approved',       label: 'Approved',        statuses: ['APPROVED'] },
+  { id: 'offer_accepted', label: 'Offer Accepted',  statuses: ['OFFER_ACCEPTED'] },
+  { id: 'rejected',       label: 'Rejected',        statuses: ['REJECTED'] },
+  { id: 'cancelled',      label: 'Cancelled',       statuses: ['CANCELLED', 'OFFER_DECLINED', 'OFFER_EXPIRED'] },
 ];
 
 const DELIVERY_LABEL = {
