@@ -157,17 +157,19 @@ WEDDING_DRESS_SUBCATEGORY_IDS = [
     for item in (sub["items"] or [])
 ]
 
-# Map new dress subcategory → nearest ML model class (for embedding extraction when model is limited to 3 classes)
+# Map fine-grained dress subcategory → nearest ML model class (soft preference only;
+# visual search no longer hard-filters on these — exact image match needs full catalog).
 _DRESS_TO_ML_CLASS = {
-    "bridal_lehenga":      "bridal_lehenga",
-    "bridal_sharara":      "bridal_sharara",
-    "bridal_gharara":      "bridal_sharara",   # closest class
-    "bridal_gown":         "bridal_lehenga",   # closest class
-    "bridal_maxi":         "bridal_saree",
-    "groom_sherwani":      "bridal_lehenga",   # closest class (no groom model yet)
-    "groom_shalwar_kameez":"bridal_sharara",
-    "groom_prince_coat":   "bridal_lehenga",
-    "groom_suit":          "bridal_lehenga",   # legacy alias
+    "bridal_lehenga":       "bridal_lehenga",
+    "bridal_sharara":       "bridal_sharara",
+    "bridal_saree":         "bridal_saree",
+    "bridal_gharara":       "bridal_sharara",
+    "bridal_gown":          "bridal_lehenga",
+    "bridal_maxi":          "bridal_lehenga",
+    "groom_sherwani":       "bridal_lehenga",
+    "groom_shalwar_kameez": "bridal_sharara",
+    "groom_prince_coat":    "bridal_lehenga",
+    "groom_suit":           "bridal_lehenga",
 }
 DRESS_TO_ML_CLASS = _DRESS_TO_ML_CLASS
 

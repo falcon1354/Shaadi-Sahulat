@@ -100,7 +100,7 @@ export default function BuyerOrderDetailPage({ buyer }) {
   const submitReview = async ({
     rating, title, comment,
     ai_suggested_rating, ai_used, ai_generated, ai_provider,
-    voice_agent,
+    voice_agent, skip_voice,
   }) => {
     setSubmitting(true); setMsg("");
     const r = await orderApi.submitReview({
@@ -108,11 +108,14 @@ export default function BuyerOrderDetailPage({ buyer }) {
       rating, title, comment,
       ai_suggested_rating, ai_used, ai_generated, ai_provider,
       voice_agent,
+      skip_voice: !!skip_voice,
     });
     setSubmitting(false);
     if (!r.success) { setMsg(r.error); return; }
     setShowReview(false);
-    const voiceNote = r.voice?.ok ? " Voice clip saved." : "";
+    const voiceNote = r.voice?.ok
+      ? " Voice clip saved to Cloudinary and will show on the product page."
+      : (skip_voice ? "" : " (Voice skipped or TTS unavailable — text review saved.)");
     setMsg(`${r.reviews.length} review(s) submitted. Thank you!${voiceNote}`);
     load();
   };

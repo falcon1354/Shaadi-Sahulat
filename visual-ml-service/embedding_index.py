@@ -39,7 +39,7 @@ from PIL import Image
 
 from config import (
     IMAGE_SIZE, CATEGORY_IDS, CATEGORY_LABELS,
-    HYBRID_WEIGHTS, MAX_RESULTS_DEFAULT,
+    HYBRID_WEIGHTS, MAX_RESULTS_DEFAULT, DRESS_TO_ML_CLASS,
 )
 from description_generator import generate_description
 from tfidf_engine import (
@@ -358,6 +358,14 @@ def _cascade_level(
 
 # ── Cascade search ─────────────────────────────────────────────────────────
 
+def _ml_class_for(category: str | None) -> str:
+    """Map fine-grained dress item_type → nearest 3-class ML label."""
+    cat = (category or "").strip()
+    if not cat:
+        return ""
+    return DRESS_TO_ML_CLASS.get(cat, cat)
+
+
 def hybrid_search(
     query_embedding:  list[float],
     query_tfidf_vec:  dict,
@@ -375,6 +383,11 @@ def hybrid_search(
       4  Category Match  — TF-IDF ≥ 0.15
       5  Closest Match   — fallback (always qualifies)
 
+    Category is a SOFT preference only (never a hard filter). Marketplace dresses
+    use fine-grained types (bridal_maxi, groom_sherwani, …) while the classifier
+    only outputs 3 ML classes — hard equality excluded the true product when the
+    user re-uploaded that listing's own image.
+
     Results sorted: level ASC (1=best), then score DESC within same level.
     Returns top_k results.
     """
@@ -382,13 +395,10 @@ def hybrid_search(
     if not products:
         return []
 
-    if category:
-        candidates = [p for p in products if p.get("category") == category]
-    else:
-        candidates = products
-
-    if not candidates:
-        candidates = products  # cross-category fallback
+    # Soft category preference — always score the full dress index so near-duplicate
+    # marketplace images can surface even when predicted class ≠ product.item_type.
+    search_ml = _ml_class_for(category) if category else ""
+    candidates = products
 
     q_np   = np.array(query_embedding, dtype=float)
     q_norm = q_np / (np.linalg.norm(q_np) + 1e-8)
@@ -409,6 +419,17 @@ def hybrid_search(
         color_family = _family_color_sim(query_color_info, prod_color) if query_color_info else 0.0
 
         level, match_label, score = _cascade_level(img_sim, color_exact, color_family, tfidf_sim)
+
+        # Near-duplicate of a marketplace photo → always treat as Visual Match
+        if img_sim >= 0.82:
+            level, match_label = 1, "Visual Match"
+            score = max(score, img_sim)
+
+        # Soft category boost (does not exclude other types)
+        if search_ml:
+            prod_ml = _ml_class_for(prod.get("category"))
+            if prod.get("category") == category or prod_ml == search_ml:
+                score = min(1.0, score + 0.04)
 
         img_url = prod.get("image_url") or prod.get("image_path", "")
         scored.append({

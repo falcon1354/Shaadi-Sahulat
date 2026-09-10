@@ -289,19 +289,78 @@ router.get("/wallet", async (req, res) => {
     if (!wallet) {
       wallet = await AdminWallet.create({ wallet_id: "admin_wallet_001", balance: 10_000_000 });
     }
+    const ledgerAll = [...(wallet.ledger || [])].reverse();
     const recentPayouts = await SellerPayout.find()
       .sort({ released_at: -1 })
-      .limit(20)
+      .limit(50)
       .lean();
+
+    // Group ledger lines by order for order-centric history
+    const byOrder = {};
+    for (const entry of ledgerAll) {
+      const oid = (entry.ref_order_id || "").trim();
+      if (!oid) continue;
+      if (!byOrder[oid]) {
+        byOrder[oid] = {
+          order_id: oid,
+          entries: [],
+          credit_total: 0,
+          debit_total: 0,
+          last_at: entry.at,
+        };
+      }
+      byOrder[oid].entries.push(entry);
+      if (entry.type === "CREDIT") byOrder[oid].credit_total += entry.amount || 0;
+      if (entry.type === "DEBIT") byOrder[oid].debit_total += entry.amount || 0;
+      if (new Date(entry.at) > new Date(byOrder[oid].last_at)) {
+        byOrder[oid].last_at = entry.at;
+      }
+    }
+    const order_groups = Object.values(byOrder).sort(
+      (a, b) => new Date(b.last_at) - new Date(a.last_at)
+    );
+
+    const other_entries = ledgerAll.filter((e) => !(e.ref_order_id || "").trim()).slice(0, 30);
+
     return res.json({
       success: true,
       wallet: {
         wallet_id: wallet.wallet_id,
         balance: wallet.balance,
         currency: wallet.currency,
-        ledger: (wallet.ledger || []).slice(-50).reverse(),
+        ledger: ledgerAll.slice(0, 200),
       },
+      order_groups,
+      other_entries,
       recent_payouts: recentPayouts,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Ledger lines for one order (additions + subtractions)
+router.get("/wallet/orders/:order_id", async (req, res) => {
+  try {
+    const orderId = req.params.order_id;
+    let wallet = await AdminWallet.findOne({ wallet_id: "admin_wallet_001" });
+    if (!wallet) {
+      return res.json({ success: true, order_id: orderId, entries: [], payout: null });
+    }
+    const entries = (wallet.ledger || [])
+      .filter((e) => (e.ref_order_id || "") === orderId)
+      .sort((a, b) => new Date(a.at) - new Date(b.at));
+    const payout = await SellerPayout.findOne({ order_id: orderId }).lean();
+    const credit_total = entries.filter((e) => e.type === "CREDIT").reduce((s, e) => s + (e.amount || 0), 0);
+    const debit_total = entries.filter((e) => e.type === "DEBIT").reduce((s, e) => s + (e.amount || 0), 0);
+    return res.json({
+      success: true,
+      order_id: orderId,
+      entries,
+      credit_total,
+      debit_total,
+      net: credit_total - debit_total,
+      payout: payout || null,
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -404,10 +463,13 @@ router.delete("/sellers/:seller_id", async (req, res) => {
 });
 
 // ---------- Task 1d: aggregate sales timeline (past 30 days) ----------
-// Groups all completed/delivered/resolved orders by day for the last 30 days.
+// Groups completed/delivered/resolved orders by day; zero-fills missing days.
 router.get("/sales-timeline", async (req, res) => {
   try {
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const days = 30;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    since.setHours(0, 0, 0, 0);
+
     const rows = await Order.aggregate([
       {
         $match: {
@@ -427,13 +489,33 @@ router.get("/sales-timeline", async (req, res) => {
       { $sort: { _id: 1 } },
     ]);
 
-    const timeline = rows.map((r) => ({
-      date: r._id,
-      order_count: r.order_count,
-      revenue: r.revenue,
-    }));
+    const byDate = Object.fromEntries(
+      rows.map((r) => [r._id, { order_count: r.order_count, revenue: r.revenue }])
+    );
 
-    return res.json({ success: true, count: timeline.length, timeline });
+    const timeline = [];
+    let orders_total = 0;
+    let revenue_total = 0;
+    for (let i = 0; i < days; i++) {
+      const d = new Date(since.getTime() + i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().slice(0, 10);
+      const row = byDate[key] || { order_count: 0, revenue: 0 };
+      orders_total += row.order_count;
+      revenue_total += row.revenue;
+      timeline.push({
+        date: key,
+        order_count: row.order_count,
+        revenue: row.revenue,
+      });
+    }
+
+    return res.json({
+      success: true,
+      count: timeline.length,
+      orders_total,
+      revenue_total,
+      timeline,
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

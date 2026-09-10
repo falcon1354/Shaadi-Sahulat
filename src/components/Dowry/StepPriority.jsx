@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { HelpCircle, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
+import CategoryThumb from './CategoryThumb';
 
 const PRIORITY_OPTIONS = [
   { value: 'High',       label: 'High',       color: 'bg-rose-50 text-rose-700 border-rose-200' },
@@ -34,7 +35,7 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
       <div>
         <h2 className="text-2xl font-extrabold text-gray-950 tracking-tight mb-1">Priority Settings</h2>
         <p className="text-sm text-gray-500 font-light">
-          Set the relative importance of each category. Exclude items to transfer their budget to higher priorities.
+          Set the relative importance of each category. Each card shows the admin placeholder image for that category.
         </p>
       </div>
 
@@ -42,7 +43,6 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
         {categories.map((cat) => {
           const currentPriority  = formData.priorities[cat.key] || null;
           const isNotWanted      = currentPriority === 'Not_Wanted';
-          const isUnselected      = currentPriority === null || currentPriority === '';
           const showPrompt       = isNotWanted && promptShown[cat.key];
           const redistribution   = formData.redistributions[cat.key];
 
@@ -50,25 +50,31 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
             <div
               key={cat.key}
               className={`border rounded-3xl p-5 transition-all duration-300 relative overflow-hidden ${
-                isNotWanted 
-                  ? 'border-gray-200 bg-gray-50/40 shadow-inner' 
+                isNotWanted
+                  ? 'border-gray-200 bg-gray-50/40 shadow-inner'
                   : 'border-primary-100 hover:border-primary-300 bg-white shadow-sm hover:shadow-md'
               }`}
             >
-              {/* Category header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <span className={`text-xl p-2 bg-gray-50 rounded-xl shrink-0 ${isNotWanted ? 'opacity-30' : ''}`}>{cat.iconPng ? <img src={cat.iconPng} alt={cat.label} className="w-6 h-6 object-contain" /> : cat.icon}</span>
-                  <span className={`text-sm font-bold capitalize ${isNotWanted ? 'text-gray-400 line-through' : 'text-gray-950'}`}>
+              <div className="flex items-center justify-between mb-4 gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`shrink-0 ${isNotWanted ? 'opacity-40' : ''}`}>
+                    {cat.category ? (
+                      <CategoryThumb category={cat.category} size={52} />
+                    ) : cat.iconPng ? (
+                      <img src={cat.iconPng} alt={cat.label} className="w-[52px] h-[52px] rounded-xl object-cover border border-gray-100" />
+                    ) : (
+                      <span className="text-xl w-[52px] h-[52px] bg-gray-50 rounded-xl inline-flex items-center justify-center border border-gray-100">{cat.icon}</span>
+                    )}
+                  </div>
+                  <span className={`text-sm font-bold capitalize truncate ${isNotWanted ? 'text-gray-400 line-through' : 'text-gray-950'}`}>
                     {cat.label}
                   </span>
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${currentPriority && PRIORITY_BADGE_COLOR[currentPriority] ? PRIORITY_BADGE_COLOR[currentPriority] : 'bg-gray-50 text-gray-300 border-gray-100'}`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border shrink-0 ${currentPriority && PRIORITY_BADGE_COLOR[currentPriority] ? PRIORITY_BADGE_COLOR[currentPriority] : 'bg-gray-50 text-gray-300 border-gray-100'}`}>
                   {currentPriority === 'Not_Wanted' ? 'Excluded' : currentPriority || 'Select'}
                 </span>
               </div>
 
-              {/* Wedding Dress type selector (bridal / groom) */}
               {cat.hasTypeSelector && !isNotWanted && (
                 <div className="flex gap-2 mb-4 bg-gray-50 p-1 rounded-2xl">
                   {['bridal', 'groom'].map((type) => (
@@ -88,7 +94,6 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
                 </div>
               )}
 
-              {/* Priority buttons */}
               <div className="grid grid-cols-4 gap-1.5">
                 {PRIORITY_OPTIONS.map((opt) => (
                   <button
@@ -106,11 +111,10 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
                 ))}
               </div>
 
-              {/* Not Wanted redistribution sub-prompt */}
               {showPrompt && (
                 <div className="mt-4 bg-amber-50/50 border border-amber-200/50 rounded-2xl p-4 space-y-3 animate-fade-in">
                   <p className="text-xs text-amber-900 font-bold">
-                    Transfer this category's budget to active items?
+                    Transfer this category&apos;s budget to active items?
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -149,7 +153,6 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
         })}
       </div>
 
-      {/* Priority weights overview */}
       <div className="bg-gradient-to-r from-primary-50/60 to-primary-100/60 border border-primary-200/50 rounded-3xl p-6 relative overflow-hidden">
         <h4 className="text-xs font-extrabold text-primary-900 mb-3 uppercase tracking-wider flex items-center gap-1.5">
           <Star size={14} className="text-primary-800" /> Priority Budget Weights
@@ -172,7 +175,6 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
         </p>
       </div>
 
-      {/* Selection counter */}
       <div className="bg-amber-50/60 border border-amber-200/50 rounded-3xl p-4 text-center">
         <p className="text-sm font-bold text-amber-900">
           Selected: {Object.values(formData.priorities).filter(v => v && v !== 'Not_Wanted').length} / Minimum 5 required
@@ -184,7 +186,7 @@ function StepPriority({ formData, categories, updatePriority, updateRedistributi
 
       <div className="text-center py-2">
         <p className="text-xs text-gray-500 font-medium">
-          Ready! Click <strong className="text-primary-900">"Calculate Estimate"</strong> to run the Hybrid Price Engine.
+          Ready! Click <strong className="text-primary-900">&quot;Calculate Estimate&quot;</strong> to run the Hybrid Price Engine.
         </p>
       </div>
     </div>

@@ -25,23 +25,30 @@ from config import (
     MAX_UPLOAD_SIZE_MB, MAX_RESULTS_DEFAULT,
     FLASK_HOST, FLASK_PORT,
     MODEL_DIR, BACKBONE, FINE_TUNED_MODEL_PATH,
-    CATALOG_DIR, UPLOADS_DIR, DESCRIPTIONS_FILE,
+    CATALOG_DIR, UPLOADS_DIR, DESCRIPTIONS_FILE, TRAINING_DATA_DIR,
 )
 from seller_routes import seller_bp
 from dowry_routes import dowry_bp
 from review_ai import review_ai_bp
 from tryon_routes import tryon_bp
 
+_HAS_VISUAL_MODEL = False
+_IMPORT_ERR = None
+
 try:
     from predictor import get_predictor
-    from data_loader import validate_dataset, print_dataset_report
     from embedding_index import build_index, add_single_product, get_index_stats
     _HAS_VISUAL_MODEL = True
-except ImportError:
-    _HAS_VISUAL_MODEL = False
+except ImportError as _exc:
+    _IMPORT_ERR = str(_exc)
+    print(f"[app] Visual model import failed: {_IMPORT_ERR}")
+    print("[app] Tip: start with  .venv\\Scripts\\python.exe app.py  (or npm run dev:visual)")
 
     def get_predictor():
-        raise RuntimeError("PyTorch is not installed — visual recommendations are unavailable.")
+        raise RuntimeError(
+            "Visual ML deps missing — use visual-ml-service\\.venv\\Scripts\\python.exe app.py. "
+            f"Detail: {_IMPORT_ERR}"
+        )
 
     def get_index_stats():
         return {
@@ -51,17 +58,20 @@ except ImportError:
             "seller_products": 0,
         }
 
-    def validate_dataset(*_a, **_k):
-        return False, {}, ["PyTorch is not installed"]
-
-    def print_dataset_report(*_a, **_k):
-        pass
-
     def build_index(*_a, **_k):
         return 0, {}
 
     def add_single_product(*_a, **_k):
         return False
+
+try:
+    from data_loader import validate_dataset, print_dataset_report
+except ImportError:
+    def validate_dataset(*_a, **_k):
+        return False, {}, ["PyTorch/torchvision not available in this Python"]
+
+    def print_dataset_report(*_a, **_k):
+        pass
 
 app = Flask(__name__)
 CORS(app)
@@ -179,11 +189,17 @@ def recommend():
             "valid_categories": CATEGORY_IDS,
         }), 400
 
+    try:
+        limit = int(request.form.get("limit") or MAX_RESULTS_DEFAULT)
+    except (TypeError, ValueError):
+        limit = MAX_RESULTS_DEFAULT
+    limit = max(1, min(limit, 12))
+
     predictor = get_predictor()
     result    = predictor.predict(
         image_bytes,
         preferred_category,
-        MAX_RESULTS_DEFAULT,
+        limit,
         user_description=user_description,
     )
 
@@ -235,6 +251,30 @@ def build_embedding_index():
             "model_source":   "fine_tuned" if fine_tuned else "pretrained_imagenet",
             "descriptions_loaded": descriptions_dict is not None,
         })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/visual/backfill-dress-embeddings", methods=["POST"])
+def backfill_dress_embeddings_route():
+    """
+    Compute EfficientNet embeddings for wedding_dress products in seller_products
+    (seller uploads + scraped, new + thrift) and store vectors on each MongoDB doc.
+    Query/body: force=1, limit=N, type=new|thrift
+    """
+    try:
+        from dress_embedding import backfill_dress_embeddings
+
+        body = request.get_json(silent=True) or {}
+        force = str(request.args.get("force") or body.get("force") or "").lower() in ("1", "true", "yes")
+        limit = int(request.args.get("limit") or body.get("limit") or 0)
+        mtype = request.args.get("type") or body.get("type") or None
+        if mtype not in ("new", "thrift", None):
+            mtype = None
+
+        result = backfill_dress_embeddings(force=force, limit=limit, marketplace_type=mtype)
+        status = 200 if result.get("ok") else 500
+        return jsonify({"success": bool(result.get("ok")), **result}), status
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
 
@@ -314,8 +354,26 @@ def index_stats():
 
 @app.route("/visual/dataset-status", methods=["GET"])
 def dataset_status():
-    from data_loader import scan_training_data
-    scan = scan_training_data()
+    """Scan training_data/ folders. Does not require torch/torchvision."""
+    try:
+        from data_loader import scan_training_data
+        scan = scan_training_data()
+    except ImportError as exc:
+        # System Python without torchvision: still report folder counts directly
+        scan = {}
+        valid_exts = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+        for cat in CATEGORIES:
+            cid = cat["id"]
+            cat_dir = os.path.join(TRAINING_DATA_DIR, cid)
+            if not os.path.isdir(cat_dir):
+                scan[cid] = {"count": 0, "label": cat["label"]}
+                continue
+            files = [
+                f for f in os.listdir(cat_dir)
+                if os.path.splitext(f)[1].lower() in valid_exts
+            ]
+            scan[cid] = {"count": len(files), "label": cat["label"]}
+        print(f"[app] dataset-status fallback (missing ML deps): {exc}")
 
     result = {}
     for cat in CATEGORIES:

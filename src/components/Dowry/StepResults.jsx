@@ -4,8 +4,9 @@ import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { Sparkles, ArrowRight, TrendingUp, Info, HelpCircle, Save, CheckCircle2 } from 'lucide-react';
-import { isRetiredCategory } from '../../lib/dowryDisplay';
+import { Sparkles, TrendingUp, Info } from 'lucide-react';
+import { isRetiredCategory, newUnallocatedCategories } from '../../lib/dowryDisplay';
+import CategoryThumb from './CategoryThumb';
 
 // 10-colour palette — repeats for more than 10 categories
 const PALETTE = [
@@ -90,8 +91,37 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
 
   const adjustedTotal = Object.values(displayBreakdown).reduce((a, b) => a + b, 0);
 
+  const originalIds = Array.isArray(result.original_category_ids) && result.original_category_ids.length
+    ? result.original_category_ids
+    : Object.keys(result.category_breakdown || {}).filter(k => (result.category_breakdown[k] || 0) > 0);
+
+  // Fine-tune rows: live categories vs soft-deleted admin categories
+  const fineTuneEntries = Object.entries(result.category_breakdown || {}).filter(([key, originalAmt]) => {
+    if (isRetiredCategory(key)) return false;
+    if (priorities && priorities[`priority_${key}`] === 'Not_Wanted') return false;
+    if (!priorities && originalAmt === 0) return false;
+    return true;
+  });
+  const activeIdSet = new Set(
+    (categories || []).filter(c => c.is_active !== false).map(c => c.category_id)
+  );
+  const liveFineTune = fineTuneEntries.filter(([key]) => activeIdSet.size === 0 || activeIdSet.has(key));
+  const deletedFineTune = fineTuneEntries.filter(([key]) => activeIdSet.size > 0 && !activeIdSet.has(key));
+  // Also surface deleted cats that only exist on category_budgets (locked plan)
+  const budgetKeys = Object.keys(result.category_budgets || {});
+  for (const key of budgetKeys) {
+    if (isRetiredCategory(key)) continue;
+    if (activeIdSet.has(key)) continue;
+    if (fineTuneEntries.some(([k]) => k === key)) continue;
+    const est = result.category_budgets[key]?.estimated ?? displayBreakdown[key] ?? 0;
+    if (est > 0 || (Array.isArray(originalIds) && originalIds.includes(key))) {
+      deletedFineTune.push([key, est]);
+    }
+  }
+
   const sortedEntries = Object.entries(displayBreakdown)
     .filter(([key, v]) => v > 0 && !isRetiredCategory(key) && (priorities ? (priorities[`priority_${key}`] !== null && priorities[`priority_${key}`] !== 'Not_Wanted') : true))
+    .filter(([key]) => activeIdSet.size === 0 || activeIdSet.has(key))
     .sort(([, a], [, b]) => b - a);
 
   const pieData = sortedEntries.map(([key, value]) => ({
@@ -153,14 +183,10 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
         </div>
         
         <div className="space-y-6">
-          {Object.entries(result.category_breakdown || {}).map(([key, originalAmt]) => {
-            if (isRetiredCategory(key)) return null;
-            if (priorities && priorities[`priority_${key}`] === 'Not_Wanted') return null;
-            if (!priorities && originalAmt === 0) return null;
-
+          {liveFineTune.map(([key, originalAmt]) => {
             const current   = displayBreakdown[key] ?? originalAmt;
-            const step      = getSliderStep(originalAmt);
-            const maxVal    = Math.max(originalAmt * 2, step * 20);
+            const step      = getSliderStep(originalAmt || current || 1000);
+            const maxVal    = Math.max((originalAmt || current) * 2, step * 20);
             const deviation = getDeviationColor(current, originalAmt);
             const styles    = DEVIATION_STYLES[deviation];
             const devPct    = originalAmt > 0
@@ -174,11 +200,11 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
             return (
               <div key={key} className="space-y-1.5 p-3 rounded-2xl bg-gray-50/40 border border-gray-100 hover:bg-gray-50/90 transition-colors duration-200">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                    <span className="text-xs font-bold text-gray-900 capitalize">{catLabel(key)}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <CategoryThumb categoryId={key} categories={categories} size={36} />
+                    <span className="text-xs font-bold text-gray-900 capitalize truncate">{catLabel(key)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${styles.badge}`}>
                       {devPct > 0 ? `+${devPct}%` : devPct < 0 ? `${devPct}%` : 'Locked'}
                     </span>
@@ -211,6 +237,32 @@ function StepResults({ result, loading, saved, adjustedEstimates, onAdjust, onSa
             );
           })}
         </div>
+
+        {deletedFineTune.length > 0 && (
+          <div className="pt-4 border-t border-rose-100 space-y-4">
+            <div>
+              <h4 className="text-sm font-bold text-rose-800">Removed Categories</h4>
+              <p className="text-[11px] text-rose-600/80 font-medium mt-0.5">
+                These categories were in your plan but have been deleted by admin. Reallocate remaining funds via From → To below.
+              </p>
+            </div>
+            {deletedFineTune.map(([key, originalAmt]) => {
+              const current = displayBreakdown[key] ?? result.category_budgets?.[key]?.estimated ?? originalAmt ?? 0;
+              return (
+                <div key={`deleted-${key}`} className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-rose-50/50 border border-rose-100">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <CategoryThumb categoryId={key} categories={categories} size={36} />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-rose-900 capitalize truncate">{catLabel(key)}</p>
+                      <p className="text-[10px] text-rose-600 font-semibold">Deleted · still in your estimation</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold font-mono text-rose-800 shrink-0">{formatPKR(current)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="pt-5 border-t border-gray-100 flex items-center justify-between">
           <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Adjusted Budget</span>
@@ -385,9 +437,12 @@ function BudgetManageSection({ buyerId, categories }) {
   const [msg, setMsg]       = useState({ text: '', error: false });
 
   const budgets = { ...(dowry?.category_budgets || {}) };
+  const originalIds = Array.isArray(dowry?.original_category_ids) ? dowry.original_category_ids : [];
   (categories || []).forEach(c => {
     if (isRetiredCategory(c.category_id)) return;
+    // Soft-deleted cats stay in From (to drain remaining); new active cats appear in To
     if (!(c.category_id in budgets)) {
+      if (c.is_active === false) return;
       budgets[c.category_id] = { estimated: 0, spent: 0, remaining: 0, active: true };
     }
   });
@@ -395,6 +450,16 @@ function BudgetManageSection({ buyerId, categories }) {
     ([k, v]) => v.active !== false && !isRetiredCategory(k)
   );
   const fromCats = cats.filter(([, v]) => (v.remaining ?? v.estimated ?? 0) > 0);
+  const toCats = cats.filter(([k]) => {
+    const meta = (categories || []).find(c => c.category_id === k);
+    // Allow transfer to active cats; allow draining deleted only as From
+    return !meta || meta.is_active !== false;
+  });
+  const newTargets = newUnallocatedCategories(
+    (categories || []).filter(c => c.is_active !== false),
+    originalIds,
+    budgets
+  );
 
   const fromBudget = fromCat ? budgets[fromCat] : null;
   const maxShift   = fromBudget ? (fromBudget.remaining ?? fromBudget.estimated ?? 0) : 0;
@@ -407,6 +472,7 @@ function BudgetManageSection({ buyerId, categories }) {
     if (amt > maxShift)     return setMsg({ text: `Max available from ${catLabel(fromCat)}: PKR ${maxShift.toLocaleString()}`, error: true });
 
     const b = { ...budgets };
+    if (!b[toCat]) b[toCat] = { estimated: 0, spent: 0, remaining: 0, active: true };
     const srcEst  = b[fromCat].estimated || 0;
     const srcLeft = b[fromCat].remaining ?? srcEst;
     const dstEst  = b[toCat].estimated  || 0;
@@ -414,10 +480,9 @@ function BudgetManageSection({ buyerId, categories }) {
     b[fromCat] = { ...b[fromCat], estimated: srcEst - amt, remaining: srcLeft - amt };
     b[toCat]   = { ...b[toCat],  estimated: dstEst + amt, remaining: dstLeft + amt };
 
-    const updated = { ...dowry, category_budgets: b };
+    const updated = { ...dowry, category_budgets: b, original_category_ids: originalIds };
     writeDowry(updated, buyerId);
     setDowry(updated);
-    // Persist to MongoDB and signal all other components
     patchDowryBudgets(buyerId, b).catch(() => {});
     window.dispatchEvent(new CustomEvent('dowry-updated', { detail: { buyerId } }));
     setMsg({ text: `✓ Shifted PKR ${amt.toLocaleString()} from ${catLabel(fromCat)} → ${catLabel(toCat)}.`, error: false });
@@ -430,7 +495,14 @@ function BudgetManageSection({ buyerId, categories }) {
     <div className="border border-primary-200/60 rounded-3xl p-6 bg-white shadow-sm space-y-4">
       <div>
         <h3 className="text-sm font-bold text-gray-900">Reallocate Budget Between Categories</h3>
-        <p className="text-xs text-gray-400 mt-0.5 font-light">Shift funds from one category to another to fine-tune your plan.</p>
+        <p className="text-xs text-gray-400 mt-0.5 font-light">
+          Shift funds from one category to another. New admin categories appear under <strong>To</strong>; after transfer they join your allocated plan.
+        </p>
+        {newTargets.length > 0 && (
+          <p className="text-[11px] text-emerald-700 font-semibold mt-2 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+            New categories available in To: {newTargets.map(c => c.label).join(', ')}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -441,11 +513,14 @@ function BudgetManageSection({ buyerId, categories }) {
             onChange={e => { setFromCat(e.target.value); setMsg({ text: '', error: false }); }}
             className="w-full border border-gray-200/80 bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all">
             <option value="">Select category…</option>
-            {fromCats.filter(([k]) => k !== toCat).map(([k, v]) => (
-              <option key={k} value={k}>
-                {catLabel(k)} — PKR {(v.remaining ?? v.estimated ?? 0).toLocaleString()} left
-              </option>
-            ))}
+            {fromCats.filter(([k]) => k !== toCat).map(([k, v]) => {
+              const deleted = (categories || []).find(c => c.category_id === k)?.is_active === false;
+              return (
+                <option key={k} value={k}>
+                  {catLabel(k)}{deleted ? ' (removed)' : ''} — PKR {(v.remaining ?? v.estimated ?? 0).toLocaleString()} left
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -456,9 +531,14 @@ function BudgetManageSection({ buyerId, categories }) {
             onChange={e => { setToCat(e.target.value); setMsg({ text: '', error: false }); }}
             className="w-full border border-gray-200/80 bg-white rounded-2xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all">
             <option value="">Select category…</option>
-            {cats.filter(([k]) => k !== fromCat).map(([k]) => (
-              <option key={k} value={k}>{catLabel(k)}</option>
-            ))}
+            {toCats.filter(([k]) => k !== fromCat).map(([k, v]) => {
+              const isNew = newTargets.some(c => c.category_id === k);
+              return (
+                <option key={k} value={k}>
+                  {catLabel(k)}{isNew ? ' · New' : ''} {(v.estimated || 0) > 0 ? `— PKR ${(v.estimated || 0).toLocaleString()}` : ''}
+                </option>
+              );
+            })}
           </select>
         </div>
 

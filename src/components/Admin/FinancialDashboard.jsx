@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
-  LineChart, Line, Legend,
+  AreaChart, Area,
 } from 'recharts';
 import adminApi from '../../api/adminApi';
 import adminExtApi from '../../api/adminExtApi';
@@ -15,15 +15,11 @@ export default function FinancialDashboard({ admin }) {
   const [stats, setStats]         = useState(null);
   const [sellers, setSellers]     = useState([]);
   const [timeline, setTimeline]   = useState([]);
+  const [timelineMeta, setTimelineMeta] = useState({ orders_total: 0, revenue_total: 0 });
   const [breakdown, setBreakdown] = useState(null);
   const [loading, setLoading]     = useState(true);
 
-  // Build label map dynamically from DB categories
   const catLabels = Object.fromEntries(categories.map(c => [c.category_id, c.label]));
-
-  // The admin id is forwarded to the adminExt endpoints that require the
-  // `x-user-id`/`x-user-role` headers. When admin isn't supplied (older call
-  // sites), the adminExt calls simply won't be made.
   const adminId = admin?.admin_id || admin?._id || "";
 
   useEffect(() => {
@@ -38,6 +34,10 @@ export default function FinancialDashboard({ admin }) {
       setStats(s);
       setSellers(sv.sellers || []);
       setTimeline(tl?.timeline || []);
+      setTimelineMeta({
+        orders_total: tl?.orders_total || 0,
+        revenue_total: tl?.revenue_total || 0,
+      });
       setBreakdown(bd?.success ? bd : null);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -45,13 +45,9 @@ export default function FinancialDashboard({ admin }) {
 
   if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading dashboard…</div>;
 
-  // Charts data — both are already dynamic (sourced from /api/admin/stats →
-  // ML /seller/stats → real seller uploads).
   const catStats = (stats?.category_stats || []).map((c, i) => ({ ...c, fill: CAT_COLORS[i % CAT_COLORS.length] }));
   const pieData  = catStats.map(c => ({ name: catLabels[c.category] || c.category, value: c.count }));
 
-  // Top sellers sorted by completed_orders (from breakdown, if available) —
-  // fallback to product_count.
   const topSellers = (breakdown?.top_sellers || []).slice(0, 10);
   const topBuyers  = (breakdown?.top_buyers  || []).slice(0, 10);
   const catBreakdown = (breakdown?.categories   || []).slice(0, 10);
@@ -67,7 +63,6 @@ export default function FinancialDashboard({ admin }) {
         <p className="text-sm text-gray-500 mt-1">Platform overview and product analytics</p>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           { label: 'Total Sellers',    value: stats?.seller_count     || 0, icon: '🏪', color: 'from-[#a37b3d] to-[#ECD4A8]'   },
@@ -84,7 +79,6 @@ export default function FinancialDashboard({ admin }) {
         ))}
       </div>
 
-      {/* Revenue banner */}
       <div className="bg-gradient-to-tr from-[#1a0a1e] via-[#2d2d44] to-[#3d3455] rounded-2xl p-6 text-white border border-white/10 relative overflow-hidden">
         <div className="absolute right-0 bottom-0 translate-y-8 translate-x-8 w-40 h-40 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
         <p className="text-slate-400 text-sm font-medium relative z-10">Simulated Total Revenue</p>
@@ -92,38 +86,77 @@ export default function FinancialDashboard({ admin }) {
         <p className="text-slate-400 text-xs mt-2 relative z-10">Based on listed product prices × available inventory</p>
       </div>
 
-      {/* Aggregate sales line chart across ALL sellers combined */}
-      <div className="bg-white rounded-2xl p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
+      {/* Dual charts: Orders + Revenue (past 30 days, zero-filled) */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-800">Aggregate Sales Activity — All Sellers (Past 30 Days)</h3>
-          <span className="text-xs text-gray-400">{timeline.length} days with activity</span>
+          <span className="text-xs text-gray-400">
+            {timelineMeta.orders_total} orders · PKR {Number(timelineMeta.revenue_total || 0).toLocaleString()} GMV
+          </span>
         </div>
         {timeline.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No sales activity recorded yet.</p>
+          <div className="bg-white rounded-2xl p-6 border border-gray-100">
+            <p className="text-sm text-gray-400 text-center py-8">No sales activity recorded yet.</p>
+          </div>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={timeline} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={d => d.slice(5)} />
-              <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={v => `PKR ${(v/1000).toFixed(0)}k`} />
-              <Tooltip
-                formatter={(value, name) => {
-                  if (name === 'Revenue (PKR)') return [`PKR ${Number(value).toLocaleString()}`, name];
-                  return [value, name];
-                }}
-              />
-              <Legend />
-              <Line yAxisId="left"  type="monotone" dataKey="order_count" name="Orders"    stroke="#7C3AED" strokeWidth={2} dot={false} />
-              <Line yAxisId="right" type="monotone" dataKey="revenue"     name="Revenue (PKR)" stroke="#0891B2" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-gray-800">Orders</h4>
+                <span className="text-[10px] font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full">
+                  {timelineMeta.orders_total} total
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={timeline} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => d.slice(5)} interval="preserveStartEnd" />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    labelFormatter={(d) => d}
+                    formatter={(value) => [value, 'Orders']}
+                  />
+                  <Bar dataKey="order_count" name="Orders" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-gray-800">Revenue (PKR)</h4>
+                <span className="text-[10px] font-semibold text-cyan-800 bg-cyan-50 px-2 py-0.5 rounded-full">
+                  PKR {Number(timelineMeta.revenue_total || 0).toLocaleString()}
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={timeline} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0891B2" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#0891B2" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => d.slice(5)} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                  <Tooltip
+                    formatter={(value) => [`PKR ${Number(value).toLocaleString()}`, 'Revenue']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    name="Revenue (PKR)"
+                    stroke="#0891B2"
+                    strokeWidth={2}
+                    fill="url(#revFill)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Charts — Products by Category (bar) + Category Distribution (pie).
-          Both are dynamic: sourced from /api/admin/stats → /seller/stats →
-          real seller uploads (see EXPLORE-3 §A1). */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl p-6 border border-gray-100">
           <h3 className="font-semibold text-gray-800 mb-4">Products by Category</h3>

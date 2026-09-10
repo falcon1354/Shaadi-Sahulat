@@ -185,7 +185,16 @@ async function getAllProducts(req, res) {
 async function getCategories(req, res) {
   try {
     const cats = await AdminCategory.find({}).lean();
-    return res.json({ success: true, categories: filterRetiredCategories(cats) });
+    const { publicUrl } = require("../lib/storage");
+    const enriched = filterRetiredCategories(cats).map((cat) => {
+      const placeholder = cat.placeholder_image || "";
+      let placeholder_url = null;
+      if (placeholder) {
+        placeholder_url = /^https?:\/\//i.test(placeholder) ? placeholder : publicUrl(placeholder);
+      }
+      return { ...cat, placeholder_url };
+    });
+    return res.json({ success: true, categories: enriched });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
   }
@@ -193,16 +202,32 @@ async function getCategories(req, res) {
 
 async function addCategory(req, res) {
   try {
-    const { category_id, label, icon, price_min, price_max } = req.body;
+    const body = req.body || {};
+    const category_id = (body.category_id || "").trim();
+    const label = (body.label || "").trim();
     if (!category_id || !label)
       return res.status(400).json({ success: false, error: "category_id and label required" });
     if (isRetiredCategory(category_id, label))
       return res.status(400).json({ success: false, error: "Jewelry, accessories, and second-hand categories are no longer supported" });
+
+    let placeholder_image = body.placeholder_image || "";
+    if (req.file) {
+      const ext = path.extname(req.file.originalname) || ".png";
+      const filename = `${category_id}${ext}`;
+      const { saveCategoryPlaceholderAsync } = require("../lib/storage");
+      placeholder_image = await saveCategoryPlaceholderAsync(filename, req.file.buffer);
+    }
+
     const cat = await AdminCategory.create({
-      category_id, label, icon: icon || "📦",
-      price_min: price_min || 1000,
-      price_max: price_max || 500000,
-      storefront: req.body.storefront || "both",
+      category_id,
+      label,
+      icon: body.icon || "📦",
+      placeholder_image,
+      price_min: Number(body.price_min) || 1000,
+      price_max: Number(body.price_max) || 500000,
+      storefront: body.storefront || "both",
+      is_active: true,
+      deleted_at: null,
     });
     return res.status(201).json({ success: true, category: cat });
   } catch (e) {
@@ -320,6 +345,8 @@ module.exports = {
   removeCustomField,
   updateSubcategoryPrices,
   updateCategoryIcon,
+  updateCategoryPlaceholder,
+  deleteCategory,
   editCategory,
 };
 
@@ -354,27 +381,82 @@ async function updateCategoryIcon(req, res) {
   }
 }
 
+async function updateCategoryPlaceholder(req, res) {
+  try {
+    const { category_id } = req.params;
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "Placeholder image file is required" });
+    }
+
+    const ext = path.extname(req.file.originalname) || ".png";
+    const filename = `${category_id}${ext}`;
+    const { saveCategoryPlaceholderAsync } = require("../lib/storage");
+    const url = await saveCategoryPlaceholderAsync(filename, req.file.buffer);
+
+    const cat = await AdminCategory.findOneAndUpdate(
+      { category_id },
+      { $set: { placeholder_image: url } },
+      { new: true }
+    );
+    if (!cat) return res.status(404).json({ success: false, error: "Category not found" });
+
+    return res.json({
+      success: true,
+      message: "Category placeholder updated",
+      category: cat,
+    });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+/** Soft-delete: keep row in Mongo so existing DowryEstimation budgets still resolve. */
+async function deleteCategory(req, res) {
+  try {
+    const { category_id } = req.params;
+    const cat = await AdminCategory.findOneAndUpdate(
+      { category_id },
+      { $set: { is_active: false, deleted_at: new Date() } },
+      { new: true }
+    );
+    if (!cat) return res.status(404).json({ success: false, error: "Category not found" });
+    return res.json({ success: true, message: "Category deactivated", category: cat });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+}
+
 // ── Edit Category (PUT) ──────────────────────────────────────────────────
 
 async function editCategory(req, res) {
   try {
     const { category_id } = req.params;
-    const { label, price_min, price_max, icon, is_active, storefront } = req.body || {};
+    const { label, price_min, price_max, icon, is_active, storefront, placeholder_image } = req.body || {};
 
     const updateFields = {};
     if (label !== undefined) updateFields.label = label;
     if (price_min !== undefined) updateFields.price_min = Number(price_min);
     if (price_max !== undefined) updateFields.price_max = Number(price_max);
     if (icon !== undefined) updateFields.icon = icon;
-    if (is_active !== undefined) updateFields.is_active = String(is_active) === "true";
+    if (placeholder_image !== undefined) updateFields.placeholder_image = placeholder_image;
+    if (is_active !== undefined) {
+      const active = String(is_active) === "true" || is_active === true;
+      updateFields.is_active = active;
+      updateFields.deleted_at = active ? null : new Date();
+    }
     if (storefront !== undefined) updateFields.storefront = storefront;
 
-    // If a file was uploaded via multipart, handle icon
     if (req.file) {
       const ext = path.extname(req.file.originalname) || ".png";
       const filename = `${category_id}${ext}`;
-      const { saveCategoryIconAsync } = require("../lib/storage");
-      updateFields.icon = await saveCategoryIconAsync(filename, req.file.buffer);
+      const field = (req.file.fieldname || "").toLowerCase();
+      if (field === "placeholder") {
+        const { saveCategoryPlaceholderAsync } = require("../lib/storage");
+        updateFields.placeholder_image = await saveCategoryPlaceholderAsync(filename, req.file.buffer);
+      } else {
+        const { saveCategoryIconAsync } = require("../lib/storage");
+        updateFields.icon = await saveCategoryIconAsync(filename, req.file.buffer);
+      }
     }
 
     const cat = await AdminCategory.findOneAndUpdate(

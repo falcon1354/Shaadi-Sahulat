@@ -26,6 +26,13 @@ const Review = require("../models/Review");
 const { publicUrl } = require("../lib/storage");
 
 const { suggestRating, generateReviews, isGroqConfigured } = require("../lib/aiReviewClient");
+const {
+  synthesizeReviewVoice,
+  normalizeAgent,
+  isReviewTtsEnabled,
+  AGENTS,
+} = require("../lib/toneVoiceClient");
+const { saveReviewVoiceAsync } = require("../lib/storage");
 
 // ── Validate rating is in 0.5 steps between 0.5 and 5 ─────────────────────
 function isValidHalfStepRating(r) {
@@ -228,6 +235,66 @@ router.post("/ai/generate-reviews", async (req, res) => {
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── Preview / convert review text → voice (4 agents, same as tone-voice) ─────
+// Body: { text, rating, agent, buyer_id?, product_id?, order_id?, persist? }
+// Returns audio as base64 data URL for immediate playback; optionally uploads to Cloudinary.
+router.post("/preview-voice", async (req, res) => {
+  try {
+    if (!isReviewTtsEnabled()) {
+      return res.status(503).json({
+        success: false,
+        error: "Review TTS is disabled. Set REVIEW_TTS_ENABLED=true and run tone-voice on port 8000.",
+      });
+    }
+    const { text, rating, agent, buyer_id, product_id, order_id, persist } = req.body || {};
+    const trimmed = String(text || "").trim();
+    if (!trimmed || trimmed.length < 2) {
+      return res.status(400).json({ success: false, error: "Review text is required (min 2 characters)" });
+    }
+    const voiceAgent = normalizeAgent(agent);
+    const synth = await synthesizeReviewVoice({
+      text: trimmed,
+      rating: rating != null ? Number(rating) : 3,
+      agent: voiceAgent,
+      buyerId: buyer_id || "preview",
+      productId: product_id || "preview",
+      orderId: order_id || "",
+    });
+    if (!synth?.buffer) {
+      return res.status(502).json({ success: false, error: "Tone-voice returned empty audio" });
+    }
+
+    let voice_url = null;
+    if (persist) {
+      voice_url = await saveReviewVoiceAsync(
+        buyer_id || "preview",
+        product_id || `preview_${Date.now()}`,
+        synth.buffer,
+        "wav",
+        voiceAgent
+      );
+    }
+
+    const b64 = synth.buffer.toString("base64");
+    return res.json({
+      success: true,
+      agent: voiceAgent,
+      voice_gender: synth.meta.voice_gender,
+      voice_language: synth.meta.voice_language,
+      spoken_text: synth.spoken_text || trimmed,
+      audio_data_url: `data:audio/wav;base64,${b64}`,
+      voice_url,
+      agents: AGENTS,
+    });
+  } catch (err) {
+    console.warn("[reviews/preview-voice]", err.message);
+    return res.status(502).json({
+      success: false,
+      error: err.message || "Tone-voice synthesize failed. Is tone-voice running on :8000?",
+    });
   }
 });
 

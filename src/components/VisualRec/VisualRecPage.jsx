@@ -5,9 +5,10 @@ import ResultsGrid from './ResultsGrid';
 import ServiceStatus from './ServiceStatus';
 import visualApi from '../../api/visualApi';
 
-// Bridal only — map to a valid ML category for the backend
+// Bridal hint is optional UX only — do NOT force bridal_lehenga (that excluded
+// maxi/sharara/groom and other marketplace item types from visual search).
 const HINT_OPTIONS = [
-  { id: 'bridal', label: 'Bridal', icon: <User size={20} className="text-[#a37b3d]" />, backendCat: 'bridal_lehenga' },
+  { id: 'bridal', label: 'Bridal', icon: <User size={20} className="text-[#a37b3d]" />, backendCat: null },
 ];
 
 // Error stage → display config

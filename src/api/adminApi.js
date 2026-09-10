@@ -61,7 +61,16 @@ export async function getAdminCategories() {
   return res.json();
 }
 
-export async function addCategory(data) {
+export async function addCategory(data, placeholderFile = null) {
+  if (placeholderFile) {
+    const form = new FormData();
+    Object.entries(data || {}).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) form.append(k, String(v));
+    });
+    form.append("placeholder", placeholderFile);
+    const res = await fetch(`${BASE}/categories`, { method: "POST", body: form });
+    return res.json();
+  }
   const res = await fetch(`${BASE}/categories`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -137,11 +146,28 @@ export async function updateCategoryIcon(category_id, iconFile) {
   return res.json();
 }
 
+export async function updateCategoryPlaceholder(category_id, placeholderFile) {
+  const form = new FormData();
+  form.append("placeholder", placeholderFile);
+  const res = await fetch(`${BASE}/categories/${category_id}/placeholder`, {
+    method: "POST",
+    body: form,
+  });
+  return res.json();
+}
+
+export async function deleteCategory(category_id) {
+  const res = await fetch(`${BASE}/categories/${encodeURIComponent(category_id)}`, {
+    method: "DELETE",
+  });
+  return res.json();
+}
+
 export default {
   loginAdmin, getAllSellers, getSellerProducts,
   removeProduct, freezeProduct, unfreezeProduct,
   getAllBuyers, getStats, getAllProducts, getSellerWithCounts,
   getAdminCategories, addCategory, addSubcategory,
   updateCategoryPrices, addCustomField, removeCustomField, updateSubcategoryPrices,
-  editCategory, updateCategoryIcon,
+  editCategory, updateCategoryIcon, updateCategoryPlaceholder, deleteCategory,
 };

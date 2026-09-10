@@ -3,7 +3,8 @@ import { Gem, Hand, Banknote, Heart, TrendingUp, Eye, Wallet, BarChart3, PieChar
 import { useCategories } from '../../hooks/useCategories';
 import { getFullBuyerData } from '../../api/buyerApi';
 import { listBuyerOrders } from '../../api/orderApi';
-import { filterDisplayBudgetEntries, isRetiredCategory } from '../../lib/dowryDisplay';
+import { filterDisplayBudgetEntries, isRetiredCategory, splitAllocatedAndDeleted } from '../../lib/dowryDisplay';
+import CategoryThumb from '../Dowry/CategoryThumb';
 
 // ── Buyer-isolated storage helpers ───────────────────────────────────────────
 function readDowry(buyerId) {
@@ -40,7 +41,7 @@ const ANALYTICS_TABS = ['Overview', 'By Category', 'Remaining', 'Projections'];
 
 export default function BuyerDashboard({ buyer, onViewProduct }) {
   const buyerId = buyer?.buyer_id;
-  const { categories } = useCategories();
+  const { categories } = useCategories({ includeInactive: true });
 
   const catLabel = (key) =>
     categories.find(c => c.category_id === key)?.label || key.replace(/_/g, ' ');
@@ -117,6 +118,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
     let changed = false;
     for (const cat of categories) {
       if (isRetiredCategory(cat.category_id)) continue;
+      if (cat.is_active === false) continue;
       if (!(cat.category_id in budgets)) {
         budgets[cat.category_id] = { estimated: 0, spent: 0, remaining: 0, active: true };
         changed = true;
@@ -137,12 +139,20 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
   const catBudgets = mergedDowry?.category_budgets || {};
   const originalIds = mergedDowry?.original_category_ids;
 
-  const activeCats = filterDisplayBudgetEntries(catBudgets, originalIds)
-    .filter(([key]) => dbCatIds.length === 0 || dbCatIds.includes(key));
+  const { live: activeCats, deleted: deletedCats } = splitAllocatedAndDeleted(
+    catBudgets,
+    originalIds,
+    categories
+  );
+  // Keep funded categories even if somehow missing from list
+  const orphanFunded = filterDisplayBudgetEntries(catBudgets, originalIds).filter(
+    ([key]) => !activeCats.some(([k]) => k === key) && !deletedCats.some(([k]) => k === key)
+  );
+  const displayLive = [...activeCats, ...orphanFunded];
 
-  const totalEst    = activeCats.reduce((s, [, v]) => s + (v.estimated || 0), 0);
-  const totalSpent  = activeCats.reduce((s, [, v]) => s + (v.spent || 0), 0);
-  const totalRemain = activeCats.reduce((s, [, v]) => s + (v.remaining ?? (v.estimated - (v.spent || 0))), 0);
+  const totalEst    = [...displayLive, ...deletedCats].reduce((s, [, v]) => s + (v.estimated || 0), 0);
+  const totalSpent  = [...displayLive, ...deletedCats].reduce((s, [, v]) => s + (v.spent || 0), 0);
+  const totalRemain = [...displayLive, ...deletedCats].reduce((s, [, v]) => s + (v.remaining ?? (v.estimated - (v.spent || 0))), 0);
   const spentPct    = totalEst > 0 ? Math.round((totalSpent / totalEst) * 100) : 0;
 
   const noEstimate = !mergedDowry;
@@ -214,7 +224,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between text-xs border-t border-gray-100 pt-3">
-            <span className="text-gray-500">{noEstimate ? 'Complete the wizard' : `${activeCats.length} Categories included`}</span>
+            <span className="text-gray-500">{noEstimate ? 'Complete the wizard' : `${displayLive.length + deletedCats.length} Categories included`}</span>
             {!noEstimate && <span className="inline-flex items-center text-[#a37b3d] font-semibold gap-0.5">Active <CheckCircle2 size={12} /></span>}
           </div>
         </div>
@@ -336,7 +346,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
               </div>
 
               <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
-                {activeCats.map(([cat, info]) => {
+                {displayLive.map(([cat, info]) => {
                   const spent     = info.spent || 0;
                   const est       = info.estimated || 0;
                   const remaining = info.remaining ?? (est - spent);
@@ -346,13 +356,16 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                   return (
                     <div key={cat} className="group p-4 bg-[#FCFBFB] hover:bg-[#FFF5F8]/70 rounded-2xl border border-[#FBEFF1] transition-all duration-300">
                       <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="text-sm font-bold text-gray-900 capitalize tracking-wide">{catLabel(cat)}</p>
-                          <p className="text-[11px] text-gray-400 font-medium">
-                            Spent: PKR {spent.toLocaleString()} · Total: PKR {est.toLocaleString()}
-                          </p>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <CategoryThumb categoryId={cat} categories={categories} size={40} />
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-gray-900 capitalize tracking-wide truncate">{catLabel(cat)}</p>
+                            <p className="text-[11px] text-gray-400 font-medium">
+                              Spent: PKR {spent.toLocaleString()} · Total: PKR {est.toLocaleString()}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <p className={`text-sm font-extrabold ${isOver ? 'text-rose-600' : 'text-emerald-600'}`}>
                             {isOver ? `Over PKR ${Math.abs(remaining).toLocaleString()}` : `PKR ${remaining.toLocaleString()} left`}
                           </p>
@@ -362,7 +375,6 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                         </div>
                       </div>
                       
-                      {/* Individual Category progress bar */}
                       <div className="w-full bg-gray-200/80 rounded-full h-1.5 overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-rose-500' : itemPct > 80 ? 'bg-amber-400' : 'bg-violet-500'}`}
@@ -372,6 +384,30 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                     </div>
                   );
                 })}
+
+                {deletedCats.length > 0 && (
+                  <div className="pt-2 space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700 px-1">Removed Categories</p>
+                    {deletedCats.map(([cat, info]) => {
+                      const spent = info.spent || 0;
+                      const est = info.estimated || 0;
+                      const remaining = info.remaining ?? (est - spent);
+                      return (
+                        <div key={`del-${cat}`} className="p-4 bg-rose-50/60 rounded-2xl border border-rose-100">
+                          <div className="flex items-center gap-2.5">
+                            <CategoryThumb categoryId={cat} categories={categories} size={40} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-rose-900 capitalize truncate">{catLabel(cat)}</p>
+                              <p className="text-[11px] text-rose-600 font-medium">
+                                Deleted by admin · PKR {remaining.toLocaleString()} left · Spent PKR {spent.toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -449,15 +485,18 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
               {/* Tab 2: By Category List */}
               {analyticsTab === 'By Category' && (
                 <div className="space-y-4 overflow-y-auto max-h-[320px] pr-1">
-                  {activeCats.map(([cat, info]) => {
+                  {displayLive.map(([cat, info]) => {
                     const spent = info.spent || 0;
                     const est   = info.estimated || 0;
                     const pct   = est > 0 ? Math.min(100, Math.round((spent / est) * 100)) : 0;
                     return (
                       <div key={cat} className="space-y-1.5">
-                        <div className="flex justify-between text-xs font-semibold">
-                          <span className="text-gray-700 capitalize">{catLabel(cat)}</span>
-                          <span className="text-gray-400">PKR {spent.toLocaleString()} / PKR {est.toLocaleString()}</span>
+                        <div className="flex justify-between text-xs font-semibold gap-2">
+                          <span className="text-gray-700 capitalize flex items-center gap-2 min-w-0">
+                            <CategoryThumb categoryId={cat} categories={categories} size={24} />
+                            <span className="truncate">{catLabel(cat)}</span>
+                          </span>
+                          <span className="text-gray-400 shrink-0">PKR {spent.toLocaleString()} / PKR {est.toLocaleString()}</span>
                         </div>
                         <div className="w-full bg-gray-100 rounded-full h-2">
                           <div className={`h-2 rounded-full transition-all duration-300 ${pct > 90 ? 'bg-rose-500' : pct > 70 ? 'bg-amber-400' : 'bg-gradient-to-r from-violet-600 to-purple-400'}`}
@@ -466,6 +505,20 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
                       </div>
                     );
                   })}
+                  {deletedCats.length > 0 && (
+                    <div className="pt-2 border-t border-rose-100 space-y-2">
+                      <p className="text-[10px] font-bold text-rose-700 uppercase">Removed</p>
+                      {deletedCats.map(([cat, info]) => (
+                        <div key={`d-${cat}`} className="flex items-center justify-between text-xs gap-2">
+                          <span className="flex items-center gap-2 text-rose-800 capitalize">
+                            <CategoryThumb categoryId={cat} categories={categories} size={24} />
+                            {catLabel(cat)}
+                          </span>
+                          <span className="text-rose-600 font-semibold">PKR {(info.estimated || 0).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -473,7 +526,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
               {analyticsTab === 'Remaining' && (
                 <div className="space-y-4 my-auto">
                   <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                    {[...activeCats]
+                    {[...displayLive]
                       .sort(([, a], [, b]) => (b.remaining ?? (b.estimated - (b.spent || 0))) - (a.remaining ?? (a.estimated - (a.spent || 0))))
                       .map(([cat, info]) => {
                         const rem   = info.remaining ?? (info.estimated - (info.spent || 0));

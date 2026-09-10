@@ -20,12 +20,15 @@ const adminCategorySchema = new mongoose.Schema(
   {
     category_id:    { type: String, required: true, unique: true },
     label:          { type: String, required: true },
-    // icon can hold either an emoji (e.g. "📦") or a PNG icon URL path (e.g. "/uploads/Categories/wedding_dress.png")
+    // icon can hold either an emoji (e.g. "📦") or a PNG icon URL path
     icon:           { type: String, default: "📦" },
+    // Dowry / marketplace placeholder image (Cloudinary URL under CategoryPlaceholders/)
+    placeholder_image: { type: String, default: "" },
     subcategories:  { type: [subcategorySchema], default: [] },
     price_min:      { type: Number, default: 1000 },
     price_max:      { type: Number, default: 500000 },
     is_active:      { type: Boolean, default: true },
+    deleted_at:     { type: Date, default: null },
     // Which storefront this category belongs to: 'new', 'thrift', or 'both'
     storefront:     { type: String, enum: ["new", "thrift", "both"], default: "both" },
   },

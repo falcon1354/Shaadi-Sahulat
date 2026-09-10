@@ -38,15 +38,26 @@ const INITIAL_FORM = {
 };
 
 function Wizard({ userId }) {
-  const { categories: dbCats } = useCategories();
+  // includeInactive so soft-deleted cats still show in Fine-Tune / Reallocate From
+  const { categories: dbCats, activeCategories } = useCategories({ includeInactive: true });
 
-  // Dynamic categories from MongoDB; fall back to static list while loading
-  const CATEGORIES = dbCats.length
-    ? dbCats.filter(c => !isRetiredCategory(c.category_id)).map(c => ({
+  // Priority step only shows active categories
+  const CATEGORIES = activeCategories.length
+    ? activeCategories.filter(c => !isRetiredCategory(c.category_id)).map(c => ({
         key:             `priority_${c.category_id}`,
         label:           c.label,
         icon:            c.icon || '📦',
-        iconPng:         c.icon_png || c.icon_url || null,
+        iconPng:         c.placeholder_url || c.icon_url || null,
+        category:        c,
+        hasTypeSelector: c.category_id === 'wedding_dress',
+      }))
+    : dbCats.length
+    ? dbCats.filter(c => c.is_active !== false && !isRetiredCategory(c.category_id)).map(c => ({
+        key:             `priority_${c.category_id}`,
+        label:           c.label,
+        icon:            c.icon || '📦',
+        iconPng:         c.placeholder_url || c.icon_url || null,
+        category:        c,
         hasTypeSelector: c.category_id === 'wedding_dress',
       }))
     : [
