@@ -1,107 +1,84 @@
 import React from 'react';
-import { ShoppingBag, Store, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Store, ArrowRight } from 'lucide-react';
 import logo from '../assets/ShaadiSahulat Logo PNG.png';
+import mainHeroImg from '../assets/hero/Main.jpeg';
 
 export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
   return (
-    <div className="min-h-screen bg-[#FCFBFB] relative overflow-hidden flex items-center justify-center px-4 font-sans">
+    <div className="min-h-screen bg-[#f6f7f2] relative overflow-hidden flex items-center justify-center px-4 sm:px-6 font-sans">
       
-      {/* Decorative Background Elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#FDF2F3] rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-pulse-glow"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[30rem] h-[30rem] bg-[#FEF4F7] rounded-full mix-blend-multiply filter blur-[120px] opacity-60"></div>
+      {/* 60% Opacity Full Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-80 pointer-events-none"
+        style={{ backgroundImage: `url(${mainHeroImg})` }}
+      />
       
-      <div className="w-full max-w-4xl relative z-10 animate-fade-in py-12">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <div className="w-32 h-32 mx-auto mb-6 flex items-center justify-center">
-            <img src={logo} alt="ShaadiSahulat Logo" className="w-full h-full object-contain drop-shadow-md" />
+      <div className="w-full max-w-5xl relative z-10 py-12">
+        {/* Clean Header */}
+        <div className="text-center mb-12 animate-fade-in">
+          <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+            <img src={logo} alt="ShaadiSahulat Logo" className="w-full h-full object-contain drop-shadow-lg" />
           </div>
-          <h1 className="font-heading text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-700 via-pink-500 to-rose-400 mb-4 tracking-tight">
+          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-black text-[#f2bc66] tracking-tight drop-shadow-lg">
             ShaadiSahulat
           </h1>
-          <p className="text-xl text-gray-600 font-light mb-2">Your Complete Wedding Planning Platform</p>
-          <p className="text-sm text-gray-500 bg-white/50 inline-block px-4 py-1.5 rounded-full border border-gray-100 shadow-sm">Smart budgeting, AI matching, and seamless shopping</p>
+          <p className="text-lg sm:text-xl text-[#f051b0] font-bold mt-2 drop-shadow-md">
+            Your Complete Wedding Planning Platform
+          </p>
         </div>
 
-        {/* Role Selection Cards — 2 cards only */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+        {/* Streamlined Role Selection Cards */}
+        <div className="grid md:grid-cols-2 gap-6 sm:gap-8 max-w-3xl mx-auto">
           {/* Buyer Card */}
           <div
             onClick={onSelectBuyer}
-            className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative border border-[#FBEFF1]"
+            className="group cursor-pointer bg-black/40 hover:bg-black/50 backdrop-blur-md rounded-3xl p-6 sm:p-7 border border-white/20 hover:border-[#ECD4A8] transition-all duration-300 shadow-2xl hover:-translate-y-1.5 flex flex-col justify-between"
           >
-            <div className="h-44 bg-gradient-to-br from-[#1a0a1e] via-[#2d2044] to-[#3d3060] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden border border-white/10">
-              <div className="absolute inset-0 bg-purple-500/10 rounded-[1.5rem]" />
-              <ShoppingBag size={72} color="white" strokeWidth={1} className="group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md relative z-10" />
-            </div>
-            <div className="p-6">
-              <h2 className="font-heading text-xl font-bold text-gray-800 mb-2">I'm a Buyer</h2>
-              <p className="text-sm text-gray-500 mb-4 font-light">Bride, groom, or wedding planner</p>
-              
-              <div className="space-y-2 mb-6">
-                {[
-                  "Smart dowry estimation wizard",
-                  "AI dress matching by photo",
-                  "Browse New & Pre-owned marketplace",
-                  "Track spending & analytics"
-                ].map((text, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-purple-600 flex-shrink-0" />
-                    <span className="text-xs text-gray-600 font-medium">{text}</span>
-                  </div>
-                ))}
+            <div>
+              <div className="w-16 h-16 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-2xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <ShoppingBag size={32} className="text-white" />
               </div>
-
-              <button
-                className="w-full px-4 py-3 bg-gradient-to-r from-purple-700 to-pink-500 text-white font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Continue as Buyer 
-                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </button>
+              <h2 className="text-2xl font-black text-white mb-2 drop-shadow">I'm a Buyer</h2>
+              <p className="text-sm text-gray-200 font-medium mb-6 drop-shadow-sm">
+                Explore budget estimation, AI dress matching, and verified retail & thrift wedding collections.
+              </p>
             </div>
+
+            <button
+              className="w-full py-3.5 px-5 bg-gradient-to-r from-[#a37b3d] to-[#c69a54] text-white font-bold rounded-xl hover:brightness-110 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Continue as Buyer
+              <ArrowRight size={18} className="group-hover:translate-x-1.5 transition-transform" />
+            </button>
           </div>
 
           {/* Seller Card */}
           <div
             onClick={onSelectSeller}
-            className="group cursor-pointer glass-card rounded-[2rem] p-2 hover-lift transition-all duration-300 overflow-hidden relative border border-[#FBEFF1]"
+            className="group cursor-pointer bg-black/40 hover:bg-black/50 backdrop-blur-md rounded-3xl p-6 sm:p-7 border border-white/20 hover:border-indigo-400 transition-all duration-300 shadow-2xl hover:-translate-y-1.5 flex flex-col justify-between"
           >
-            <div className="h-44 bg-gradient-to-br from-[#0a1020] via-[#1a2040] to-[#252d55] rounded-[1.5rem] flex items-center justify-center relative overflow-hidden border border-white/10">
-               <div className="absolute inset-0 bg-indigo-500/10 rounded-[1.5rem]" />
-               <Store size={72} className="text-white group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out drop-shadow-md relative z-10" strokeWidth={1} />
-            </div>
-            <div className="p-6">
-              <h2 className="font-heading text-xl font-bold text-gray-800 mb-2">I'm a Seller</h2>
-              <p className="text-sm text-gray-500 mb-4 font-light">Designer, tailor, or boutique owner</p>
-              
-              <div className="space-y-2 mb-6">
-                {[
-                  "Upload & manage products",
-                  "List new OR pre-owned/thrift items",
-                  "Dashboard & analytics",
-                  "Financial projections & reports"
-                ].map((text, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-indigo-600 flex-shrink-0" />
-                    <span className="text-xs text-gray-600 font-medium">{text}</span>
-                  </div>
-                ))}
+            <div>
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-500 rounded-2xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Store size={32} className="text-white" />
               </div>
-
-              <button
-                className="w-full px-4 py-3 bg-gradient-to-r from-indigo-700 to-violet-500 text-white font-bold rounded-xl hover:opacity-95 transition-opacity shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Continue as Seller 
-                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </button>
+              <h2 className="text-2xl font-black text-white mb-2 drop-shadow">I'm a Seller</h2>
+              <p className="text-sm text-gray-200 font-medium mb-6 drop-shadow-sm">
+                List new or pre-owned wedding items, manage orders, and access real-time financial analytics.
+              </p>
             </div>
+
+            <button
+              className="w-full py-3.5 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:brightness-110 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Continue as Seller
+              <ArrowRight size={18} className="group-hover:translate-x-1.5 transition-transform" />
+            </button>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-12 text-sm text-gray-400 font-medium">
-          <p>ShaadiSahulat © 2026 | FYP | NUCES Chiniot-Faisalabad</p>
-          <p className="mt-2 text-xs opacity-75">Both roles can use all features. Choose your primary role above.</p>
+        {/* Minimal Footer */}
+        <div className="text-center mt-12 text-xs text-white font-medium tracking-wide drop-shadow">
+          ShaadiSahulat © 2026 | NUCES Chiniot-Faisalabad
         </div>
       </div>
     </div>
