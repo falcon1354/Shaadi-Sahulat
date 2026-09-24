@@ -5,6 +5,8 @@ import { useCart } from '../../context/CartContext';
 import { useCategories } from '../../hooks/useCategories';
 import { toggleWishlistItem, recordRecentlyViewed, patchDowryBudgets } from '../../api/buyerApi';
 import ThriftHomePage from '../Thrift/ThriftHomePage';
+import heroRetailImg from '../../assets/hero/Hero_Retail.jpeg';
+import heroThriftImg from '../../assets/hero/Hero_Thrift.jpeg';
 
 const SORT_OPTIONS = [
   { value: 'newest',     label: 'Newest First' },
@@ -789,16 +791,37 @@ export default function MarketplacePage({
 
   return (
     <div className="animate-fade-in">
-      {/* Premium Hero Switcher Section */}
-      <div className="bg-gradient-to-br from-[#1a0a1e]/95 via-[#2d2044]/95 to-[#3d3060]/95 text-white rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden shadow-lg border border-white/10">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 space-y-4 max-w-2xl">
-          <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-wider text-pink-300 border border-white/20">
-            ShaadiSahulat Storefronts
+      {/* Unified Dynamic Hero Banner - Switches Image & Text dynamically for Retail vs Thrift */}
+      <div className={`text-white rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden shadow-xl border transition-colors duration-500 ${
+        storefrontMode === 'thrift' ? 'bg-[#08201a] border-emerald-900/30' : 'bg-[#150a1b] border-white/10'
+      }`}>
+        {/* Background Image at 70% opacity */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center md:bg-right bg-no-repeat opacity-70 pointer-events-none transition-all duration-700"
+          style={{ backgroundImage: `url(${storefrontMode === 'thrift' ? heroThriftImg : heroRetailImg})` }}
+        />
+        {/* Left-to-right gradient so text is crisp and readable on the left */}
+        <div className={`absolute inset-0 pointer-events-none transition-all duration-500 ${
+          storefrontMode === 'thrift' 
+            ? 'bg-gradient-to-r from-[#194036] via-[#0d2e26]/30 to-transparent'
+            : 'bg-gradient-to-r from-[#150a1b] via-[#220e2c]/30 to-transparent'
+        }`} />
+
+        <div className="relative z-10 space-y-3 max-w-2xl animate-fade-in">
+          <span className={`px-3 py-1 backdrop-blur-md rounded-full text-[10px] font-extrabold uppercase tracking-wider inline-block border ${
+            storefrontMode === 'thrift'
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
+              : 'bg-white/15 text-[#ECD4A8] border-[#ECD4A8]/30'
+          }`}>
+            {storefrontMode === 'thrift' ? 'Sustainable Wedding Marketplace' : 'ShaadiSahulat Storefronts'}
           </span>
-          <h2 className="text-3xl font-extrabold tracking-tight">Wedding Shopping Hub</h2>
-          <p className="text-gray-300 text-xs md:text-sm font-light">
-            Choose between browsing brand-new premium items directly from designers and boutique shops, or browse verified pre-owned & thrift wedding items at great discounts.
+          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+            {storefrontMode === 'thrift' ? '♻️ Thrift & Pre-Loved Hub' : '🛍️ Retail & Designer Storefront'}
+          </h2>
+          <p className="text-gray-200 text-xs md:text-sm font-light leading-relaxed">
+            {storefrontMode === 'thrift'
+              ? 'Discover verified pre-owned bridal dresses, jewelry & wedding decor at unbeatable prices.'
+              : 'Browse brand-new bridal collections, jewelry & boutique items directly from top sellers.'}
           </p>
           
           {/* Switcher Tabs */}
@@ -807,7 +830,7 @@ export default function MarketplacePage({
               onClick={() => setStorefrontMode('new')}
               className={`flex-1 py-3 px-5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 storefrontMode === 'new'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-[#a37b3d] to-[#c69a54] text-white shadow-lg'
                   : 'bg-white/10 hover:bg-white/20 text-gray-200 border border-white/10'
               }`}
             >
