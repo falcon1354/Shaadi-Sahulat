@@ -9,6 +9,8 @@ const Dispute = require("../models/Dispute");
 const DisputeMessage = require("../models/DisputeMessage");
 const Order = require("../models/Order");
 const Package = require("../models/Package");
+const Buyer = require("../models/Buyer");
+const Seller = require("../models/Seller");
 
 const { requireAdmin } = require("../lib/auth");
 const { saveDisputeUploadAsync, publicUrl, makeDisputeUploadMiddleware } = require("../lib/storage");
@@ -73,10 +75,46 @@ router.get("/", async (req, res) => {
     }
 
     const disputes = await Dispute.find(q).sort({ created_at: -1 }).lean();
-    const enriched = disputes.map((d) => ({
-      ...d,
-      sla: buildSlaSnapshot(d),
-    }));
+    const orderIds = Array.from(new Set(disputes.map((d) => d.order_id).filter(Boolean)));
+    const buyerIds = Array.from(new Set(disputes.map((d) => d.buyer_id).filter(Boolean)));
+    const sellerIds = Array.from(new Set(disputes.map((d) => d.seller_id).filter(Boolean)));
+
+    const [orders, buyers, sellers] = await Promise.all([
+      Order.find({ order_id: { $in: orderIds } }).lean(),
+      Buyer.find({ buyer_id: { $in: buyerIds } }).lean(),
+      Seller.find({ seller_id: { $in: sellerIds } }).lean(),
+    ]);
+
+    const orderMap = {};
+    for (const o of orders) orderMap[o.order_id] = o;
+    const buyerMap = {};
+    for (const b of buyers) buyerMap[b.buyer_id] = b.name;
+    const sellerMap = {};
+    for (const s of sellers) sellerMap[s.seller_id] = s.name || s.business_name;
+
+    const enriched = disputes.map((d) => {
+      const o = orderMap[d.order_id];
+      const itemTitles = (o?.items || []).map((it) => it.title).filter(Boolean);
+      const orderName = itemTitles.length > 0
+        ? (itemTitles.length === 1 ? itemTitles[0] : `${itemTitles[0]} + ${itemTitles.length - 1} more`)
+        : (d.title || `Order ${d.order_id}`);
+
+      const buyerName = o?.buyer_name || buyerMap[d.buyer_id] || d.buyer_id;
+      const sellerName = sellerMap[d.seller_id] || d.seller_id;
+
+      return {
+        ...d,
+        order_name: orderName,
+        buyer_name: buyerName,
+        seller_name: sellerName,
+        buyer_email: o?.buyer_email || "",
+        order_amount: o?.total_amount || d.order_amount || 0,
+        items_count: o?.items_count || (o?.items || []).length,
+        items: o?.items || [],
+        order_status: o?.status || "",
+        sla: buildSlaSnapshot(d, o || {}),
+      };
+    });
     return res.json({ success: true, disputes: enriched });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

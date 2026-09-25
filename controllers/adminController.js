@@ -327,6 +327,21 @@ async function updateSubcategoryPrices(req, res) {
   }
 }
 
+async function deleteSubcategory(req, res) {
+  try {
+    const { category_id, subcategory_id } = req.params;
+    const cat = await AdminCategory.findOneAndUpdate(
+      { category_id },
+      { $pull: { subcategories: { id: subcategory_id } } },
+      { new: true }
+    );
+    if (!cat) return res.status(404).json({ success: false, error: "Category not found" });
+    return res.json({ success: true, message: "Subcategory deleted", category: cat });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+}
+
 module.exports = {
   loginAdmin,
   getAllSellers,
@@ -340,6 +355,7 @@ module.exports = {
   getCategories,
   addCategory,
   addSubcategory,
+  deleteSubcategory,
   updateCategoryPrices,
   addCustomField,
   removeCustomField,

@@ -13,6 +13,7 @@ const {
   getCategories,
   addCategory,
   addSubcategory,
+  deleteSubcategory,
   updateCategoryPrices,
   addCustomField,
   removeCustomField,
@@ -61,6 +62,7 @@ router.post("/categories/:category_id/placeholder", makeCategoryPlaceholderUploa
 router.delete("/categories/:category_id",                            deleteCategory);
 router.put( "/categories/:category_id",                              editCategory);
 router.post("/categories/:category_id/subcategory",                  addSubcategory);
+router.delete("/categories/:category_id/subcategory/:subcategory_id", deleteSubcategory);
 router.patch("/categories/:category_id/prices",                      updateCategoryPrices);
 router.post("/categories/:category_id/subcategory/:subcategory_id/field",          addCustomField);
 router.delete("/categories/:category_id/subcategory/:subcategory_id/field/:field_id", removeCustomField);

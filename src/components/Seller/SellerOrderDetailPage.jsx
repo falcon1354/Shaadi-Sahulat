@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import orderApi from "../../api/orderApi";
 import { useAuth } from "../../App";
+import OrderTimeline from "../Common/OrderTimeline";
 
 /**
  * SellerOrderDetailPage
@@ -321,30 +322,11 @@ export default function SellerOrderDetailPage() {
         );
       })}
 
-      {/* Status timeline (same style as buyer side) */}
-      <div className="bg-white rounded-2xl shadow p-6">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">Timeline</h2>
-        <div className="space-y-2">
-          {(order.timeline || []).map((t, i) => {
-            const isRejected = (t.status || "").toUpperCase() === "REJECTED";
-            return (
-              <div key={i} className="flex gap-3 text-sm">
-                <div className="text-xs text-gray-400 w-40 flex-shrink-0">
-                  {t.at ? new Date(t.at).toLocaleString() : '—'}
-                </div>
-                <div>
-                  <span className={`font-semibold ${isRejected ? "text-red-600" : ""}`}>{t.status}</span>
-                  <span className="text-gray-500"> by {t.by || '—'}</span>
-                  {t.note && <p className={`text-xs ${isRejected ? "text-red-600" : "text-gray-600"}`}>{t.note}</p>}
-                </div>
-              </div>
-            );
-          })}
-          {(!order.timeline || order.timeline.length === 0) && (
-            <p className="text-xs text-gray-400">No timeline events yet.</p>
-          )}
-        </div>
-      </div>
+      {/* Branching Status Timeline */}
+      <OrderTimeline
+        timeline={order.timeline || []}
+        title="Order Progress & Fulfillment Timeline"
+      />
 
       {/* Action modal: Shipping */}
       {modal === 'shipping' && myPkgs[0] && (
