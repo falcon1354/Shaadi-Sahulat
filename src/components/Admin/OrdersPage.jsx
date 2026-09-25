@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import adminExtApi from "../../api/adminExtApi";
+import OrderTimeline from "../Common/OrderTimeline";
 
 /**
  * OrdersPage — admin oversight of ALL orders.
@@ -383,16 +384,10 @@ export default function OrdersPage({ admin }) {
             )}
 
             <div className="mb-4">
-              <h3 className="text-xs font-semibold text-gray-600 mb-2">TIMELINE</h3>
-              <div className="space-y-1">
-                {(detail.order.timeline || []).map((t, i) => (
-                  <div key={i} className="text-xs">
-                    <span className="text-gray-400">{new Date(t.at).toLocaleString()}</span> —
-                    <b> {t.status}</b> by {t.by}
-                    {t.note && <span className="text-gray-600"> — {t.note}</span>}
-                  </div>
-                ))}
-              </div>
+              <OrderTimeline
+                timeline={detail.order.timeline || []}
+                title="Order Lifecycle Timeline"
+              />
             </div>
 
             {msg && <div className="bg-blue-50 text-blue-700 rounded-lg p-2 text-sm mb-3">{msg}</div>}

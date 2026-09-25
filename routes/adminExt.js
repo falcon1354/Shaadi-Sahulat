@@ -27,6 +27,8 @@ const SellerPayout = require("../models/SellerPayout");
 const AdminWallet = require("../models/AdminWallet");
 const BnplApplication = require("../models/BnplApplication");
 const Notification = require("../models/Notification");
+const Buyer = require("../models/Buyer");
+const Seller = require("../models/Seller");
 
 const VISUAL_ML_URL = process.env.VISUAL_ML_URL || "http://localhost:5002";
 
@@ -316,6 +318,74 @@ router.get("/wallet", async (req, res) => {
         byOrder[oid].last_at = entry.at;
       }
     }
+
+    const orderIds = Object.keys(byOrder);
+    const orders = await Order.find({ order_id: { $in: orderIds } }).lean();
+    const orderMap = {};
+    const buyerIds = [];
+    const sellerIdsSet = new Set();
+    for (const o of orders) {
+      orderMap[o.order_id] = o;
+      if (o.buyer_id) buyerIds.push(o.buyer_id);
+      (o.items || []).forEach(it => { if (it.seller_id) sellerIdsSet.add(it.seller_id); });
+    }
+
+    const [packages, buyers, sellers] = await Promise.all([
+      Package.find({ order_id: { $in: orderIds } }).lean(),
+      Buyer.find({ buyer_id: { $in: buyerIds } }).lean(),
+      Seller.find({ seller_id: { $in: Array.from(sellerIdsSet) } }).lean(),
+    ]);
+
+    const buyerMap = {};
+    for (const b of buyers) buyerMap[b.buyer_id] = b.name;
+    const sellerMap = {};
+    for (const s of sellers) sellerMap[s.seller_id] = s.name || s.business_name;
+
+    const packageMap = {};
+    for (const p of packages) {
+      if (!packageMap[p.order_id]) packageMap[p.order_id] = [];
+      packageMap[p.order_id].push(p);
+    }
+
+    for (const oid of orderIds) {
+      const o = orderMap[oid];
+      const pkgs = packageMap[oid] || [];
+      if (o) {
+        const itemTitles = (o.items || []).map(it => it.title).filter(Boolean);
+        const orderName = itemTitles.length > 0 
+          ? (itemTitles.length === 1 ? itemTitles[0] : `${itemTitles[0]} + ${itemTitles.length - 1} more`)
+          : `Order ${oid}`;
+        const sellerIds = Array.from(new Set((o.items || []).map(it => it.seller_id).filter(Boolean)));
+        const sellerNames = sellerIds.map(sid => sellerMap[sid] || sid);
+        const buyerName = o.buyer_name || buyerMap[o.buyer_id] || o.buyer_id || "Customer";
+
+        byOrder[oid].order_name = orderName;
+        byOrder[oid].buyer_name = buyerName;
+        byOrder[oid].buyer_email = o.buyer_email || "";
+        byOrder[oid].buyer_phone = o.buyer_phone || "";
+        byOrder[oid].seller_ids = sellerIds;
+        byOrder[oid].seller_names = sellerNames;
+        byOrder[oid].items_count = o.items_count || (o.items || []).length;
+        byOrder[oid].items = o.items || [];
+        byOrder[oid].total_amount = o.total_amount || 0;
+        byOrder[oid].status = o.status;
+        byOrder[oid].packages = pkgs.map(p => ({
+          package_id: p.package_id,
+          seller_id: p.seller_id,
+          seller_name: sellerMap[p.seller_id] || p.seller_id,
+          status: p.status,
+          total: p.total,
+        }));
+      } else {
+        byOrder[oid].order_name = `Order ${oid}`;
+        byOrder[oid].buyer_name = "Customer";
+        byOrder[oid].seller_ids = [];
+        byOrder[oid].seller_names = [];
+        byOrder[oid].items = [];
+        byOrder[oid].packages = [];
+      }
+    }
+
     const order_groups = Object.values(byOrder).sort(
       (a, b) => new Date(b.last_at) - new Date(a.last_at)
     );
@@ -351,6 +421,9 @@ router.get("/wallet/orders/:order_id", async (req, res) => {
       .filter((e) => (e.ref_order_id || "") === orderId)
       .sort((a, b) => new Date(a.at) - new Date(b.at));
     const payout = await SellerPayout.findOne({ order_id: orderId }).lean();
+    const order = await Order.findOne({ order_id: orderId }).lean();
+    const packages = await Package.find({ order_id: orderId }).lean();
+
     const credit_total = entries.filter((e) => e.type === "CREDIT").reduce((s, e) => s + (e.amount || 0), 0);
     const debit_total = entries.filter((e) => e.type === "DEBIT").reduce((s, e) => s + (e.amount || 0), 0);
     return res.json({
@@ -361,6 +434,8 @@ router.get("/wallet/orders/:order_id", async (req, res) => {
       debit_total,
       net: credit_total - debit_total,
       payout: payout || null,
+      order: order || null,
+      packages: packages || [],
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

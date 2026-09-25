@@ -4,6 +4,7 @@ import orderApi from "../../api/orderApi";
 import ReviewForm from "../Reviews/ReviewForm";
 import NotificationBell from "../Common/NotificationBell";
 import SlaCountdown from "../Common/SlaCountdown";
+import OrderTimeline from "../Common/OrderTimeline";
 
 /**
  * BuyerOrderDetailPage — confirmation (3 buttons) + 7-day auto-complete SLA.
@@ -210,6 +211,10 @@ export default function BuyerOrderDetailPage({ buyer }) {
             </div>
           ))}
         </div>
+      )}
+
+      {order.timeline && order.timeline.length > 0 && (
+        <OrderTimeline timeline={order.timeline} className="mb-4" />
       )}
 
       {disputes && disputes.length > 0 && (
