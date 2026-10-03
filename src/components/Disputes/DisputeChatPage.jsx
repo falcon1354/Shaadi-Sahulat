@@ -2,11 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import disputeApi from "../../api/disputeApi";
 import { useSocket } from "../../context/SocketContext";
-import SlaCountdown from "../Common/SlaCountdown";
 
 /**
- * DisputeChatPage — 3-party chat + Evidence + Order Details tabs,
- * seller 48h actions, buyer offer review, admin resolution outcomes, SLA timers.
+ * DisputeChatPage — 3-party dispute communication, evidence submission, and admin resolution.
  */
 export default function DisputeChatPage({ user }) {
   const { disputeId } = useParams();
@@ -16,9 +14,6 @@ export default function DisputeChatPage({ user }) {
   const [dispute, setDispute] = useState(null);
   const [messages, setMessages] = useState([]);
   const [order, setOrder] = useState(null);
-  const [sla, setSla] = useState(null);
-  const [sellerActions, setSellerActions] = useState([]);
-  const [adminOutcomes, setAdminOutcomes] = useState([]);
   const [tab, setTab] = useState("chat");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -26,15 +21,9 @@ export default function DisputeChatPage({ user }) {
   const [files, setFiles] = useState([]);
   const [evidenceDesc, setEvidenceDesc] = useState("");
   const [adminForm, setAdminForm] = useState({
-    decision: "buyer_wins_full",
+    decision: "buyer_wins",
     notes: "",
     refund_percent: 50,
-  });
-  const [sellerForm, setSellerForm] = useState({
-    action: "accept_full_refund",
-    note: "",
-    refund_percent: 50,
-    tracking_number: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState("");
@@ -44,17 +33,24 @@ export default function DisputeChatPage({ user }) {
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
+  const currentUser = user || { id: "admin", role: "admin", name: "Admin" };
+
   const load = async () => {
-    const r = await disputeApi.getDispute(disputeId);
-    if (r.success) {
-      setDispute(r.dispute);
-      setMessages(r.messages || []);
-      setOrder(r.order || null);
-      setSla(r.sla || null);
-      setSellerActions(r.seller_actions || []);
-      setAdminOutcomes(r.admin_outcomes || []);
+    try {
+      const r = await disputeApi.getDispute(disputeId);
+      if (r.success) {
+        setDispute(r.dispute);
+        setMessages(r.messages || []);
+        setOrder(r.order || null);
+      } else {
+        setMsg(r.error || "Failed to load dispute details.");
+      }
+    } catch (err) {
+      console.error("Failed to load dispute:", err);
+      setMsg(err.message || "Failed to load dispute.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -103,15 +99,10 @@ export default function DisputeChatPage({ user }) {
     dispute?.chat_locked ||
     ["RESOLVED", "CANCELLED"].includes(dispute?.status) ||
     String(dispute?.status || "").startsWith("CLOSED_");
-  const muted = (dispute?.muted_roles || []).includes(user.role);
-  const canUploadEvidence = user.role === "buyer" && !isClosed && !muted;
-  const canSellerRespond =
-    user.role === "seller" &&
-    ["SELLER_RESPONSE_PENDING", "OPEN"].includes(dispute?.status);
-  const canBuyerReview =
-    user.role === "buyer" && dispute?.status === "BUYER_REVIEW_PENDING";
+  const muted = (dispute?.muted_roles || []).includes(currentUser.role);
+  const canUploadEvidence = currentUser.role === "buyer" && !isClosed && !muted;
   const canAdminResolve =
-    user.role === "admin" &&
+    currentUser.role === "admin" &&
     !isClosed &&
     ["ADMIN_REVIEW_PENDING", "UNDER_REVIEW", "SELLER_RESPONDED", "SELLER_RESPONSE_PENDING", "OPEN", "BUYER_REVIEW_PENDING"].includes(
       dispute?.status
@@ -124,17 +115,17 @@ export default function DisputeChatPage({ user }) {
     const optimistic = {
       _id: `tmp-${Date.now()}`,
       dispute_id: disputeId,
-      sender_id: user.id,
-      sender_role: user.role,
-      sender_name: user.name || user.role,
+      sender_id: currentUser.id,
+      sender_role: currentUser.role,
+      sender_name: currentUser.name || currentUser.role,
       message: msgText,
       created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, optimistic]);
     await disputeApi.sendMessage(disputeId, {
-      fromRole: user.role,
-      fromId: user.id,
-      fromName: user.name || user.role,
+      fromRole: currentUser.role,
+      fromId: currentUser.id,
+      fromName: currentUser.name || currentUser.role,
       message: msgText,
     });
     setTimeout(() => {
@@ -144,7 +135,7 @@ export default function DisputeChatPage({ user }) {
 
   const onTextChange = (v) => {
     setText(v);
-    if (socket && disputeId) sendTyping(disputeId, user.name || user.role);
+    if (socket && disputeId) sendTyping(disputeId, currentUser.name || currentUser.role);
   };
 
   const upload = async () => {
@@ -156,8 +147,8 @@ export default function DisputeChatPage({ user }) {
     setSubmitting(true);
     setMsg("");
     const r = await disputeApi.uploadEvidence(disputeId, {
-      fromId: user.id,
-      fromRole: user.role,
+      fromId: currentUser.id,
+      fromRole: currentUser.role,
       files,
       description: evidenceDesc,
     });
@@ -172,43 +163,10 @@ export default function DisputeChatPage({ user }) {
     load();
   };
 
-  const submitSeller = async () => {
-    setSubmitting(true);
-    setMsg("");
-    const r = await disputeApi.sellerRespond(disputeId, {
-      seller_id: user.id,
-      action: sellerForm.action,
-      note: sellerForm.note,
-      refund_percent: sellerForm.refund_percent,
-      tracking_number: sellerForm.tracking_number,
-    });
-    setSubmitting(false);
-    if (!r.success) {
-      setMsg(r.error || "Seller response failed");
-      return;
-    }
-    load();
-  };
-
-  const submitBuyerReview = async (accept) => {
-    setSubmitting(true);
-    setMsg("");
-    const r = await disputeApi.buyerReviewOffer(disputeId, {
-      buyerId: user.id,
-      accept,
-    });
-    setSubmitting(false);
-    if (!r.success) {
-      setMsg(r.error || "Review failed");
-      return;
-    }
-    load();
-  };
-
   const submitAdmin = async () => {
     setSubmitting(true);
     setMsg("");
-    const r = await disputeApi.adminDecision(user.id, disputeId, {
+    const r = await disputeApi.adminDecision(currentUser.id, disputeId, {
       decision: adminForm.decision,
       notes: adminForm.notes,
       refund_percent: adminForm.refund_percent,
@@ -233,7 +191,7 @@ export default function DisputeChatPage({ user }) {
   })();
 
   const bubbleClass = (m) => {
-    const isMe = m.sender_id === user.id && m.sender_role === user.role;
+    const isMe = m.sender_id === currentUser.id && m.sender_role === currentUser.role;
     if (m.is_system) return "bg-slate-100 text-slate-700 border border-slate-200 w-full max-w-full";
     if (m.sender_role === "admin") return "bg-indigo-100 text-indigo-950 border border-indigo-200";
     if (isMe) return "bg-[#a37b3d] text-white";
@@ -289,40 +247,19 @@ export default function DisputeChatPage({ user }) {
                 {dispute.status}
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
-                You: {user.role}
+                You: {currentUser.role}
               </span>
             </div>
-            <SlaCountdown
-              deadline={sla?.primary_deadline}
-              label={sla?.primary_label || "Active SLA"}
-              className="min-w-[160px] text-right"
-            />
           </div>
         </div>
 
-        <div className="mt-3 grid sm:grid-cols-3 gap-2 text-[11px]">
-          <SlaCountdown
-            deadline={sla?.seller_response_deadline || dispute.seller_response_deadline}
-            label="Seller 48h response"
-            showExpired={!!dispute.seller_response_deadline}
-          />
-          <SlaCountdown
-            deadline={sla?.admin_resolution_deadline || dispute.admin_resolution_deadline}
-            label="Admin 5-day resolve"
-            showExpired={!!dispute.admin_resolution_deadline}
-          />
-          <SlaCountdown
-            deadline={sla?.appeal_deadline || dispute.appeal_deadline}
-            label="Appeal window (7d)"
-            showExpired={!!dispute.appeal_deadline}
-          />
-        </div>
-
         {dispute.outcome_code && (
-          <p className="text-xs text-gray-600 mt-2">
-            Outcome: <b>{dispute.outcome_code}</b>
-            {dispute.admin_notes ? ` — ${dispute.admin_notes}` : ""}
-          </p>
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <p className="text-xs text-gray-700">
+              Resolution Outcome: <b className="text-gray-900">{dispute.outcome_code}</b>
+              {dispute.admin_notes ? ` — ${dispute.admin_notes}` : ""}
+            </p>
+          </div>
         )}
       </div>
 
@@ -361,7 +298,7 @@ export default function DisputeChatPage({ user }) {
               </p>
             ) : (
               messages.map((m, i) => {
-                const isMe = m.sender_id === user.id && m.sender_role === user.role;
+                const isMe = m.sender_id === currentUser.id && m.sender_role === currentUser.role;
                 const isSystem = !!m.is_system;
                 return (
                   <div
@@ -581,163 +518,78 @@ export default function DisputeChatPage({ user }) {
         </div>
       )}
 
-      {canSellerRespond && (
-        <div className="bg-white rounded-2xl shadow p-4 mb-4">
-          <h2 className="text-sm font-semibold text-gray-600 mb-1">SELLER RESPONSE (48h)</h2>
-          <p className="text-xs text-gray-500 mb-3">
-            Respond before the timer expires or the case auto-escalates to admin.
-          </p>
-          <select
-            value={sellerForm.action}
-            onChange={(e) => setSellerForm({ ...sellerForm, action: e.target.value })}
-            className="w-full mb-2 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-          >
-            {(sellerActions.length
-              ? sellerActions
-              : [
-                  { id: "accept_full_refund", label: "Accept Full Refund" },
-                  { id: "offer_partial_refund", label: "Offer Partial Refund" },
-                  { id: "offer_replacement", label: "Offer Replacement" },
-                  { id: "reject_dispute", label: "Reject Dispute (escalate)" },
-                ]
-            ).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-          {sellerForm.action === "offer_partial_refund" && (
-            <input
-              type="number"
-              min={1}
-              max={99}
-              value={sellerForm.refund_percent}
-              onChange={(e) =>
-                setSellerForm({ ...sellerForm, refund_percent: Number(e.target.value) })
-              }
-              className="w-full mb-2 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              placeholder="Refund %"
-            />
-          )}
-          {sellerForm.action === "offer_replacement" && (
-            <input
-              value={sellerForm.tracking_number}
-              onChange={(e) =>
-                setSellerForm({ ...sellerForm, tracking_number: e.target.value })
-              }
-              className="w-full mb-2 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              placeholder="Replacement tracking number"
-            />
-          )}
-          <textarea
-            value={sellerForm.note}
-            onChange={(e) => setSellerForm({ ...sellerForm, note: e.target.value })}
-            placeholder="Note / reason (required for reject)"
-            className="w-full mb-2 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-            rows={2}
-          />
-          <button
-            type="button"
-            onClick={submitSeller}
-            disabled={submitting}
-            className="w-full py-2 bg-[#a37b3d] hover:bg-[#8a6633] text-white rounded-lg text-sm font-semibold"
-          >
-            {submitting ? "Submitting..." : "Submit response"}
-          </button>
-        </div>
-      )}
 
-      {canBuyerReview && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">
-          <h2 className="text-sm font-semibold text-amber-900 mb-1">Seller offer pending</h2>
-          <p className="text-xs text-amber-800 mb-3">
-            {dispute.seller_response_action === "offer_replacement"
-              ? `Replacement offered${
-                  dispute.seller_replacement_tracking
-                    ? ` (tracking: ${dispute.seller_replacement_tracking})`
-                    : ""
-                }.`
-              : `Partial refund offered: ${dispute.seller_offer_percent || "?"}%`}
-            {dispute.seller_response_note ? ` — ${dispute.seller_response_note}` : ""}
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => submitBuyerReview(true)}
-              disabled={submitting}
-              className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold"
-            >
-              Accept offer
-            </button>
-            <button
-              type="button"
-              onClick={() => submitBuyerReview(false)}
-              disabled={submitting}
-              className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold"
-            >
-              Reject → admin
-            </button>
-          </div>
-        </div>
-      )}
 
       {canAdminResolve && (
-        <div className="bg-white rounded-2xl shadow p-4 mb-4">
-          <h2 className="text-sm font-semibold text-gray-600 mb-3">RESOLVE DISPUTE</h2>
-          <div className="grid sm:grid-cols-2 gap-2 mb-3">
-            {(adminOutcomes.length
-              ? adminOutcomes
-              : [
-                  { id: "buyer_wins_full", label: "Buyer Wins — Full Refund" },
-                  { id: "buyer_wins_partial", label: "Buyer Wins — Partial Refund" },
-                  { id: "buyer_wins_return", label: "Buyer Wins — Return Required" },
-                  { id: "seller_wins", label: "Seller Wins" },
-                  { id: "compromise", label: "Compromise" },
-                  { id: "force_replacement", label: "Force Replacement" },
-                ]
-            ).map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => setAdminForm({ ...adminForm, decision: o.id })}
-                className={`text-left px-3 py-2 rounded-lg text-xs font-semibold border ${
-                  adminForm.decision === o.id
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "border-gray-200 text-gray-700"
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">Arbitrate Dispute Decision</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Select the final resolution outcome for this dispute</p>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+              Admin Exclusive
+            </span>
           </div>
-          {(adminForm.decision === "buyer_wins_partial" ||
-            adminForm.decision === "compromise") && (
-            <input
-              type="number"
-              min={1}
-              max={99}
-              value={adminForm.refund_percent}
-              onChange={(e) =>
-                setAdminForm({ ...adminForm, refund_percent: Number(e.target.value) })
-              }
-              className="w-full mb-2 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              placeholder="Buyer refund %"
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setAdminForm({ ...adminForm, decision: "buyer_wins" })}
+              className={`text-left p-4 rounded-2xl border transition-all ${
+                adminForm.decision === "buyer_wins"
+                  ? "bg-rose-50 border-rose-400 ring-2 ring-rose-200 text-rose-900 shadow-sm"
+                  : "bg-white border-gray-200 hover:border-gray-300 text-gray-800"
+              }`}
+            >
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <span>🛡️</span> Buyer Wins
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Admin cancels the order, restores product stock, and marks as Cash Refund.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAdminForm({ ...adminForm, decision: "seller_wins" })}
+              className={`text-left p-4 rounded-2xl border transition-all ${
+                adminForm.decision === "seller_wins"
+                  ? "bg-emerald-50 border-emerald-400 ring-2 ring-emerald-200 text-emerald-900 shadow-sm"
+                  : "bg-white border-gray-200 hover:border-gray-300 text-gray-800"
+              }`}
+            >
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <span>🏬</span> Seller Wins
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Order reset to Delivered. Buyer is given 2 days to confirm before automatic completion.
+              </p>
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Decision Note / Reason (Optional)</label>
+            <textarea
+              placeholder="Provide a brief explanation for the buyer and seller..."
+              value={adminForm.notes}
+              onChange={(e) => setAdminForm({ ...adminForm, notes: e.target.value })}
+              className="w-full px-3.5 py-2.5 border border-gray-200 rounded-2xl text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-[#a37b3d] outline-none"
+              rows={2}
             />
-          )}
-          <textarea
-            placeholder="Admin notes / reason"
-            value={adminForm.notes}
-            onChange={(e) => setAdminForm({ ...adminForm, notes: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-2"
-            rows={2}
-          />
+          </div>
+
           <button
             type="button"
             onClick={submitAdmin}
-            disabled={submitting}
-            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold"
+            disabled={submitting || !adminForm.decision}
+            className={`w-full py-3 text-white rounded-2xl text-xs font-bold transition-all shadow-md ${
+              !adminForm.decision || submitting
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-gray-900 hover:bg-black"
+            }`}
           >
-            {submitting ? "Submitting..." : "Resolve Dispute"}
+            {submitting ? "Processing Resolution..." : `Confirm Decision: ${adminForm.decision === "buyer_wins" ? "Buyer Wins (Cancel & Refund)" : adminForm.decision === "seller_wins" ? "Seller Wins (2-Day Confirm)" : "Select Outcome"}`}
           </button>
         </div>
       )}

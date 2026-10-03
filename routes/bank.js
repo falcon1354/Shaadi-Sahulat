@@ -581,4 +581,77 @@ router.post(
   }
 );
 
+// ---------- Banker Batch Releases ----------
+const BnplBatchRelease = require("../models/BnplBatchRelease");
+const { runBnplBatchRelease } = require("../services/bnplBatchService");
+
+// GET /api/bank/batches — list of batch releases from bank to admin + all approved BNPL orders
+router.get("/batches", requireBankOfficer, async (req, res) => {
+  try {
+    const batches = await BnplBatchRelease.find().sort({ released_at: -1 }).lean();
+    const totalReleased = batches.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+    const totalOrders = batches.reduce((sum, b) => sum + (b.order_count || 0), 0);
+
+    // Find all BNPL applications that are APPROVED, OFFER_ACCEPTED, or already batched
+    const apps = await BnplApplication.find({
+      $or: [
+        { status: { $in: ["APPROVED", "OFFER_ACCEPTED"] } },
+        { batch_id: { $exists: true, $nin: [null, ""] } },
+      ],
+    })
+      .sort({ created_at: -1 })
+      .lean();
+
+    const orderIds = apps.map((a) => a.order_id).filter(Boolean);
+    const buyerIds = apps.map((a) => a.buyer_id).filter(Boolean);
+
+    const [orders, buyers] = await Promise.all([
+      Order.find({ order_id: { $in: orderIds } }).lean(),
+      Buyer.find({ buyer_id: { $in: buyerIds } }).lean(),
+    ]);
+
+    const orderMap = Object.fromEntries(orders.map((o) => [o.order_id, o]));
+    const buyerMap = Object.fromEntries(buyers.map((b) => [b.buyer_id, b.name]));
+
+    const approved_orders = apps.map((a) => {
+      const ord = orderMap[a.order_id];
+      const isBatched = Boolean(a.batch_id);
+      return {
+        application_no: a.application_no,
+        order_id: a.order_id,
+        buyer_id: a.buyer_id,
+        buyer_name: ord?.buyer_name || buyerMap[a.buyer_id] || "Customer",
+        amount: ord?.total_amount || a.amount || 0,
+        plan_months: a.plan_months,
+        status: a.status,
+        batch_id: a.batch_id || null,
+        is_transferred: isBatched,
+        created_at: a.created_at,
+        decision_at: a.decision_at || a.updatedAt || a.created_at,
+      };
+    });
+
+    return res.json({
+      success: true,
+      count: batches.length,
+      total_amount_released: totalReleased,
+      total_orders_batched: totalOrders,
+      batches,
+      approved_orders,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/bank/trigger-batch — manually execute batch release
+router.post("/trigger-batch", requireBankOfficer, async (req, res) => {
+  try {
+    const result = await runBnplBatchRelease();
+    return res.json(result);
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

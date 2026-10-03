@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import disputeApi from "../../api/disputeApi";
-import SlaCountdown from "../Common/SlaCountdown";
 
 /**
  * AdminDisputesPage — High quality dispute oversight dashboard.
@@ -35,11 +34,8 @@ const DISPUTE_TYPE_LABELS = {
 const FILTERS = [
   { id: "all", label: "All Cases" },
   { id: "open", label: "Open & Pending" },
-  { id: "overdue", label: "Overdue SLA" },
-  { id: "high_value", label: "High Value (>140k)" },
+  { id: "resolved", label: "Resolved / Closed" },
 ];
-
-const HIGH_VALUE_PKR = 500 * 280; // ~140,000 PKR
 
 export default function AdminDisputesPage({ admin }) {
   const navigate = useNavigate();
@@ -51,14 +47,12 @@ export default function AdminDisputesPage({ admin }) {
   const load = async () => {
     setLoading(true);
     const adminId = admin?.admin_id || admin?._id || "admin_001";
-    const apiFilter = filter === "open" || filter === "overdue" ? filter : undefined;
-    const r = await disputeApi.listDisputes("admin", adminId, apiFilter);
+    const r = await disputeApi.listDisputes("admin", adminId);
     let list = r.success ? r.disputes || [] : [];
-    if (filter === "high_value") {
-      list = list.filter((d) => {
-        const amount = d.order_amount || d.held_amount || 0;
-        return amount >= HIGH_VALUE_PKR || d.high_value === true;
-      });
+    if (filter === "open") {
+      list = list.filter((d) => !["RESOLVED", "CANCELLED"].includes(d.status) && !String(d.status).startsWith("CLOSED_"));
+    } else if (filter === "resolved") {
+      list = list.filter((d) => ["RESOLVED", "CANCELLED"].includes(d.status) || String(d.status).startsWith("CLOSED_"));
     }
     setDisputes(list);
     setLoading(false);
@@ -127,17 +121,13 @@ export default function AdminDisputesPage({ admin }) {
       ) : disputes.length === 0 ? (
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-12 text-center text-gray-400 space-y-2">
           <span className="text-3xl opacity-40">✨</span>
-          <p className="text-sm font-bold text-gray-700">No active disputes found</p>
-          <p className="text-xs text-gray-400">All customer orders in this view are in good standing.</p>
+          <p className="text-sm font-bold text-gray-700">No disputes found</p>
+          <p className="text-xs text-gray-400">All customer orders in this filter view are in good standing.</p>
         </div>
       ) : (
         <div className="grid gap-3.5">
           {disputes.map((d) => {
-            const primary =
-              d.sla?.primary_deadline ||
-              d.admin_resolution_deadline ||
-              d.seller_response_deadline;
-            const urgent = d.sla?.urgency === "critical" || d.sla?.urgency === "expired";
+            const isResolved = ["RESOLVED", "CANCELLED"].includes(d.status) || String(d.status).startsWith("CLOSED_");
             const typeLabel = DISPUTE_TYPE_LABELS[d.dispute_type] || d.dispute_type;
             const orderTitle = d.order_name || d.title || `Order ${d.order_id}`;
             const buyerDisplayName = d.buyer_name || "Customer";
@@ -148,11 +138,7 @@ export default function AdminDisputesPage({ admin }) {
                 key={d.dispute_id}
                 onMouseEnter={() => setHoveredDispute(d)}
                 onMouseLeave={() => setHoveredDispute(null)}
-                className={`relative bg-white rounded-3xl p-5 shadow-sm border transition-all hover:shadow-md ${
-                  urgent
-                    ? "border-rose-300 ring-2 ring-rose-100 bg-gradient-to-r from-rose-50/20 to-white"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
+                className="relative bg-white rounded-3xl p-5 shadow-sm border border-gray-200 hover:border-gray-300 transition-all hover:shadow-md"
               >
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   {/* Left: Headline, Buyer/Seller names & Reason */}
@@ -164,6 +150,11 @@ export default function AdminDisputesPage({ admin }) {
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-[#a37b3d] border border-amber-200/60">
                         {typeLabel}
                       </span>
+                      {isResolved && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          ✓ Resolved
+                        </span>
+                      )}
                     </div>
 
                     {/* Buyer & Seller Names (NOT raw IDs) */}
@@ -187,14 +178,8 @@ export default function AdminDisputesPage({ admin }) {
                     </p>
                   </div>
 
-                  {/* Right: SLA, Status, Action */}
+                  {/* Right: Status, Action */}
                   <div className="flex flex-wrap items-center gap-3">
-                    <SlaCountdown
-                      deadline={primary}
-                      label={d.sla?.primary_label || "SLA Deadline"}
-                      className="min-w-[140px]"
-                    />
-
                     <span
                       className={`text-[11px] px-3 py-1 rounded-full font-bold border ${
                         STATUS_BADGE[d.status] || "bg-gray-100 text-gray-700 border-gray-200"
@@ -203,17 +188,31 @@ export default function AdminDisputesPage({ admin }) {
                       {d.status}
                     </span>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(`/disputes/${d.dispute_id}?as=admin`, {
-                          state: { asRole: "admin" },
-                        })
-                      }
-                      className="px-4 py-2 bg-[#a37b3d] hover:bg-[#8a6633] text-white text-xs rounded-2xl font-bold transition-all shadow-sm"
-                    >
-                      Review &amp; Decide →
-                    </button>
+                    {isResolved ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(`/disputes/${d.dispute_id}?as=admin`, {
+                            state: { asRole: "admin" },
+                          })
+                        }
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs rounded-2xl font-bold transition-all border border-gray-200"
+                      >
+                        View Details →
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(`/disputes/${d.dispute_id}?as=admin`, {
+                            state: { asRole: "admin" },
+                          })
+                        }
+                        className="px-4 py-2 bg-[#a37b3d] hover:bg-[#8a6633] text-white text-xs rounded-2xl font-bold transition-all shadow-sm"
+                      >
+                        Review &amp; Decide →
+                      </button>
+                    )}
                   </div>
                 </div>
 

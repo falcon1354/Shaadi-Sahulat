@@ -5,20 +5,20 @@
   "category_budgets": {
     "wedding_dress": {
       "estimated": 210000,
-      "spent": 2160851,
-      "remaining": -1950851,
+      "spent": 2219851,
+      "remaining": -2009851,
       "active": true
     },
     "furniture": {
       "estimated": 175000,
-      "spent": 190000,
-      "remaining": -15000,
+      "spent": 236000,
+      "remaining": -61000,
       "active": true
     },
     "electronics": {
       "estimated": 23158,
-      "spent": 0,
-      "remaining": 23158,
+      "spent": 127700,
+      "remaining": -104542,
       "active": true
     },
     "jewelry": {
@@ -29,20 +29,20 @@
     },
     "kitchen_items": {
       "estimated": 20677,
-      "spent": 17000,
-      "remaining": 3677,
+      "spent": 97450,
+      "remaining": -76773,
       "active": true
     },
     "decoration": {
       "estimated": 19087,
-      "spent": 52900,
-      "remaining": -33813,
+      "spent": 119500,
+      "remaining": -100413,
       "active": true
     },
     "miscellaneous": {
       "estimated": 21081,
-      "spent": 19600,
-      "remaining": 1481,
+      "spent": 28100,
+      "remaining": -7019,
       "active": true
     },
     "Accessaries": {
@@ -85,5 +85,5 @@
     "Second-Life Gear & Outdoors": 3000,
     "Jweley": 20000
   },
-  "saved_at": "2026-09-22T17:39:54.770438+00:00"
+  "saved_at": "2026-10-03T11:12:26.098211+00:00"
 }

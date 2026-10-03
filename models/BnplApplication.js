@@ -63,6 +63,7 @@ const bnplApplicationSchema = new mongoose.Schema(
     officer_comment:  { type: String, default: "" },
     decision_at:      { type: Date,   default: null },
     offer_expires_at: { type: Date,   default: null },
+    batch_id:         { type: String, default: "", index: true },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );

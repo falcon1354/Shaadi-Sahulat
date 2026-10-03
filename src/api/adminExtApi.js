@@ -102,8 +102,13 @@ export async function listBnplApplications(adminId, status) {
   return res.json();
 }
 
+export async function getBnplReceipts(adminId) {
+  const res = await fetch(`${BASE}/bnpl-receipts`, { headers: _headers(adminId) });
+  return res.json();
+}
+
 export default {
   listOrders, listPendingReleaseOrders, getOrderDetail, listDisputes,
   releasePayment, getWallet, getWalletOrderLedger, getSellerPayouts, listBnplApplications,
-  getSalesTimeline, getBreakdown, removeSeller,
+  getSalesTimeline, getBreakdown, removeSeller, getBnplReceipts,
 };
