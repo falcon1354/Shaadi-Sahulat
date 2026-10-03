@@ -62,6 +62,12 @@ const { publicUrl, makeDisputeUploadMiddleware } = require("../lib/storage");
 const { attachReviewVoices } = require("../lib/reviewVoice");
 const { normalizeAgent } = require("../lib/toneVoiceClient");
 const { deductStockForOrderItems, restoreStockForOrderItems } = require("../lib/inventory");
+const {
+  newCheckoutSession,
+  makeSellerToken,
+  groupItemsBySeller,
+  createPackagesForOrder,
+} = require("../lib/checkoutSession");
 
 const disputeUpload = makeDisputeUploadMiddleware();
 
@@ -125,81 +131,29 @@ router.post("/", requireBuyer, async (req, res) => {
       };
     });
 
-    const orderId = generateOrderId();
+    const bySeller = groupItemsBySeller(orderItems);
+    const multiSeller = bySeller.size > 1;
+    const { sessionId, color } = multiSeller ? newCheckoutSession() : { sessionId: "", color: "" };
     const initialStatus = payment_method === "BNPL" ? "PENDING_BNPL_APPROVAL" : "CONFIRMED";
-
-    // Bank processing fee (BNPL)
     const bank_processing_fee = payment_method === "BNPL" ? computeBankProcessingFee(subtotal, 0.02) : 0;
-    const totalWithFeeAndShipping = subtotal + bank_processing_fee + buyer_shipping_cost;
 
-    // ── Seller view token (hashed, for /orders/ORD-XXXX?t=<token>) ────
-    // Lets the seller open an order-detail URL that a buyer cannot guess.
-    const crypto = require("crypto");
-    const seller_view_token = crypto
-      .createHash("sha256")
-      .update(`${orderId}|${req.user.id}|${Date.now()}|${Math.random()}`)
-      .digest("hex")
-      .slice(0, 24);
+    const shippingAddress = {
+      line1: shipping_address.line1 || "",
+      city: shipping_address.city || "",
+      province: shipping_address.province || "",
+      house_number: shipping_address.house_number || "",
+      phone: shipping_address.phone || buyer.phone || "",
+      notes: shipping_address.notes || "",
+    };
 
-    // Deduct inventory at sale time (before order row is written)
+    // Deduct inventory at sale time (before order rows are written)
     try {
       await deductStockForOrderItems(orderItems);
     } catch (stockErr) {
       return res.status(409).json({ success: false, error: stockErr.message });
     }
 
-    let order;
-    try {
-      order = await Order.create({
-        order_id: orderId,
-        buyer_id: req.user.id,
-        buyer_name: buyer.name,
-        buyer_email: buyer.email,
-        buyer_phone: buyer.phone,
-        items: orderItems,
-        items_count: orderItems.reduce((n, i) => n + i.qty, 0),
-        subtotal,
-        shipping_total: buyer_shipping_cost, // buyer-chosen shipping cost, locked at checkout
-        total_amount: totalWithFeeAndShipping, // subtotal + shipping + bank fee
-        bank_processing_fee,
-        delivery_method,
-        seller_view_token,
-        shipping_address: {
-          line1: shipping_address.line1 || "",
-          city: shipping_address.city || "",
-          province: shipping_address.province || "",
-          house_number: shipping_address.house_number || "",
-          phone: shipping_address.phone || buyer.phone || "",
-          notes: shipping_address.notes || "",
-        },
-        payment_method,
-        payment_status: payment_method === "BNPL" ? "PENDING" : "UNPAID",
-        status: initialStatus,
-        bnpl_application_id: bnpl_application_id || "",
-        primary_seller_id: orderItems[0].seller_id,
-        timeline: [{
-          status: initialStatus,
-          at: new Date(),
-          by: "buyer",
-          by_id: req.user.id,
-          note: `Order placed by buyer (${payment_method}). ${orderItems.length} item line(s), subtotal PKR ${subtotal.toLocaleString()}, shipping PKR ${buyer_shipping_cost.toLocaleString()}.`,
-        }],
-      });
-    } catch (createErr) {
-      await restoreStockForOrderItems(orderItems).catch(() => {});
-      throw createErr;
-    }
-
-    // Split into packages by seller_id
-    const bySeller = new Map();
-    for (const it of orderItems) {
-      if (!bySeller.has(it.seller_id)) bySeller.set(it.seller_id, []);
-      bySeller.get(it.seller_id).push(it);
-    }
-
-    const packages = [];
-
-    // Deduct from dowry category budgets — if buyer has a DowryEstimation
+    // Dowry budget deduct (once for full cart)
     try {
       const estimation = await DowryEstimation.findOne({ user_id: req.user.id }).sort({ created_at: -1 });
       if (estimation && estimation.category_budgets) {
@@ -216,82 +170,132 @@ router.post("/", requireBuyer, async (req, res) => {
       console.warn("[orders] Dowry budget deduction failed:", deductErr.message);
     }
 
-    // Increment buyer total_orders
+    const createdOrders = [];
+    const allPackages = [];
+
     try {
-      await Buyer.updateOne({ buyer_id: req.user.id }, { $inc: { total_orders: 1 } });
+      if (payment_method === "COD" && multiSeller) {
+        // COD multi-seller: separate Order ID per seller from checkout
+        let sellerIdx = 0;
+        for (const [sellerId, sellerItems] of bySeller.entries()) {
+          sellerIdx += 1;
+          const sellerSub = sellerItems.reduce((n, i) => n + i.subtotal, 0);
+          const shipShare = Math.round(buyer_shipping_cost * (sellerSub / subtotal));
+          const orderId = generateOrderId();
+          const order = await Order.create({
+            order_id: orderId,
+            buyer_id: req.user.id,
+            buyer_name: buyer.name,
+            buyer_email: buyer.email,
+            buyer_phone: buyer.phone,
+            items: sellerItems,
+            items_count: sellerItems.reduce((n, i) => n + i.qty, 0),
+            subtotal: sellerSub,
+            shipping_total: shipShare,
+            total_amount: sellerSub + shipShare,
+            bank_processing_fee: 0,
+            delivery_method,
+            seller_view_token: makeSellerToken(orderId, req.user.id),
+            shipping_address: shippingAddress,
+            payment_method: "COD",
+            payment_status: "UNPAID",
+            status: "CONFIRMED",
+            primary_seller_id: sellerId,
+            checkout_session_id: sessionId,
+            checkout_group_color: color,
+            timeline: [{
+              status: "CONFIRMED",
+              at: new Date(),
+              by: "buyer",
+              by_id: req.user.id,
+              note: `COD sub-order ${sellerIdx}/${bySeller.size} from checkout session ${sessionId}.`,
+            }],
+          });
+          const pkgs = await createPackagesForOrder(order, { notify: true });
+          createdOrders.push(order);
+          allPackages.push(...pkgs);
+        }
+      } else {
+        // Single-seller OR BNPL (combined until approval, then split)
+        const orderId = generateOrderId();
+        const totalWithFeeAndShipping = subtotal + bank_processing_fee + buyer_shipping_cost;
+        const order = await Order.create({
+          order_id: orderId,
+          buyer_id: req.user.id,
+          buyer_name: buyer.name,
+          buyer_email: buyer.email,
+          buyer_phone: buyer.phone,
+          items: orderItems,
+          items_count: orderItems.reduce((n, i) => n + i.qty, 0),
+          subtotal,
+          shipping_total: buyer_shipping_cost,
+          total_amount: totalWithFeeAndShipping,
+          bank_processing_fee,
+          delivery_method,
+          seller_view_token: makeSellerToken(orderId, req.user.id),
+          shipping_address: shippingAddress,
+          payment_method,
+          payment_status: payment_method === "BNPL" ? "PENDING" : "UNPAID",
+          status: initialStatus,
+          bnpl_application_id: bnpl_application_id || "",
+          primary_seller_id: orderItems[0].seller_id,
+          checkout_session_id: sessionId,
+          checkout_group_color: color,
+          timeline: [{
+            status: initialStatus,
+            at: new Date(),
+            by: "buyer",
+            by_id: req.user.id,
+            note: `Order placed by buyer (${payment_method}). ${orderItems.length} item line(s)${multiSeller ? ` from ${bySeller.size} sellers` : ""}.`,
+          }],
+        });
+        createdOrders.push(order);
+
+        if (payment_method === "COD") {
+          const pkgs = await createPackagesForOrder(order, { notify: true });
+          allPackages.push(...pkgs);
+        } else {
+          await Notification.create([{
+            notification_id: `N-${Date.now()}`,
+            user_id: "admin",
+            user_role: "admin",
+            title: "BNPL Order Awaiting Approval",
+            message: `Order ${orderId} is pending banker approval${multiSeller ? " (multi-seller — will split after approval)" : ""}.`,
+            type: "order",
+            ref_id: orderId,
+          }]).catch(() => {});
+        }
+      }
+    } catch (createErr) {
+      await restoreStockForOrderItems(orderItems).catch(() => {});
+      throw createErr;
+    }
+
+    try {
+      await Buyer.updateOne(
+        { buyer_id: req.user.id },
+        { $inc: { total_orders: createdOrders.length } }
+      );
     } catch (incErr) {
       console.warn("[orders] Buyer total_orders increment failed:", incErr.message);
     }
 
-    // ── PACKAGE CREATION POLICY (per Big-Task-Batch2 §6 Note) ─────────
-    // Only orders that are EITHER:
-    //   (a) BNPL orders already confirmed/approved by the Banker, OR
-    //   (b) Cash-on-Delivery orders
-    // should generate packages.  BNPL orders still pending banker approval
-    // must NOT generate packages — they get created later when the banker
-    // approves (see bank.js approval handler).
-    const shouldCreatePackages =
-      payment_method === "COD" || initialStatus === "CONFIRMED";
-
-    if (shouldCreatePackages) {
-      for (const [sellerId, sellerItems] of bySeller.entries()) {
-        const pkgSubtotal = sellerItems.reduce((n, i) => n + i.subtotal, 0);
-        // Use a placeholder ID at order-create time.  The real PKG-XXXX
-        // code is generated when the seller clicks "Mark Preparing"
-        // (per Big-Task-Batch2 §Seller Orders to Fulfill #4).
-        const pkg = await Package.create({
-          package_id: `PEND-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-          order_id: orderId,
-          seller_id: sellerId,
-          seller_name: sellerItems[0].seller_name || "",
-          items: sellerItems.map(i => ({
-            product_id: i.product_id,
-            title: i.title,
-            price: i.price,
-            qty: i.qty,
-            subtotal: i.subtotal,
-          })),
-          items_count: sellerItems.reduce((n, i) => n + i.qty, 0),
-          subtotal: pkgSubtotal,
-          shipping_method: delivery_method,
-          shipping_cost: 0,
-          distance_km: 0,
-          status: "PENDING",
-          admin_notified: true,
-        });
-        packages.push(pkg);
-
-        // Step 1: notify seller + admin
-        await notifySellerAndAdmin({
-          seller_id: sellerId,
-          title: "New Order Received",
-          message: `You have received a new order ${orderId} (package ${pkg.package_id}). ${sellerItems.length} item(s), PKR ${pkgSubtotal.toLocaleString()}.`,
-          type: "order",
-          ref_id: orderId,
-        });
-      }
-    } else {
-      // BNPL pending — notify admin only, no seller notification yet
-      await Notification.create([{
-        notification_id: `N-${Date.now()}`,
-        user_id: "admin",
-        user_role: "admin",
-        title: "BNPL Order Awaiting Approval",
-        message: `Order ${orderId} is pending banker approval before packages are created.`,
-        type: "order",
-        ref_id: orderId,
-      }]).catch(() => {});
-    }
-
+    const primary = createdOrders[0];
     return res.status(201).json({
       success: true,
-      message: `Order ${orderId} created${packages.length ? ` with ${packages.length} package(s)` : " (awaiting BNPL approval)"}.`,
-      order: order.toObject(),
-      packages: packages.map(p => ({
+      message: multiSeller && payment_method === "COD"
+        ? `Checkout created ${createdOrders.length} seller orders (session ${sessionId}).`
+        : `Order ${primary.order_id} created${allPackages.length ? ` with ${allPackages.length} package(s)` : " (awaiting BNPL approval)"}.`,
+      order: primary.toObject(),
+      orders: createdOrders.map((o) => o.toObject()),
+      checkout_session_id: sessionId || null,
+      checkout_group_color: color || null,
+      packages: allPackages.map((p) => ({
         package_id: p.package_id,
         seller_id: p.seller_id,
         subtotal: p.subtotal,
         status: p.status,
+        order_id: p.order_id,
       })),
     });
   } catch (err) {
@@ -672,8 +676,8 @@ router.post("/:order_id/buyer-confirm", requireBuyer, async (req, res) => {
         });
         await wallet.save();
       } else {
-        // BNPL: ready for admin payout release
-        order.payment_status = order.payment_status === "UNPAID" ? "PAID" : (order.payment_status || "ON_HOLD");
+        // BNPL: buyer confirmed — still awaiting admin fund release to seller
+        order.payment_status = "PENDING";
       }
 
       order.timeline.push({

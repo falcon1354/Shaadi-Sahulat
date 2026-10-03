@@ -307,15 +307,15 @@ export default function OrdersPage({ admin }) {
                             className="text-xs px-3 py-1 border border-gray-200 text-gray-700 rounded-lg font-semibold">
                             View
                           </button>
-                          {isOverdue && (
-                            <button
-                              onClick={() => releasePayment(o.order_id)}
-                              disabled={releasing}
-                              className="text-xs px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold disabled:opacity-50"
-                            >
-                              ⚠ Release Now
-                            </button>
-                          )}
+                          <button
+                            onClick={() => releasePayment(o.order_id)}
+                            disabled={releasing}
+                            className={`text-xs px-3 py-1 text-white rounded-lg font-bold disabled:opacity-50 ${
+                              isOverdue ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"
+                            }`}
+                          >
+                            {isOverdue ? "⚠ Release Now" : "Release Payment"}
+                          </button>
                         </td>
                       </tr>
                     );
@@ -392,12 +392,20 @@ export default function OrdersPage({ admin }) {
 
             {msg && <div className="bg-blue-50 text-blue-700 rounded-lg p-2 text-sm mb-3">{msg}</div>}
 
-            {/* Release payment */}
-            {["DELIVERED", "RESOLVED"].includes(detail.order.status) && !detail.payout && (
+            {/* Release payment — show for delivered/resolved (and completed-but-not-released edge cases) */}
+            {["DELIVERED", "RESOLVED", "COMPLETED"].includes(detail.order.status)
+              && !detail.payout
+              && detail.order.payment_status !== "RELEASED"
+              && !detail.order.payment_released_at && (
               <button onClick={() => releasePayment(detail.order.order_id)} disabled={releasing}
                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
                 {releasing ? "Releasing..." : "💰 RELEASE PAYMENT TO SELLER (Step 10)"}
               </button>
+            )}
+            {(detail.payout || detail.order.payment_status === "RELEASED" || detail.order.payment_released_at) && (
+              <div className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold text-center">
+                Payment already released
+              </div>
             )}
           </div>
         </div>

@@ -45,6 +45,8 @@ const {
   generateOfferNo,
 } = require("../lib/helpers");
 const { notifyBuyerAndAdmin } = require("../lib/notify");
+const { finalizeBnplApproval } = require("../lib/bnplFulfillment");
+const BnplDocumentBundle = require("../models/BnplDocumentBundle");
 
 // ---------- Bank officer login (hardcoded for FYP demo) ----------
 const BANK_OFFICER_EMAIL = "officer@bank.com";
@@ -232,18 +234,25 @@ router.get("/applications/:application_no", requireBankOfficer, async (req, res)
             items: order.items,
           }
         : null,
-      documents: docs.map(d => ({
-        _id: d._id,
-        doc_type: d.doc_type,
-        original_name: d.original_name,
-        mime_type: d.mime_type,
-        url: publicUrl(d.file_path),
-        ocr_extracted_cnic: d.ocr_extracted_cnic,
-        ocr_confidence: d.ocr_confidence,
-        ocr_completed_at: d.ocr_completed_at,
-        ocr_raw_text: d.ocr_raw_text,
-        ocr_error: d.ocr_error || null,
-      })),
+      documents: docs.map(d => {
+        const direct = publicUrl(d.file_path);
+        const isRemote = /^https?:\/\//i.test(direct);
+        return {
+          _id: d._id,
+          doc_type: d.doc_type,
+          original_name: d.original_name,
+          mime_type: d.mime_type,
+          // Prefer absolute Cloudinary URL; otherwise authenticated API view path
+          url: isRemote
+            ? direct
+            : `/api/bank/applications/${app.application_no}/document/${d.doc_type}`,
+          ocr_extracted_cnic: d.ocr_extracted_cnic,
+          ocr_confidence: d.ocr_confidence,
+          ocr_completed_at: d.ocr_completed_at,
+          ocr_raw_text: d.ocr_raw_text,
+          ocr_error: d.ocr_error || null,
+        };
+      }),
       ocr_vs_buyer: {
         buyer_entered_cnic: buyerCnicPlain,
         ocr_extracted_cnic: ocrCnic,
@@ -272,25 +281,53 @@ router.get("/applications/:application_no", requireBankOfficer, async (req, res)
   }
 });
 
-// ---------- Serve raw document file ----------
+// ---------- Serve raw document file (by Mongo _id OR doc_type) ----------
 router.get(
   "/applications/:application_no/document/:doc_id",
   requireBankOfficer,
   async (req, res) => {
     try {
-      const doc = await BnplDocument.findOne({
-        application_id: req.params.application_no,
-        _id: req.params.doc_id,
-      }).lean();
-      if (!doc) return res.status(404).json({ success: false, error: "Document not found" });
+      const key = req.params.doc_id;
+      let filePath = "";
+      let mimeType = "application/octet-stream";
+      let originalName = key;
 
-      if (/^https?:\/\//i.test(doc.file_path || "")) {
-        return res.redirect(doc.file_path);
+      let doc = await BnplDocument.findOne({
+        application_id: req.params.application_no,
+        doc_type: key,
+      }).lean();
+      if (!doc && /^[a-fA-F0-9]{24}$/.test(key)) {
+        doc = await BnplDocument.findOne({
+          application_id: req.params.application_no,
+          _id: key,
+        }).lean();
+      }
+      if (doc) {
+        filePath = doc.file_path || "";
+        mimeType = doc.mime_type || mimeType;
+        originalName = doc.original_name || originalName;
+      } else {
+        const bundle = await BnplDocumentBundle.findOne({
+          application_id: req.params.application_no,
+        }).lean();
+        const slot = bundle?.[key];
+        if (slot?.file_path) {
+          filePath = slot.file_path;
+          mimeType = slot.mime_type || mimeType;
+          originalName = slot.original_name || originalName;
+        }
+      }
+      if (!filePath) return res.status(404).json({ success: false, error: "Document not found" });
+
+      if (/^https?:\/\//i.test(filePath)) {
+        return res.redirect(filePath);
       }
 
-      const abs = resolvePath(doc.file_path);
+      const abs = resolvePath(filePath);
       if (!fs.existsSync(abs)) return res.status(404).json({ success: false, error: "File missing on disk" });
 
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", `inline; filename="${originalName}"`);
       return res.sendFile(abs);
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
@@ -380,95 +417,21 @@ router.post(
       }
 
       if (decision === "APPROVE") {
-        const planCalc = computePlan(app.amount, plan);
-        const expires = offerExpiry();
-        app.status = "APPROVED";
-        app.officer_comment = comment || "Approved by bank officer.";
-        app.decision_at = new Date();
-        app.offer_expires_at = expires;
-        app.plan_months = plan;
-        await app.save();
-
-        await BnplOfferLetter.create({
-          application_id: app.application_no,
-          offer_no: generateOfferNo(),
-          buyer_id: app.buyer_id,
-          approved_amount: planCalc.approved_amount,
-          plan_months: plan,
-          processing_fee: planCalc.processing_fee,
-          monthly_installment: planCalc.monthly_installment,
-          total_payable: planCalc.total_payable,
-          valid_until: expires,
-          status: "PENDING",
-          installments: buildInstallmentSchedule(planCalc.monthly_installment, plan),
+        // Approval finalizes BNPL immediately (no buyer offer-accept step).
+        // Creates packages so sellers see the order; payment_status stays PENDING
+        // until admin releases funds to the seller.
+        await finalizeBnplApproval({
+          applicationNo: app.application_no,
+          planMonths: plan,
+          comment: comment || "Approved by bank officer.",
+          by: "bank",
+          byId: req.officer.officer_id,
         });
-
-        // ── Move the linked order from PENDING_BNPL_APPROVAL → CONFIRMED ──
-        // Per Big-Task-Batch2 §6 Note: only NOW (post-approval) should the
-        // order appear in the seller's "Orders to Fulfill" list and have a
-        // package created.  Before approval the order sat in
-        // PENDING_BNPL_APPROVAL with NO packages.
-        const linkedOrder = await Order.findOne({ order_id: app.order_id });
-        if (linkedOrder && linkedOrder.status === "PENDING_BNPL_APPROVAL") {
-          linkedOrder.status = "CONFIRMED";
-          linkedOrder.payment_status = "PAID";
-          linkedOrder.timeline.push({
-            status: "CONFIRMED",
-            at: new Date(),
-            by: "bank",
-            by_id: req.officer.officer_id,
-            note: `BNPL application ${app.application_no} approved by bank officer. Order released for fulfillment.`,
-          });
-          await linkedOrder.save();
-
-          // ── NOW create the packages that were deferred at order-create time ──
-          const Package = require("../models/Package");
-          const { generatePackageId } = require("../lib/helpers");
-          const { notifySellerAndAdmin } = require("../lib/notify");
-          const bySeller = new Map();
-          for (const it of linkedOrder.items) {
-            if (!bySeller.has(it.seller_id)) bySeller.set(it.seller_id, []);
-            bySeller.get(it.seller_id).push(it);
-          }
-          for (const [sellerId, sellerItems] of bySeller.entries()) {
-            const pkgSubtotal = sellerItems.reduce((n, i) => n + i.subtotal, 0);
-            // PEND- placeholder; real PKG- generated when seller clicks
-            // "Mark Preparing" (per Big-Task-Batch2 §Seller Orders #4).
-            const pkg = await Package.create({
-              package_id: `PEND-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-              order_id: linkedOrder.order_id,
-              seller_id: sellerId,
-              seller_name: sellerItems[0].seller_name || "",
-              items: sellerItems.map(i => ({
-                product_id: i.product_id,
-                title: i.title,
-                price: i.price,
-                qty: i.qty,
-                subtotal: i.subtotal,
-              })),
-              items_count: sellerItems.reduce((n, i) => n + i.qty, 0),
-              subtotal: pkgSubtotal,
-              shipping_method: linkedOrder.delivery_method || "standard",
-              shipping_cost: 0,
-              distance_km: 0,
-              status: "PENDING",
-              admin_notified: true,
-            });
-
-            await notifySellerAndAdmin({
-              seller_id: sellerId,
-              title: "New Order Received (BNPL Approved)",
-              message: `You have received a new order ${linkedOrder.order_id} (package ${pkg.package_id}). ${sellerItems.length} item(s), PKR ${pkgSubtotal.toLocaleString()}.`,
-              type: "order",
-              ref_id: linkedOrder.order_id,
-            });
-          }
-        }
 
         await notifyBuyerAndAdmin({
           buyer_id: app.buyer_id,
           title: "BNPL Application APPROVED",
-          message: `Your BNPL application ${app.application_no} has been APPROVED. Offer valid for 3 days. Log in to accept.`,
+          message: `Your BNPL application ${app.application_no} has been APPROVED. Your order is confirmed and sellers will fulfill it.`,
           type: "bnpl",
           ref_id: app.application_no,
         });
@@ -534,7 +497,7 @@ router.post(
         success: true,
         message:
           decision === "APPROVE"
-            ? "Application approved. Offer letter generated."
+            ? "Application approved. BNPL finalized and order released for fulfillment."
             : "Application rejected. Order cancelled.",
         application_no: app.application_no,
         status: app.status,

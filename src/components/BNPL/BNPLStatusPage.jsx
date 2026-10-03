@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import bnplApi from "../../api/bnplApi";
 import orderApi from "../../api/orderApi";
+import { resolveMediaUrl } from "../../lib/openDoc";
 
 const APPROVAL_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 5;
@@ -11,8 +12,7 @@ const PAGE_SIZE = 5;
 const FILTER_TABS = [
   { id: 'all',            label: 'All',             statuses: null },
   { id: 'pending',        label: 'Pending',         statuses: ['PENDING_BANK_VERIFICATION', 'PENDING_BNPL_APPROVAL'] },
-  { id: 'approved',       label: 'Approved',        statuses: ['APPROVED'] },
-  { id: 'offer_accepted', label: 'Offer Accepted',  statuses: ['OFFER_ACCEPTED'] },
+  { id: 'approved',       label: 'Approved',        statuses: ['OFFER_ACCEPTED', 'APPROVED'] },
   { id: 'rejected',       label: 'Rejected',        statuses: ['REJECTED'] },
   { id: 'cancelled',      label: 'Cancelled',       statuses: ['CANCELLED', 'OFFER_DECLINED', 'OFFER_EXPIRED'] },
 ];
@@ -111,31 +111,7 @@ export default function BNPLStatusPage({ buyer }) {
     if (r.success) setSelected(r.application);
   };
 
-  const accept = async (appNo) => {
-    setActionLoading(true);
-    await bnplApi.acceptOffer(buyer.buyer_id, appNo);
-    await open(appNo);
-    await load();
-    setActionLoading(false);
-  };
-  const decline = async (appNo, silent = false) => {
-    if (!silent && !window.confirm("Decline this offer? Order will be cancelled.")) return;
-    setActionLoading(true);
-    await bnplApi.declineOffer(buyer.buyer_id, appNo);
-    if (!silent) await open(appNo);
-    await load();
-    setActionLoading(false);
-  };
-
-  // Auto-reject expired approvals
-  useEffect(() => {
-    for (const app of apps) {
-      if (app.status !== "APPROVED") continue;
-      const dl = offerDeadlineMs(app);
-      if (dl && now > dl) decline(app.application_no, true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apps, now]);
+  // Buyer offer-accept removed — bank/auto approval finalizes BNPL.
 
   const statusColor = (s) => ({
     PENDING_BNPL_APPROVAL: "bg-amber-100 text-amber-800",
@@ -297,32 +273,6 @@ export default function BNPLStatusPage({ buyer }) {
               {selected.decision_at && <p><b>Decision At:</b> {new Date(selected.decision_at).toLocaleString()}</p>}
             </div>
 
-            {/* Prominent countdown card */}
-            {selected.status === "APPROVED" && (() => {
-              const dl = offerDeadlineMs(selected);
-              if (!dl) return null;
-              const remaining = dl - now;
-              const total = APPROVAL_WINDOW_MS;
-              const colors = remaining > 0 ? countdownColor(remaining, total) : countdownColor(0, total);
-              return (
-                <div className={`mt-6 p-6 rounded-2xl border-2 text-center ${colors.bg}`}>
-                  <h3 className="text-sm font-bold mb-4">⏳ Offer Accept/Reject Countdown</h3>
-                  {remaining > 0 ? (
-                    <div className="flex justify-center">
-                      <CountdownRing remaining={remaining} total={total} color={colors.ring} />
-                    </div>
-                  ) : (
-                    <div className="text-2xl font-black text-red-600 animate-pulse">
-                      ⛔ EXPIRED
-                    </div>
-                  )}
-                  {remaining > 0 && remaining < 86400000 && (
-                    <p className="text-xs text-red-600 font-bold mt-2 animate-pulse">⚠ Less than 24 hours — act now!</p>
-                  )}
-                </div>
-              );
-            })()}
-
             {selected.offer && (
               <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <h3 className="font-semibold text-amber-800 mb-2">Offer Letter</h3>
@@ -338,26 +288,28 @@ export default function BNPLStatusPage({ buyer }) {
                 <h3 className="font-semibold text-gray-700 mb-2">Uploaded Documents</h3>
                 <ul className="space-y-1">
                   {selected.documents.map(d => (
-                    <li key={d._id} className="text-xs flex justify-between border border-gray-100 rounded p-2">
+                    <li key={d._id || d.doc_type} className="text-xs flex justify-between border border-gray-100 rounded p-2">
                       <span>{d.doc_type} — {d.original_name}</span>
-                      <a href={`http://localhost:5000${d.url}`} target="_blank" rel="noreferrer"
-                        className="text-[#a37b3d]">View</a>
+                      <button
+                        type="button"
+                        className="text-[#a37b3d] font-semibold"
+                        onClick={() => {
+                          let url = d.url || "";
+                          if (url.startsWith("/api/") && buyer?.buyer_id) {
+                            url = `${url}${url.includes("?") ? "&" : "?"}buyer_id=${encodeURIComponent(buyer.buyer_id)}`;
+                          }
+                          window.open(resolveMediaUrl(url), "_blank", "noopener,noreferrer");
+                        }}
+                      >View</button>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {selected.status === "APPROVED" && (
-              <div className="mt-6 flex gap-2">
-                <button onClick={() => decline(selected.application_no)} disabled={actionLoading}
-                  className="flex-1 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-semibold">
-                  Decline Offer
-                </button>
-                <button onClick={() => accept(selected.application_no)} disabled={actionLoading}
-                  className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold">
-                  {actionLoading ? "..." : "Accept Offer"}
-                </button>
+            {selected.status === "OFFER_ACCEPTED" && (
+              <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800">
+                BNPL approved. Your order is confirmed and with the seller for fulfillment — no offer acceptance is required.
               </div>
             )}
           </div>

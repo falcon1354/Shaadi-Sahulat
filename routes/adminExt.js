@@ -39,8 +39,9 @@ const VISUAL_ML_URL = process.env.VISUAL_ML_URL || "http://localhost:5002";
 function _hasPendingRelease(o) {
   if (!o) return false;
   if (o.payment_released_at || o.payment_status === "RELEASED") return false;
+  // Ready for admin payout: delivered / dispute resolved in seller's favor.
+  // COMPLETED alone is not enough — that may already mean payout done.
   if (["DELIVERED", "RESOLVED"].includes(o.status)) return true;
-  if (o.payment_method === "BNPL" && ["COMPLETED", "DELIVERED", "RESOLVED"].includes(o.status) && !o.payment_released_at) return true;
   return false;
 }
 
@@ -85,12 +86,11 @@ router.get("/orders", async (req, res) => {
 router.get("/orders/pending-release", async (req, res) => {
   try {
     const now = new Date();
+    // Only truly awaiting release — exclude already RELEASED / payment_released_at set
     const orders = await Order.find({
-      $or: [
-        { status: { $in: ["DELIVERED", "RESOLVED"] }, payment_released_at: null },
-        { status: "COMPLETED", payment_method: "BNPL", payment_released_at: null },
-        { status: "COMPLETED", payment_method: "BNPL", payment_status: { $ne: "RELEASED" } }
-      ]
+      status: { $in: ["DELIVERED", "RESOLVED"] },
+      payment_released_at: null,
+      payment_status: { $ne: "RELEASED" },
     })
       .sort({ delivered_at: 1, created_at: -1 })
       .lean();
@@ -361,27 +361,35 @@ router.get("/wallet", async (req, res) => {
       }
     }
 
-    const allRecentOrders = await Order.find().sort({ created_at: -1 }).limit(100).lean();
-    for (const o of allRecentOrders) {
+    // History by Order: only COMPLETED (incl. seller-favor dispute resolves → COMPLETED/RESOLVED with release)
+    const completedOrders = await Order.find({
+      status: { $in: ["COMPLETED"] },
+      superseded: { $ne: true },
+    }).sort({ updated_at: -1, created_at: -1 }).limit(200).lean();
+
+    // Seed groups from completed orders only (drop pending BNPL / in-flight)
+    const completedIds = new Set(completedOrders.map((o) => o.order_id));
+    for (const oid of Object.keys(byOrder)) {
+      if (!completedIds.has(oid)) delete byOrder[oid];
+    }
+    for (const o of completedOrders) {
       if (!byOrder[o.order_id]) {
         byOrder[o.order_id] = {
           order_id: o.order_id,
           entries: [],
           credit_total: 0,
           debit_total: 0,
-          last_at: o.updatedAt || o.created_at || new Date(),
+          last_at: o.updated_at || o.created_at || new Date(),
         };
       }
     }
 
     const orderIds = Object.keys(byOrder);
-    const orders = allRecentOrders.length >= orderIds.length
-      ? allRecentOrders
-      : await Order.find({ order_id: { $in: orderIds } }).lean();
     const orderMap = {};
     const buyerIds = [];
     const sellerIdsSet = new Set();
-    for (const o of orders) {
+    for (const o of completedOrders) {
+      if (!completedIds.has(o.order_id) && !orderIds.includes(o.order_id)) continue;
       orderMap[o.order_id] = o;
       if (o.buyer_id) buyerIds.push(o.buyer_id);
       (o.items || []).forEach(it => { if (it.seller_id) sellerIdsSet.add(it.seller_id); });

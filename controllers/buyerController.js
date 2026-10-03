@@ -160,6 +160,54 @@ async function syncCart(req, res) {
 }
 
 // Full buyer data — profile + latest dowry + cart (for admin view and seeding)
+/**
+ * Reset category_budgets.spent / remaining from non-cancelled orders.
+ * Fixes inflated spent caused by CartDrawer deducting on "Proceed to Checkout"
+ * and POST /api/orders deducting again on place-order.
+ */
+async function reconcileDowrySpentFromOrders(buyer_id, estimation) {
+  if (!estimation?._id || !estimation.category_budgets) return estimation;
+
+  const Order = require("../models/Order");
+  const DowryEstimation = require("../models/DowryEstimation");
+
+  const orders = await Order.find({
+    buyer_id,
+    status: { $nin: ["CANCELLED"] },
+  }).select("items").lean();
+
+  const spentByCat = {};
+  for (const o of orders) {
+    for (const it of o.items || []) {
+      const cat = it.major_category || it.subcategory || "";
+      if (!cat) continue;
+      spentByCat[cat] = (spentByCat[cat] || 0) + (Number(it.subtotal) || 0);
+    }
+  }
+
+  const budgets = { ...estimation.category_budgets };
+  let changed = false;
+  for (const [cat, info] of Object.entries(budgets)) {
+    const spent = spentByCat[cat] || 0;
+    const estimated = Number(info.estimated) || 0;
+    const prevSpent = Number(info.spent) || 0;
+    const remaining = estimated - spent;
+    if (prevSpent !== spent || Number(info.remaining) !== remaining) {
+      changed = true;
+      budgets[cat] = { ...info, spent, remaining };
+    }
+  }
+
+  if (changed) {
+    await DowryEstimation.updateOne(
+      { _id: estimation._id },
+      { $set: { category_budgets: budgets } }
+    );
+    estimation = { ...estimation, category_budgets: budgets };
+  }
+  return estimation;
+}
+
 async function getFullBuyerData(req, res) {
   try {
     const { buyer_id } = req.params;
@@ -180,6 +228,14 @@ async function getFullBuyerData(req, res) {
           estimation.user_id = buyer_id;
         }
       } catch (_) {}
+    }
+
+    if (estimation) {
+      try {
+        estimation = await reconcileDowrySpentFromOrders(buyer_id, estimation);
+      } catch (reconcileErr) {
+        console.warn("[buyer] dowry spent reconcile failed:", reconcileErr.message);
+      }
     }
 
     return res.json({
