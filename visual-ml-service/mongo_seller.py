@@ -418,6 +418,19 @@ def update_product(product_id: str, updates: dict) -> dict | None:
     safe = {k: v for k, v in updates.items() if k in allowed_fields}
     safe["updated_at"] = datetime.utcnow()
 
+    # Restock → Available: if stock rises above 0 and seller didn't force hidden/freeze,
+    # clear stale out_of_stock / Sold labels.
+    if "stock_quantity" in safe:
+        try:
+            qty = int(safe["stock_quantity"])
+        except (TypeError, ValueError):
+            qty = 0
+        forced = (safe.get("availability_status") or "").lower()
+        if qty > 0 and forced not in ("hidden", "freeze", "processing"):
+            safe["availability_status"] = "available"
+        elif qty <= 0 and forced not in ("hidden", "freeze"):
+            safe["availability_status"] = "out_of_stock"
+
     db[PRODUCTS_COLLECTION].update_one(
         {"product_id": product_id},
         {"$set": safe},

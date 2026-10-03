@@ -19,11 +19,13 @@
 const mongoose = require("mongoose");
 
 const packageItemSchema = new mongoose.Schema({
-  product_id: { type: String, required: true },
-  title:      { type: String, default: "" },
-  price:      { type: Number, required: true },
-  qty:        { type: Number, required: true, default: 1 },
-  subtotal:   { type: Number, required: true },
+  product_id:     { type: String, required: true },
+  title:          { type: String, default: "" },
+  price:          { type: Number, required: true },
+  qty:            { type: Number, required: true, default: 1 },
+  subtotal:       { type: Number, required: true },
+  major_category: { type: String, default: "" },
+  subcategory:    { type: String, default: "" },
 }, { _id: false });
 
 const packageSchema = new mongoose.Schema(

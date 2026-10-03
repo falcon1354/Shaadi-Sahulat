@@ -241,7 +241,9 @@ export default function AdminWalletPage({ admin }) {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-black text-gray-900 line-clamp-1">
-                              {g.order_name || `Order ${g.order_id}`}
+                              {(g.items || []).length > 1
+                                ? `${(g.items[0]?.title || g.order_name || g.order_id)} + ${g.items.length - 1} more (click View)`
+                                : (g.order_name || `Order ${g.order_id}`)}
                             </p>
                             <p className="text-[11px] text-[#a37b3d] font-mono font-bold mt-0.5">
                               {g.order_id}

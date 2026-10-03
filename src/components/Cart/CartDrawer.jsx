@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import sellerApi from '../../api/sellerApi';
 import { useCart } from '../../context/CartContext';
-import { patchDowryBudgets } from '../../api/buyerApi';
 import { useCategories } from '../../hooks/useCategories';
 
 function getDowryBudgets(buyerId) {
@@ -11,31 +10,6 @@ function getDowryBudgets(buyerId) {
     const data = JSON.parse(localStorage.getItem(key) || 'null');
     return data?.category_budgets || null;
   } catch { return null; }
-}
-
-// Legacy: still called after a successful order placement to update local
-// dowry budgets. Real order creation now happens in CheckoutPage → POST /api/orders.
-async function updateLocalDowryBudgets(items, buyerId) {
-  try {
-    const key  = buyerId ? `ss_dowry_${buyerId}` : 'ss_dowry_latest';
-    const dowry = JSON.parse(localStorage.getItem(key) || 'null');
-    if (!dowry?.category_budgets) return;
-    const b = { ...dowry.category_budgets };
-    items.forEach(item => {
-      const cat = item.major_category;
-      if (!cat || !b[cat]) return;
-      const price = (item.discount_price || item.price || 0) * (item.qty || 1);
-      b[cat] = { ...b[cat], spent: (b[cat].spent || 0) + price };
-      b[cat].remaining = (b[cat].estimated || 0) - b[cat].spent;
-    });
-    const updated = JSON.stringify({ ...dowry, category_budgets: b });
-    localStorage.setItem('ss_dowry_latest', updated);
-    if (buyerId) localStorage.setItem(`ss_dowry_${buyerId}`, updated);
-    if (buyerId) {
-      patchDowryBudgets(buyerId, b).catch(() => {});
-      window.dispatchEvent(new CustomEvent('dowry-updated', { detail: { buyerId } }));
-    }
-  } catch {}
 }
 
 export default function CartDrawer({ open, onClose, buyerId }) {
@@ -53,16 +27,15 @@ export default function CartDrawer({ open, onClose, buyerId }) {
     return () => window.removeEventListener('dowry-updated', handler);
   }, []);
 
-  // Per BNPL&Delivery.md Step 1: "PROCEED TO CHECKOUT" now navigates to the
-  // real checkout page where the buyer picks COD or BNPL and the order is
-  // actually created in the backend via POST /api/orders.
-  const handleCheckout = async () => {
+  // Navigate only — budget spent is deducted once in POST /api/orders on place-order.
+  // Do not patch spent here: that double-counted with the order route and inflated
+  // totals when checkout was abandoned after "Proceed".
+  const handleCheckout = () => {
     if (!buyerId) {
       alert('Please log in as a buyer to checkout.');
       navigate('/buyer/login');
       return;
     }
-    await updateLocalDowryBudgets(items, buyerId); // keep legacy dowry view in sync
     onClose();
     navigate('/buyer/checkout');
   };

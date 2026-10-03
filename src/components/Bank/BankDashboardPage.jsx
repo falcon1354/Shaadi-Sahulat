@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import bankApi from "../../api/bankApi";
+import { resolveMediaUrl } from "../../lib/openDoc";
 
 /**
  * BankDashboardPage — bank officer verification workbench and 24h batch releases to platform.
@@ -496,8 +497,17 @@ export default function BankDashboardPage() {
                       {d.ocr_extracted_cnic && <p className="text-xs text-gray-500">OCR CNIC: <span className="font-mono">{d.ocr_extracted_cnic}</span> ({Math.round((d.ocr_confidence || 0) * 100)}%)</p>}
                       {d.ocr_error && <p className="text-xs text-amber-700">OCR error: {d.ocr_error}</p>}
                     </div>
-                    <a href={`http://localhost:5000${d.url}`} target="_blank" rel="noreferrer"
-                      className="px-2 py-1 bg-blue-600 text-white text-xs rounded">View</a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const stored = JSON.parse(localStorage.getItem("ss_bank_officer") || "null");
+                        let url = d.url || "";
+                        if (url.startsWith("/api/") && stored?.token) {
+                          url = `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(stored.token)}`;
+                        }
+                        window.open(resolveMediaUrl(url), "_blank", "noopener,noreferrer");
+                      }}
+                      className="px-2 py-1 bg-blue-600 text-white text-xs rounded">View</button>
                   </div>
                 ))}
               </div>

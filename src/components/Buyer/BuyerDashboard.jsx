@@ -52,13 +52,13 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
   const [analyticsTab,   setAnalyticsTab]   = useState('Overview');
   const [purchasedItems, setPurchasedItems] = useState([]);
 
-  // Mount: load from localStorage, fall back to MongoDB seed if empty
+  // Mount: show local immediately, then always refresh from Mongo (reconciles spent)
   useEffect(() => {
     setWishlist(readWishlist(buyerId));
     setRecentlyViewed(readRecentlyViewed(buyerId));
 
     const local = readDowry(buyerId);
-    if (local) { setDowry(local); return; }
+    if (local) setDowry(local);
     if (!buyerId) return;
 
     getFullBuyerData(buyerId).then(res => {
@@ -84,18 +84,46 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
     }).catch(() => {});
   }, [buyerId]);
 
-  // Fetch purchased items from completed orders
+  // Fetch purchased items + refresh spent from live orders (not static local only)
   useEffect(() => {
     if (!buyerId) return;
     listBuyerOrders(buyerId).then(r => {
       if (!r.success) return;
-      const orders = r.orders || [];
-      const completed = orders.filter(o => ['COMPLETED', 'DELIVERED'].includes(o.status));
+      const orders = (r.orders || []).filter(o => !o.superseded && o.status !== 'CANCELLED');
+      const completed = orders.filter(o => ['COMPLETED', 'DELIVERED', 'RESOLVED'].includes(o.status));
       const items = [];
       completed.forEach(o => {
         (o.items || []).forEach(it => items.push({ ...it, order_id: o.order_id, status: o.status }));
       });
       setPurchasedItems(items);
+
+      // Overlay spent/remaining from real order lines onto local dowry budgets
+      const spentByCat = {};
+      orders.forEach(o => {
+        (o.items || []).forEach(it => {
+          const cat = it.major_category || it.subcategory || '';
+          if (!cat) return;
+          spentByCat[cat] = (spentByCat[cat] || 0) + (Number(it.subtotal) || 0);
+        });
+      });
+      setDowry(prev => {
+        if (!prev?.category_budgets) return prev;
+        const budgets = { ...prev.category_budgets };
+        let changed = false;
+        for (const [cat, info] of Object.entries(budgets)) {
+          const spent = spentByCat[cat] || 0;
+          if ((info.spent || 0) !== spent) {
+            budgets[cat] = { ...info, spent, remaining: (info.estimated || 0) - spent };
+            changed = true;
+          }
+        }
+        if (!changed) return prev;
+        const payload = { ...prev, category_budgets: budgets };
+        const s = JSON.stringify(payload);
+        localStorage.setItem(`ss_dowry_${buyerId}`, s);
+        localStorage.setItem('ss_dowry_latest', s);
+        return payload;
+      });
     }).catch(() => {});
   }, [buyerId]);
 

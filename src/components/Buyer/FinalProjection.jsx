@@ -52,10 +52,10 @@ export default function FinalProjection({ buyer }) {
   const [historyPage, setHistoryPage]   = useState(1);
   const HISTORY_PAGE_SIZE = 10;
 
-  // Mount: load from localStorage, seed from MongoDB if empty
+  // Mount: show local immediately, then always refresh from Mongo (reconciles spent)
   useEffect(() => {
     const local = readDowry(buyerId);
-    if (local) { setDowry(local); return; }
+    if (local) setDowry(local);
     if (!buyerId) return;
 
     getFullBuyerData(buyerId).then(res => {
