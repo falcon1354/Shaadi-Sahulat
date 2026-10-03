@@ -112,6 +112,9 @@ const orderSchema = new mongoose.Schema(
     // When payment was released to the seller (null = still pending).
     payment_released_at:     { type: Date,   default: null },
 
+    // Set when Admin resolves dispute as "Seller Wins". Buyer has 2 days to confirm before auto-complete.
+    seller_win_confirm_deadline: { type: Date, default: null },
+
     // Seller-facing hashed token for the order-detail URL.
     // Allows /orders/ORD-2026-31207?t=<token> style URLs so a buyer
     // cannot guess a seller's order-detail view.

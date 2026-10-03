@@ -41,6 +41,7 @@ const Dispute = require("../models/Dispute");
 const DisputeMessage = require("../models/DisputeMessage");
 const Review = require("../models/Review");
 const Notification = require("../models/Notification");
+const AdminWallet = require("../models/AdminWallet");
 
 const { requireBuyer, requireSeller, requireAdmin, optionalBuyer } = require("../lib/auth");
 const {
@@ -651,10 +652,30 @@ router.post("/:order_id/buyer-confirm", requireBuyer, async (req, res) => {
       order.buyer_confirmed_receipt = true;
       order.buyer_confirmed_at = new Date();
       order.status = "COMPLETED";
-      if (["PAID", "PENDING", "UNPAID"].includes(order.payment_status) || !order.payment_status) {
-        // Ready for admin release — keep PAID until release endpoint runs
-        order.payment_status = order.payment_status === "UNPAID" ? "PAID" : order.payment_status;
+
+      if (order.payment_method === "COD") {
+        order.payment_status = "RELEASED";
+        // Credit 5% commission into AdminWallet
+        const commission = Math.round((order.subtotal || 0) * 0.05);
+        let wallet = await AdminWallet.findOne({ wallet_id: "admin_wallet_001" });
+        if (!wallet) {
+          wallet = await AdminWallet.create({ wallet_id: "admin_wallet_001", balance: 10_000_000 });
+        }
+        wallet.balance = (wallet.balance || 0) + commission;
+        wallet.ledger.push({
+          type: "CREDIT",
+          amount: commission,
+          description: `Platform commission (5%) for COD order ${order.order_id}`,
+          ref_order_id: order.order_id,
+          at: new Date(),
+          by_admin_id: "system",
+        });
+        await wallet.save();
+      } else {
+        // BNPL: ready for admin payout release
+        order.payment_status = order.payment_status === "UNPAID" ? "PAID" : (order.payment_status || "ON_HOLD");
       }
+
       order.timeline.push({
         status: "COMPLETED",
         at: new Date(),
@@ -671,7 +692,7 @@ router.post("/:order_id/buyer-confirm", requireBuyer, async (req, res) => {
       await notifySellerAndAdmin({
         seller_id: order.primary_seller_id,
         title: "Buyer Confirmed — Order Complete",
-        message: `Buyer confirmed receipt of order ${order.order_id}. Order completed; payment can be released.`,
+        message: `Buyer confirmed receipt of order ${order.order_id}. Order completed successfully.`,
         type: "order",
         ref_id: order.order_id,
       });
@@ -681,6 +702,14 @@ router.post("/:order_id/buyer-confirm", requireBuyer, async (req, res) => {
         message: "Order complete. You may leave a review.",
         order_status: order.status,
         next: "POST /api/orders/:order_id/review",
+      });
+    }
+
+    // If order was already resolved in seller's favor, dispute option is permanently closed
+    if (order.seller_win_confirm_deadline) {
+      return res.status(400).json({
+        success: false,
+        error: "This order was already resolved in the seller's favor. No new dispute can be opened.",
       });
     }
 

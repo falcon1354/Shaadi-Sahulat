@@ -55,7 +55,20 @@ export async function decide(token, applicationNo, payload) {
   return res.json();
 }
 
+export async function listBatches(token) {
+  const res = await fetch(`${BASE}/batches`, { headers: _headers(token) });
+  return res.json();
+}
+
+export async function triggerBatch(token) {
+  const res = await fetch(`${BASE}/trigger-batch`, {
+    method: "POST",
+    headers: { ..._headers(token), "Content-Type": "application/json" },
+  });
+  return res.json();
+}
+
 export default {
-  login, listApplications, getApplication, decide,
+  login, listApplications, getApplication, decide, listBatches, triggerBatch,
   getOfficerFromStorage, saveOfficerToStorage, clearOfficerFromStorage,
 };

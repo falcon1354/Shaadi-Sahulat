@@ -11,6 +11,9 @@ const Order = require("../models/Order");
 const Package = require("../models/Package");
 const Buyer = require("../models/Buyer");
 const Seller = require("../models/Seller");
+const AdminWallet = require("../models/AdminWallet");
+const BnplApplication = require("../models/BnplApplication");
+const { restoreStock } = require("../services/stockService");
 
 const { requireAdmin } = require("../lib/auth");
 const { saveDisputeUploadAsync, publicUrl, makeDisputeUploadMiddleware } = require("../lib/storage");
@@ -184,7 +187,16 @@ router.post("/:dispute_id/messages", async (req, res) => {
       message,
     });
 
-    if (dispute.status === "OPEN") {
+    if (from_role === "seller") {
+      if (["OPEN", "SELLER_RESPONSE_PENDING"].includes(dispute.status) || !dispute.seller_responded_at) {
+        dispute.seller_responded_at = new Date();
+        dispute.seller_response_note = message;
+        dispute.status = "ADMIN_REVIEW_PENDING";
+        dispute.escalated_at = new Date();
+        await dispute.save();
+        await postSystem(dispute, `Seller replied in chat: "${message.slice(0, 120)}${message.length > 120 ? "…" : ""}". Case moved to Admin Review.`);
+      }
+    } else if (dispute.status === "OPEN") {
       dispute.status = "SELLER_RESPONSE_PENDING";
       await dispute.save();
     }
@@ -532,48 +544,78 @@ router.post("/:dispute_id/admin-decision", requireAdmin, async (req, res) => {
     const order = await Order.findOne({ order_id: dispute.order_id });
     if (!order) return res.status(404).json({ success: false, error: "Parent order not found" });
 
-    if (resolvedOutcome.id === "seller_wins") {
-      order.status = "COMPLETED";
-      order.payment_status = "RELEASED";
-      order.buyer_confirmed_receipt = true;
+    const isSellerWins = resolvedOutcome.id === "seller_wins";
+    const isBuyerWins = !isSellerWins; // all other outcomes collapse to Buyer Wins (Cancel & Refund)
+
+    if (isSellerWins) {
+      // Seller Wins: reset order to DELIVERED, set 2-day confirmation deadline
+      order.status = "DELIVERED";
+      order.seller_win_confirm_deadline = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
       await Package.updateMany(
         { order_id: order.order_id, status: "DISPUTED" },
-        { $set: { status: "COMPLETED" } }
+        { $set: { status: "DELIVERED" } }
       );
-    } else if (resolvedOutcome.id === "force_replacement") {
-      order.status = "CONFIRMED";
-      order.payment_status = "ON_HOLD";
-      await Package.updateMany({ order_id: order.order_id }, { $set: { status: "PENDING" } });
-    } else if (resolvedOutcome.id === "buyer_wins_return") {
-      order.status = "DISPUTED";
-      order.payment_status = "ON_HOLD";
-    } else if (resolvedOutcome.id === "compromise" || resolvedOutcome.id === "buyer_wins_partial") {
-      order.status = "CANCELLED";
-      order.payment_status = "PARTIAL_RELEASED";
-      await Package.updateMany({ order_id: order.order_id }, { $set: { status: "CANCELLED" } });
+      order.timeline.push({
+        status: "DELIVERED",
+        at: now,
+        by: "admin",
+        by_id: req.user.id,
+        note: `Dispute ${dispute.dispute_id} resolved in Seller's favor. Buyer given 2 days to confirm receipt before auto-completion.`,
+      });
     } else {
-      // buyer_wins_full
+      // Buyer Wins: Admin cancels order, restores stock, marks cash refund / debits BNPL
       order.status = "CANCELLED";
-      order.payment_status = "REFUNDED";
+      order.payment_status = "CANCELLED";
       await Package.updateMany({ order_id: order.order_id }, { $set: { status: "CANCELLED" } });
-    }
 
-    order.timeline.push({
-      status: order.status,
-      at: now,
-      by: "admin",
-      by_id: req.user.id,
-      note: `Dispute ${dispute.dispute_id} resolved as ${resolvedOutcome.closesAs}. Notes: ${notes || "N/A"}`,
-    });
+      // Restore stock for all items
+      await restoreStock(order.order_id);
+
+      // If BNPL, debit AdminWallet and cancel application
+      if (order.payment_method === "BNPL") {
+        let wallet = await AdminWallet.findOne({ wallet_id: "admin_wallet_001" });
+        if (wallet) {
+          wallet.balance = (wallet.balance || 0) - order.total_amount;
+          wallet.ledger.push({
+            type: "DEBIT",
+            amount: order.total_amount,
+            description: `Dispute refund for cancelled BNPL order ${order.order_id} (${dispute.dispute_id})`,
+            ref_order_id: order.order_id,
+            ref_payout_id: dispute.dispute_id,
+            at: now,
+            by_admin_id: req.user.id,
+          });
+          await wallet.save();
+        }
+        if (order.bnpl_application_id) {
+          await BnplApplication.updateOne(
+            { application_no: order.bnpl_application_id },
+            { $set: { status: "CANCELLED" } }
+          );
+        }
+      }
+
+      order.timeline.push({
+        status: "CANCELLED",
+        at: now,
+        by: "admin",
+        by_id: req.user.id,
+        note: `Dispute ${dispute.dispute_id} resolved in Buyer's favor. Order cancelled and marked as Cash Refund. Stock restored.`,
+      });
+    }
     await order.save();
 
-    await postSystem(dispute, `Admin resolved dispute: ${resolvedOutcome.label}. Chat locked. Appeal window: ${SLA.APPEAL_WINDOW_DAYS} days.`);
+    const decisionMessage = isSellerWins
+      ? "Seller Wins. Order reset to Delivered with 2 days for buyer confirmation."
+      : "Buyer Wins. Order cancelled and marked as Cash Refund. Stock restored.";
+
+    await postSystem(dispute, `Admin decision: ${decisionMessage} Chat locked.`);
 
     await notifyAll({
       buyer_id: dispute.buyer_id,
       seller_id: dispute.seller_id,
-      title: "Dispute resolved",
-      message: `Dispute ${dispute.dispute_id}: ${resolvedOutcome.label}. ${notes || ""}`,
+      title: isSellerWins ? "Dispute Resolved — Seller Wins" : "Dispute Resolved — Buyer Wins",
+      message: `Dispute ${dispute.dispute_id}: ${decisionMessage} ${notes || ""}`,
       type: "dispute",
       ref_id: dispute.dispute_id,
     });
