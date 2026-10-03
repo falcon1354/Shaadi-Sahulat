@@ -78,6 +78,7 @@ export default function BNPLStatusPage({ buyer }) {
   const navigate = useNavigate();
   const [apps, setApps] = useState([]);
   const [orders, setOrders] = useState([]); // buyer orders — cross-ref for subtotal/items/delivery
+  const [repayments, setRepayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -93,8 +94,12 @@ export default function BNPLStatusPage({ buyer }) {
   const load = async () => {
     if (!buyer?.buyer_id) return;
     setLoading(true);
-    const r = await bnplApi.listMyApplications(buyer.buyer_id);
+    const [r, repayRes] = await Promise.all([
+      bnplApi.listMyApplications(buyer.buyer_id),
+      bnplApi.listMyRepayments(buyer.buyer_id).catch(() => ({ success: false })),
+    ]);
     setApps(r.success ? r.applications : []);
+    setRepayments(repayRes.success ? (repayRes.rows || []) : []);
     // Fetch buyer orders so we can show subtotal / item count / product /
     // delivery type on each BNPL card (the BNPL app itself only carries
     // amount + plan_months).
@@ -144,12 +149,93 @@ export default function BNPLStatusPage({ buyer }) {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const repaySummary = useMemo(() => {
+    return repayments.reduce(
+      (acc, r) => {
+        acc.total += Number(r.total_amount) || 0;
+        acc.paid += Number(r.amount_paid) || 0;
+        acc.remaining += Number(r.amount_remaining) || 0;
+        return acc;
+      },
+      { total: 0, paid: 0, remaining: 0 }
+    );
+  }, [repayments]);
+
   return (
     <div className="max-w-5xl mx-auto p-6">
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl font-bold text-gray-800">My BNPL Applications</h1>
+        <h1 className="text-2xl font-bold text-gray-800">My BNPL</h1>
         <button onClick={load} className="text-sm text-[#a37b3d]">↻ Refresh</button>
       </div>
+      <p className="text-xs text-gray-500 mb-4">
+        Applications and repayment status for your financed orders
+      </p>
+
+      {/* Repayment overview */}
+      {repayments.length > 0 && (
+        <div className="bg-white rounded-2xl border border-[#FBEFF1] shadow-sm p-5 mb-6 space-y-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-lg font-bold text-gray-900">Repayment Status</h2>
+            <span className="text-xs text-gray-500">{repayments.length} active plan(s)</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+              <p className="text-[11px] text-gray-400 uppercase font-semibold">Total financed</p>
+              <p className="text-lg font-extrabold text-gray-900">PKR {repaySummary.total.toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
+              <p className="text-[11px] text-emerald-700/70 uppercase font-semibold">Paid so far</p>
+              <p className="text-lg font-extrabold text-emerald-700">PKR {repaySummary.paid.toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl bg-amber-50 border border-amber-100 p-3">
+              <p className="text-[11px] text-amber-700/70 uppercase font-semibold">Outstanding</p>
+              <p className="text-lg font-extrabold text-amber-700">PKR {repaySummary.remaining.toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {repayments.map((r) => (
+              <div key={r.application_no} className="rounded-xl border border-gray-100 bg-gray-50/70 p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{r.application_no}</p>
+                    <p className="text-[11px] text-gray-500 font-mono">{r.order_id}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    r.repayment_status === "COMPLETED"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-amber-100 text-amber-800"
+                  }`}>{r.repayment_status}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-gray-400">Monthly</p>
+                    <p className="font-bold">PKR {(r.monthly_installment || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Remaining</p>
+                    <p className="font-bold text-amber-700">PKR {(r.amount_remaining || 0).toLocaleString()}</p>
+                  </div>
+                </div>
+                {r.next_due_date && r.repayment_status === "ACTIVE" && (
+                  <p className="text-[11px] text-blue-700">
+                    Next due: <b>{new Date(r.next_due_date).toLocaleDateString()}</b>
+                  </p>
+                )}
+                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full"
+                    style={{
+                      width: `${r.total_amount > 0 ? Math.min(100, Math.round(((r.amount_paid || 0) / r.total_amount) * 100)) : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <h2 className="text-lg font-bold text-gray-800 mb-2">Applications</h2>
       <p className="text-xs text-gray-500 mb-4">
         Total applications: <b>{totalCount}</b>
         {totalCount > PAGE_SIZE && ` · Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalCount)}`}
@@ -280,6 +366,12 @@ export default function BNPLStatusPage({ buyer }) {
                 <p className="text-sm">Processing Fee (2%): <b>PKR {selected.offer.processing_fee.toLocaleString()}</b></p>
                 <p className="text-sm">Monthly Installment: <b>PKR {selected.offer.monthly_installment.toLocaleString()}</b></p>
                 <p className="text-sm">Total Payable: <b>PKR {selected.offer.total_payable.toLocaleString()}</b></p>
+                {(selected.offer.amount_paid != null || selected.status === "OFFER_ACCEPTED") && (
+                  <>
+                    <p className="text-sm mt-2">Paid so far: <b className="text-emerald-700">PKR {(selected.offer.amount_paid || 0).toLocaleString()}</b></p>
+                    <p className="text-sm">Outstanding: <b className="text-amber-700">PKR {(selected.offer.amount_remaining ?? Math.max(0, (selected.offer.total_payable || 0) - (selected.offer.amount_paid || 0))).toLocaleString()}</b></p>
+                  </>
+                )}
               </div>
             )}
 

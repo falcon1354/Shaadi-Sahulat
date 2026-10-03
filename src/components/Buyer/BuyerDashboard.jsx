@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Gem, Hand, Banknote, Heart, TrendingUp, Eye, Wallet, BarChart3, PieChart, ArrowUpRight, ArrowDownRight, Sparkles, CheckCircle2, ChevronRight, Clock, Trash2, ShoppingBag } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { getFullBuyerData } from '../../api/buyerApi';
 import { listBuyerOrders } from '../../api/orderApi';
 import bnplApi from '../../api/bnplApi';
 import { filterDisplayBudgetEntries, isRetiredCategory, splitAllocatedAndDeleted } from '../../lib/dowryDisplay';
+import { spentByCategoryFromOrders, applySpentToBudgets } from '../../lib/dowrySpent';
 import CategoryThumb from '../Dowry/CategoryThumb';
 
 // ── Buyer-isolated storage helpers ───────────────────────────────────────────
@@ -41,6 +43,7 @@ function readRecentlyViewed(buyerId) {
 const ANALYTICS_TABS = ['Overview', 'By Category', 'Remaining', 'Projections'];
 
 export default function BuyerDashboard({ buyer, onViewProduct }) {
+  const navigate = useNavigate();
   const buyerId = buyer?.buyer_id;
   const { categories } = useCategories({ includeInactive: true });
 
@@ -54,94 +57,105 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
   const [purchasedItems, setPurchasedItems] = useState([]);
   const [bnplRepayments, setBnplRepayments] = useState([]);
 
-  // Mount: show local immediately, then always refresh from Mongo (reconciles spent)
+  const persistDowry = (payload) => {
+    const s = JSON.stringify(payload);
+    if (buyerId) localStorage.setItem(`ss_dowry_${buyerId}`, s);
+    localStorage.setItem('ss_dowry_latest', s);
+    setDowry(payload);
+  };
+
+  // Single refresh path: Mongo reconcile → all orders + BNPL apps → stable spent overlay
   useEffect(() => {
     setWishlist(readWishlist(buyerId));
     setRecentlyViewed(readRecentlyViewed(buyerId));
-
     const local = readDowry(buyerId);
     if (local) setDowry(local);
     if (!buyerId) return;
 
-    getFullBuyerData(buyerId).then(res => {
-      if (!res?.success || !res.dowry_estimation) return;
-      const est     = res.dowry_estimation;
-      const budgets = est.category_budgets;
-      if (!budgets || !Object.keys(budgets).length) return;
-      const total   = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
-      const originalIds = Array.isArray(est.original_category_ids) && est.original_category_ids.length
-        ? est.original_category_ids
-        : Object.keys(budgets).filter(k => (budgets[k]?.estimated || 0) > 0);
-      const payload = {
-         estimation_id:         est._id,
-         total_budget:          total || est.total_recommended_budget,
-         category_budgets:      budgets,
-         original_category_ids: originalIds,
-         saved_at:              est.updated_at || est.created_at || new Date().toISOString(),
-      };
-      const s = JSON.stringify(payload);
-      localStorage.setItem(`ss_dowry_${buyerId}`, s);
-      localStorage.setItem('ss_dowry_latest', s);
-      setDowry(payload);
-    }).catch(() => {});
-  }, [buyerId]);
+    let cancelled = false;
 
-  // Fetch purchased items + refresh spent from live orders (not static local only)
-  useEffect(() => {
-    if (!buyerId) return;
-    listBuyerOrders(buyerId).then(r => {
-      if (!r.success) return;
-      const orders = (r.orders || []).filter(o => !o.superseded && o.status !== 'CANCELLED');
-      const completed = orders.filter(o => ['COMPLETED', 'DELIVERED', 'RESOLVED'].includes(o.status));
-      const items = [];
-      completed.forEach(o => {
-        (o.items || []).forEach(it => items.push({ ...it, order_id: o.order_id, status: o.status }));
-      });
-      setPurchasedItems(items);
+    (async () => {
+      try {
+        const [fullRes, ordersRes, appsRes, repayRes] = await Promise.all([
+          getFullBuyerData(buyerId),
+          listBuyerOrders(buyerId, { page: 1, limit: 200 }),
+          bnplApi.listMyApplications(buyerId),
+          bnplApi.listMyRepayments(buyerId),
+        ]);
+        if (cancelled) return;
 
-      // Overlay spent/remaining from real order lines onto local dowry budgets
-      const spentByCat = {};
-      orders.forEach(o => {
-        (o.items || []).forEach(it => {
-          const cat = it.major_category || it.subcategory || '';
-          if (!cat) return;
-          spentByCat[cat] = (spentByCat[cat] || 0) + (Number(it.subtotal) || 0);
+        if (repayRes?.success) setBnplRepayments(repayRes.rows || []);
+
+        const orders = (ordersRes?.success ? ordersRes.orders : []) || [];
+        const bnplApps = (appsRes?.success ? appsRes.applications : []) || [];
+        const completed = orders.filter(
+          (o) => !o.superseded && ['COMPLETED', 'DELIVERED', 'RESOLVED'].includes(o.status)
+        );
+        const items = [];
+        completed.forEach((o) => {
+          (o.items || []).forEach((it) => items.push({ ...it, order_id: o.order_id, status: o.status }));
         });
-      });
-      setDowry(prev => {
-        if (!prev?.category_budgets) return prev;
-        const budgets = { ...prev.category_budgets };
-        let changed = false;
-        for (const [cat, info] of Object.entries(budgets)) {
-          const spent = spentByCat[cat] || 0;
-          if ((info.spent || 0) !== spent) {
-            budgets[cat] = { ...info, spent, remaining: (info.estimated || 0) - spent };
-            changed = true;
-          }
-        }
-        if (!changed) return prev;
-        const payload = { ...prev, category_budgets: budgets };
-        const s = JSON.stringify(payload);
-        localStorage.setItem(`ss_dowry_${buyerId}`, s);
-        localStorage.setItem('ss_dowry_latest', s);
-        return payload;
-      });
-    }).catch(() => {});
-  }, [buyerId]);
+        setPurchasedItems(items);
 
-  // Active BNPL repayment status for My BNPL card
-  useEffect(() => {
-    if (!buyerId) return;
-    bnplApi.listMyRepayments(buyerId).then((r) => {
-      if (r.success) setBnplRepayments(r.rows || []);
-    }).catch(() => {});
+        const est = fullRes?.success ? fullRes.dowry_estimation : null;
+        const budgets = est?.category_budgets || local?.category_budgets;
+        if (!budgets || !Object.keys(budgets).length) return;
+
+        const total = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
+        const originalIds = Array.isArray(est?.original_category_ids) && est.original_category_ids.length
+          ? est.original_category_ids
+          : (local?.original_category_ids?.length
+            ? local.original_category_ids
+            : Object.keys(budgets).filter((k) => (budgets[k]?.estimated || 0) > 0));
+
+        const spentByCat = spentByCategoryFromOrders(orders, bnplApps);
+        const { budgets: synced } = applySpentToBudgets(budgets, spentByCat);
+        persistDowry({
+          estimation_id: est?._id || local?.estimation_id,
+          total_budget: total || est?.total_recommended_budget || local?.total_budget,
+          category_budgets: synced,
+          original_category_ids: originalIds,
+          saved_at: est?.updated_at || est?.created_at || new Date().toISOString(),
+        });
+      } catch (_) { /* keep local */ }
+    })();
+
+    return () => { cancelled = true; };
   }, [buyerId]);
 
   // Re-read when any component shifts budget (cart checkout, marketplace, dowry reallocation)
   useEffect(() => {
     const handler = (e) => {
       if (!e.detail?.buyerId || e.detail.buyerId === buyerId) {
-        setDowry(readDowry(buyerId));
+        // Prefer a full refresh so spent stays order-sourced, not stale local
+        if (!buyerId) {
+          setDowry(readDowry(buyerId));
+          return;
+        }
+        Promise.all([
+          getFullBuyerData(buyerId),
+          listBuyerOrders(buyerId, { page: 1, limit: 200 }),
+          bnplApi.listMyApplications(buyerId),
+        ]).then(([fullRes, ordersRes, appsRes]) => {
+          const est = fullRes?.success ? fullRes.dowry_estimation : null;
+          const base = est?.category_budgets || readDowry(buyerId)?.category_budgets;
+          if (!base) return;
+          const spentByCat = spentByCategoryFromOrders(
+            ordersRes?.orders || [],
+            appsRes?.applications || []
+          );
+          const { budgets: synced } = applySpentToBudgets(base, spentByCat);
+          const originalIds = est?.original_category_ids
+            || readDowry(buyerId)?.original_category_ids
+            || Object.keys(synced).filter((k) => (synced[k]?.estimated || 0) > 0);
+          persistDowry({
+            estimation_id: est?._id,
+            total_budget: Object.values(synced).reduce((s, v) => s + (v?.estimated || 0), 0),
+            category_budgets: synced,
+            original_category_ids: originalIds,
+            saved_at: new Date().toISOString(),
+          });
+        }).catch(() => setDowry(readDowry(buyerId)));
       }
     };
     window.addEventListener('dowry-updated', handler);
@@ -341,19 +355,28 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
         </div>
       </div>
 
-      {/* My BNPL — active repayment status */}
+      {/* My BNPL — repayment status (right under KPI cards) */}
       {bnplRepayments.length > 0 && (
         <div className="bg-white rounded-3xl border border-[#FBEFF1] shadow-sm p-6 md:p-8 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h2 className="text-xl font-extrabold text-gray-950 flex items-center gap-2">
                 <Banknote className="text-[#a37b3d]" size={22} /> My BNPL
               </h2>
-              <p className="text-xs text-gray-500 mt-1">Repayment status for your financed orders</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {bnplRepayments.length} active plan{bnplRepayments.length === 1 ? '' : 's'} · repayment status for financed orders
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => navigate('/buyer/bnpl')}
+              className="text-xs font-bold text-[#a37b3d] hover:text-[#8a6633] inline-flex items-center gap-1"
+            >
+              View all applications <ChevronRight size={14} />
+            </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {bnplRepayments.map((r) => (
+            {bnplRepayments.slice(0, 4).map((r) => (
               <div key={r.application_no} className="rounded-2xl border border-gray-100 bg-gray-50/80 p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -400,6 +423,15 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
               </div>
             ))}
           </div>
+          {bnplRepayments.length > 4 && (
+            <button
+              type="button"
+              onClick={() => navigate('/buyer/bnpl')}
+              className="w-full text-center text-xs font-bold text-[#a37b3d] py-2"
+            >
+              +{bnplRepayments.length - 4} more · open My BNPL
+            </button>
+          )}
         </div>
       )}
 
