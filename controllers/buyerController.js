@@ -160,24 +160,55 @@ async function syncCart(req, res) {
 }
 
 // Full buyer data — profile + latest dowry + cart (for admin view and seeding)
+/** Orders that should not count against dowry spent. */
+const SPENT_EXCLUDED_STATUSES = new Set([
+  "CANCELLED",
+  "PENDING_BNPL_APPROVAL", // not finalized — pending apps often leave stuck duplicates
+]);
+
 /**
- * Reset category_budgets.spent / remaining from non-cancelled orders.
- * Fixes inflated spent caused by CartDrawer deducting on "Proceed to Checkout"
- * and POST /api/orders deducting again on place-order.
+ * Reset category_budgets.spent / remaining from live orders.
+ * Counts only real commitments (excludes cancelled + pending BNPL approval,
+ * and BNPL orders whose application was rejected/expired/cancelled).
+ * Fixes inflated spent from double-deduct and abandoned BNPL carts.
  */
 async function reconcileDowrySpentFromOrders(buyer_id, estimation) {
   if (!estimation?._id || !estimation.category_budgets) return estimation;
 
   const Order = require("../models/Order");
   const DowryEstimation = require("../models/DowryEstimation");
+  const BnplApplication = require("../models/BnplApplication");
 
   const orders = await Order.find({
     buyer_id,
-    status: { $nin: ["CANCELLED"] },
-  }).select("items").lean();
+    superseded: { $ne: true },
+    status: { $nin: [...SPENT_EXCLUDED_STATUSES] },
+  }).select("items payment_method bnpl_application_id status").lean();
+
+  const bnplAppNos = [
+    ...new Set(
+      orders
+        .filter((o) => o.payment_method === "BNPL" && o.bnpl_application_id)
+        .map((o) => o.bnpl_application_id)
+    ),
+  ];
+  const activeBnpl = new Set();
+  if (bnplAppNos.length) {
+    const apps = await BnplApplication.find({
+      application_no: { $in: bnplAppNos },
+      status: { $in: ["OFFER_ACCEPTED", "APPROVED"] },
+    })
+      .select("application_no")
+      .lean();
+    for (const a of apps) activeBnpl.add(a.application_no);
+  }
 
   const spentByCat = {};
   for (const o of orders) {
+    if (o.payment_method === "BNPL") {
+      // Count BNPL only when the application is still active/finalized
+      if (!o.bnpl_application_id || !activeBnpl.has(o.bnpl_application_id)) continue;
+    }
     for (const it of o.items || []) {
       const cat = it.major_category || it.subcategory || "";
       if (!cat) continue;
