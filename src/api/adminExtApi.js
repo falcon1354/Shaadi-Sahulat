@@ -107,8 +107,25 @@ export async function getBnplReceipts(adminId) {
   return res.json();
 }
 
+export async function listBnplRepayments(adminId, { bank_id, buyer_id } = {}) {
+  const params = new URLSearchParams();
+  if (bank_id) params.set("bank_id", bank_id);
+  if (buyer_id) params.set("buyer_id", buyer_id);
+  const qs = params.toString() ? `?${params}` : "";
+  const res = await fetch(`${BASE}/bnpl-repayments${qs}`, { headers: _headers(adminId) });
+  return res.json();
+}
+
+export async function getBnplRepayment(adminId, applicationNo) {
+  const res = await fetch(`${BASE}/bnpl-repayments/${encodeURIComponent(applicationNo)}`, {
+    headers: _headers(adminId),
+  });
+  return res.json();
+}
+
 export default {
   listOrders, listPendingReleaseOrders, getOrderDetail, listDisputes,
   releasePayment, getWallet, getWalletOrderLedger, getSellerPayouts, listBnplApplications,
   getSalesTimeline, getBreakdown, removeSeller, getBnplReceipts,
+  listBnplRepayments, getBnplRepayment,
 };

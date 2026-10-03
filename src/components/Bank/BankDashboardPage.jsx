@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import bankApi from "../../api/bankApi";
 import { resolveMediaUrl } from "../../lib/openDoc";
+import BankRepaymentsPage from "./BankRepaymentsPage";
 
 /**
  * BankDashboardPage — bank officer verification workbench and 24h batch releases to platform.
@@ -31,6 +32,7 @@ export default function BankDashboardPage() {
 
   const load = async () => {
     if (!officer) return;
+    if (filter === "REPAYMENTS") return; // BankRepaymentsPage loads its own data
     if (filter === "BATCH_RELEASES") {
       const bResp = await bankApi.listBatches(officer.token);
       if (bResp.success) setBatchesData(bResp);
@@ -130,6 +132,7 @@ export default function BankDashboardPage() {
     { id: "REJECTED",                  label: "Rejected" },
     { id: "CANCELLED",                 label: "Cancelled" },
     { id: "BATCH_RELEASES",            label: "📦 24h Batch Releases" },
+    { id: "REPAYMENTS",                label: "💳 BNPL Repayments" },
   ];
 
   if (!officer) return <div className="p-8 text-center text-gray-500">Loading...</div>;
@@ -178,7 +181,9 @@ export default function BankDashboardPage() {
 
         {/* Main content */}
         <main className="flex-1 space-y-4 min-w-0">
-          {filter === "BATCH_RELEASES" ? (
+          {filter === "REPAYMENTS" ? (
+            <BankRepaymentsPage officer={officer} onBack={() => setFilter("PENDING_BANK_VERIFICATION")} />
+          ) : filter === "BATCH_RELEASES" ? (
             /* ────────────────── 24H BATCH RELEASES VIEW ────────────────── */
             <div className="space-y-4">
               <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-2xl p-6 shadow-md flex flex-wrap items-center justify-between gap-4">

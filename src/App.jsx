@@ -28,6 +28,7 @@ import CategoryManager from './components/Admin/CategoryManager';
 import OrdersPage from './components/Admin/OrdersPage';
 import AdminDisputesPage from './components/Admin/AdminDisputesPage';
 import AdminWalletPage from './components/Admin/AdminWalletPage';
+import AdminBnplRepaymentsPage from './components/Admin/AdminBnplRepaymentsPage';
 import CheckoutPage from './components/Cart/CheckoutPage';
 import BuyerOrdersPage from './components/Orders/BuyerOrdersPage';
 import BuyerOrderDetailPage from './components/Orders/BuyerOrderDetailPage';
@@ -887,6 +888,11 @@ function AdminWalletPageWrapper() {
   const { admin } = useAuth();
   return <AdminWalletPage admin={admin} />;
 }
+
+function AdminBnplRepaymentsPageWrapper() {
+  const { admin } = useAuth();
+  return <AdminBnplRepaymentsPage admin={admin} />;
+}
 function FinancialDashboardWrapper() {
   const { admin } = useAuth();
   return <FinancialDashboard admin={admin} />;
@@ -1065,6 +1071,7 @@ export default function App() {
                 <Route path="disputes" element={<AdminDisputesPageWrapper />} />
                 <Route path="reviews" element={<AdminReviewsPageWrapper />} />
                 <Route path="wallet" element={<AdminWalletPageWrapper />} />
+                <Route path="bnpl-repayments" element={<AdminBnplRepaymentsPageWrapper />} />
               </Route>
             </Route>
 

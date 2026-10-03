@@ -617,4 +617,49 @@ router.post("/trigger-batch", requireBankOfficer, async (req, res) => {
   }
 });
 
+// ── BNPL Repayments (installment tracking) ──────────────────────────────────
+const {
+  listRepayments,
+  getRepaymentDetail,
+  recordPayment,
+} = require("../lib/bnplRepayment");
+
+// GET /api/bank/repayments — summary + list for banker
+router.get("/repayments", requireBankOfficer, async (req, res) => {
+  try {
+    const data = await listRepayments({});
+    return res.json({ success: true, ...data });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/bank/repayments/:application_no
+router.get("/repayments/:application_no", requireBankOfficer, async (req, res) => {
+  try {
+    const detail = await getRepaymentDetail(req.params.application_no);
+    if (!detail) return res.status(404).json({ success: false, error: "Repayment not found" });
+    return res.json({ success: true, repayment: detail });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/bank/repayments/:application_no/payments — record a repayment
+router.post("/repayments/:application_no/payments", requireBankOfficer, async (req, res) => {
+  try {
+    const { amount, paid_at, note } = req.body || {};
+    const repayment = await recordPayment(req.params.application_no, {
+      amount,
+      paid_at,
+      note,
+      recorded_by: req.officer?.officer_id || req.officer?.name || "bank_officer",
+      recorded_by_role: "bank",
+    });
+    return res.json({ success: true, message: "Payment recorded", repayment });
+  } catch (err) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

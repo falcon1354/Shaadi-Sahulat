@@ -68,7 +68,29 @@ export async function triggerBatch(token) {
   return res.json();
 }
 
+export async function listRepayments(token) {
+  const res = await fetch(`${BASE}/repayments`, { headers: _headers(token) });
+  return res.json();
+}
+
+export async function getRepayment(token, applicationNo) {
+  const res = await fetch(`${BASE}/repayments/${encodeURIComponent(applicationNo)}`, {
+    headers: _headers(token),
+  });
+  return res.json();
+}
+
+export async function recordRepaymentPayment(token, applicationNo, { amount, paid_at, note } = {}) {
+  const res = await fetch(`${BASE}/repayments/${encodeURIComponent(applicationNo)}/payments`, {
+    method: "POST",
+    headers: { ..._headers(token), "Content-Type": "application/json" },
+    body: JSON.stringify({ amount, paid_at, note }),
+  });
+  return res.json();
+}
+
 export default {
   login, listApplications, getApplication, decide, listBatches, triggerBatch,
+  listRepayments, getRepayment, recordRepaymentPayment,
   getOfficerFromStorage, saveOfficerToStorage, clearOfficerFromStorage,
 };
