@@ -774,5 +774,34 @@ router.get("/bnpl-receipts", async (req, res) => {
   }
 });
 
+// ── BNPL Repayments (platform-wide, view-only) ──────────────────────────────
+const {
+  listRepayments: listBnplRepayments,
+  getRepaymentDetail: getBnplRepaymentDetail,
+} = require("../lib/bnplRepayment");
+
+router.get("/bnpl-repayments", async (req, res) => {
+  try {
+    const { bank_id, buyer_id } = req.query || {};
+    const data = await listBnplRepayments({
+      bank_id: bank_id || undefined,
+      buyer_id: buyer_id || undefined,
+    });
+    return res.json({ success: true, ...data });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/bnpl-repayments/:application_no", async (req, res) => {
+  try {
+    const detail = await getBnplRepaymentDetail(req.params.application_no);
+    if (!detail) return res.status(404).json({ success: false, error: "Repayment not found" });
+    return res.json({ success: true, repayment: detail });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
 

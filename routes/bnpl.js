@@ -394,6 +394,30 @@ router.get("/applications", requireBuyer, async (req, res) => {
   }
 });
 
+// ---------- Buyer repayment status (My BNPL) ----------
+router.get("/repayments", requireBuyer, async (req, res) => {
+  try {
+    const { listRepayments } = require("../lib/bnplRepayment");
+    const data = await listRepayments({ buyer_id: req.user.id });
+    return res.json({ success: true, ...data });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/repayments/:application_no", requireBuyer, async (req, res) => {
+  try {
+    const { getRepaymentDetail } = require("../lib/bnplRepayment");
+    const detail = await getRepaymentDetail(req.params.application_no);
+    if (!detail || detail.buyer_id !== req.user.id) {
+      return res.status(404).json({ success: false, error: "Repayment not found" });
+    }
+    return res.json({ success: true, repayment: detail });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ---------- single application ----------
 router.get("/applications/:application_no", requireBuyer, async (req, res) => {
   try {

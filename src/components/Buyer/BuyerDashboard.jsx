@@ -3,6 +3,7 @@ import { Gem, Hand, Banknote, Heart, TrendingUp, Eye, Wallet, BarChart3, PieChar
 import { useCategories } from '../../hooks/useCategories';
 import { getFullBuyerData } from '../../api/buyerApi';
 import { listBuyerOrders } from '../../api/orderApi';
+import bnplApi from '../../api/bnplApi';
 import { filterDisplayBudgetEntries, isRetiredCategory, splitAllocatedAndDeleted } from '../../lib/dowryDisplay';
 import CategoryThumb from '../Dowry/CategoryThumb';
 
@@ -51,6 +52,7 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [analyticsTab,   setAnalyticsTab]   = useState('Overview');
   const [purchasedItems, setPurchasedItems] = useState([]);
+  const [bnplRepayments, setBnplRepayments] = useState([]);
 
   // Mount: show local immediately, then always refresh from Mongo (reconciles spent)
   useEffect(() => {
@@ -124,6 +126,14 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
         localStorage.setItem('ss_dowry_latest', s);
         return payload;
       });
+    }).catch(() => {});
+  }, [buyerId]);
+
+  // Active BNPL repayment status for My BNPL card
+  useEffect(() => {
+    if (!buyerId) return;
+    bnplApi.listMyRepayments(buyerId).then((r) => {
+      if (r.success) setBnplRepayments(r.rows || []);
     }).catch(() => {});
   }, [buyerId]);
 
@@ -330,6 +340,68 @@ export default function BuyerDashboard({ buyer, onViewProduct }) {
           </div>
         </div>
       </div>
+
+      {/* My BNPL — active repayment status */}
+      {bnplRepayments.length > 0 && (
+        <div className="bg-white rounded-3xl border border-[#FBEFF1] shadow-sm p-6 md:p-8 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-extrabold text-gray-950 flex items-center gap-2">
+                <Banknote className="text-[#a37b3d]" size={22} /> My BNPL
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">Repayment status for your financed orders</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {bnplRepayments.map((r) => (
+              <div key={r.application_no} className="rounded-2xl border border-gray-100 bg-gray-50/80 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{r.application_no}</p>
+                    <p className="text-[11px] text-gray-500 font-mono">{r.order_id}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    r.repayment_status === "COMPLETED"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-amber-100 text-amber-800"
+                  }`}>{r.repayment_status}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-gray-400">Total financed</p>
+                    <p className="font-bold text-gray-900">PKR {(r.total_amount || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Monthly installment</p>
+                    <p className="font-bold text-gray-900">PKR {(r.monthly_installment || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Paid so far</p>
+                    <p className="font-bold text-emerald-700">PKR {(r.amount_paid || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Remaining</p>
+                    <p className="font-bold text-amber-700">PKR {(r.amount_remaining || 0).toLocaleString()}</p>
+                  </div>
+                </div>
+                {r.next_due_date && r.repayment_status === "ACTIVE" && (
+                  <p className="text-[11px] text-blue-700">
+                    Next payment due: <b>{new Date(r.next_due_date).toLocaleDateString()}</b>
+                  </p>
+                )}
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full"
+                    style={{
+                      width: `${r.total_amount > 0 ? Math.min(100, Math.round(((r.amount_paid || 0) / r.total_amount) * 100)) : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* No Estimate Beautiful Onboarding Callout */}
       {noEstimate && (

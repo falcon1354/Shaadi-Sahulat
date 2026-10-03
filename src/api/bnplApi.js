@@ -99,8 +99,20 @@ export async function declineOffer(buyerId, applicationNo) {
   return res.json();
 }
 
+export async function listMyRepayments(buyerId) {
+  const res = await fetch(`${BASE}/repayments`, { headers: _headers(buyerId) });
+  return res.json();
+}
+
+export async function getMyRepayment(buyerId, applicationNo) {
+  const res = await fetch(`${BASE}/repayments/${encodeURIComponent(applicationNo)}`, {
+    headers: _headers(buyerId),
+  });
+  return res.json();
+}
+
 export default {
   checkEligibility, listBanks, getProfile, previewCnicOcr,
   submitApplication, listMyApplications, getApplication,
-  acceptOffer, declineOffer,
+  acceptOffer, declineOffer, listMyRepayments, getMyRepayment,
 };
