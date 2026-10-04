@@ -46,10 +46,11 @@ from mongo_seller import (
 
 # ── Dummy seller ───────────────────────────────────────────────────────────────
 
+# Unlinked demo seller (shares the admin email) — created WITHOUT a password so it can
+# never authenticate; admin@shaadisahulat.com is reserved for the Admin role.
 DUMMY_SELLER = {
     "name":     "ShaadiSahulat Demo",
     "email":    "admin@shaadisahulat.com",
-    "password": "Admin@1234",
     "phone":    "0300-0000000",
     "city":     "Lahore",
 }
@@ -184,7 +185,7 @@ def main():
             email=DUMMY_SELLER["email"],
             phone=DUMMY_SELLER["phone"],
             city=DUMMY_SELLER["city"],
-            password=DUMMY_SELLER["password"],
+            password="",  # unlinked demo seller: no password, cannot log in
         )
         if seller_doc is None:
             print("[Seed] ERROR: Could not create seller.")

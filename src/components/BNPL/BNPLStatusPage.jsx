@@ -386,11 +386,8 @@ export default function BNPLStatusPage({ buyer }) {
                         type="button"
                         className="text-[#a37b3d] font-semibold"
                         onClick={() => {
-                          let url = d.url || "";
-                          if (url.startsWith("/api/") && buyer?.buyer_id) {
-                            url = `${url}${url.includes("?") ? "&" : "?"}buyer_id=${encodeURIComponent(buyer.buyer_id)}`;
-                          }
-                          window.open(resolveMediaUrl(url), "_blank", "noopener,noreferrer");
+                          // d.url is a short-lived signed link issued to the signed-in owner.
+                          if (d.url) window.open(resolveMediaUrl(d.url), "_blank", "noopener,noreferrer");
                         }}
                       >View</button>
                     </li>

@@ -11,18 +11,16 @@ const FormData = require("form-data");
 const ML_URL  = process.env.VISUAL_ML_URL || "http://localhost:5002";
 const TIMEOUT = 60000; // 60 s — image embedding can take a moment
 
-// ── Seller registration / auth ────────────────────────────────────────────
+// ── Seller account creation (Node /api/auth/seller/register is the only entry point) ──
 
-async function registerSeller({ name, email, password, phone, city }) {
-  const res = await axios.post(`${ML_URL}/seller/register`, { name, email, password, phone, city }, {
-    timeout: TIMEOUT,
-  });
-  return res.data;
-}
-
-async function loginSeller({ email, password }) {
-  const res = await axios.post(`${ML_URL}/seller/login`, { email, password }, {
-    timeout: TIMEOUT,
+/**
+ * INTERNAL: create a seller with a Node-computed bcrypt hash + auth state.
+ * Flask keeps the authoritative seller_type / max_listings / seller_id rules.
+ */
+async function createSellerInternal({ name, email, phone, city, seller_type, password_hash, auth }) {
+  const flaskHttp = require("../lib/flaskHttp");
+  const res = await flaskHttp.post("/seller/internal/create", {
+    name, email, phone, city, seller_type, password_hash, auth,
   });
   return res.data;
 }
@@ -177,8 +175,7 @@ function _wrap(fn) {
 }
 
 module.exports = {
-  registerSeller:    _wrap(registerSeller),
-  loginSeller:       _wrap(loginSeller),
+  createSellerInternal: _wrap(createSellerInternal),
   getSellerProfile:  _wrap(getSellerProfile),
   getSellerByEmail:  _wrap(getSellerByEmail),
   uploadProduct:     _wrap(uploadProduct),

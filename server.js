@@ -22,9 +22,7 @@
  * NEW (v3.1):
  *   Socket.io           — Real-time notifications + dispute chat between buyer, seller, admin
  *
- * Auth convention: lightweight header-based.
- *   x-user-id       buyer_id / seller_id / admin_id
- *   x-user-role     "buyer" | "seller" | "admin"
+ * Auth: verified JWT (Authorization: Bearer) → req.user; see lib/auth.js + lib/authorize.js.
  *   x-officer-token  (bank officer only — returned by /api/bank/login)
  */
 
@@ -33,7 +31,23 @@ const path = require("path");
 const http = require("http");
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const connectDB = require("./config/db");
+const { validateAuthConfig, getAuthConfig } = require("./lib/tokens");
+// Adds X-Internal-Secret to Node → visual-ml / ml-service calls (internal origins only).
+require("./lib/flaskHttp");
+
+// ── Fail fast on missing/weak auth configuration (names only, never values) ──
+const authConfigProblems = validateAuthConfig();
+if (authConfigProblems.length) {
+  console.error("[Server] Authentication configuration error:");
+  for (const p of authConfigProblems) console.error(`  - ${p}`);
+  console.error("[Server] Set these in .env (see .env.example) and restart.");
+  process.exit(1);
+}
+
+const authRoutes       = require("./routes/auth");
+const { requireAdmin } = require("./lib/auth");
 
 const visualRoutes     = require("./routes/visual");
 const sellerRoutes     = require("./routes/seller");
@@ -50,6 +64,7 @@ const disputeRoutes      = require("./routes/disputes");
 const reviewRoutes       = require("./routes/reviews");
 const notificationRoutes = require("./routes/notifications");
 const { router: bannerRoutes, cleanupExpiredBanners } = require("./routes/banners");
+const fileRoutes         = require("./routes/files");
 
 // NEW: Socket.io server
 const { initSocket, getStatus } = require("./lib/socket");
@@ -63,30 +78,44 @@ const PORT = process.env.PORT || 5000;
 const httpServer = http.createServer(app);
 
 // ── Middleware ──────────────────────────────────────────────────────────────
-app.use(cors());
+// Only the configured frontend may call the API from a browser (no wildcard CORS).
+// (An allow-list reflects only a matching Origin; any other origin gets no CORS headers.)
+app.use(cors({ origin: [getAuthConfig().frontendOrigin.replace(/\/$/, "")] }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Request logging
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  // Signed private-file links are capabilities: never write their query string to logs.
+  const url = req.path.startsWith("/api/files/") ? `${req.path}?<redacted>` : req.url;
+  console.log(`[${new Date().toISOString()}] ${req.method} ${url}`);
   next();
 });
 
-// Serve uploaded files (BNPL docs, dispute evidence, order attachments)
-// Files live under <project_root>/Uploads/{BNPL,Order,Dispute}/...
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "Uploads"), {
-    fallthrough: true,
-    setHeaders: (res) => {
-      // Allow inline viewing in browser for images/PDFs
-      res.setHeader("X-Content-Type-Options", "nosniff");
-    },
-  })
-);
+// PUBLIC uploads only: each public folder is its own static root, so nothing else
+// under Uploads/ is reachable (no traversal into BNPL/Dispute/Order, whatever the case).
+// Private files (CNIC / utility bills, dispute evidence, order attachments) are served
+// ONLY via short-lived signed links: GET /api/files/private (lib/privateFiles.js).
+const PUBLIC_UPLOAD_DIRS = ["Banners", "Categories", "CategoryPlaceholders", "Reviews"];
+for (const dir of PUBLIC_UPLOAD_DIRS) {
+  app.use(
+    `/uploads/${dir}`,
+    express.static(path.join(__dirname, "Uploads", dir), {
+      fallthrough: false,
+      dotfiles: "deny",
+      index: false,
+      setHeaders: (res) => res.setHeader("X-Content-Type-Options", "nosniff"),
+    })
+  );
+}
+app.use("/uploads", (req, res) => res.status(404).json({ success: false, error: "Not found" }));
+// Static errors (missing file, "..", malformed path) → plain 403/404, never a 500 with a stack trace.
+app.use("/uploads", (err, req, res, _next) =>
+  res.status(err.status === 403 ? 403 : 404).json({ success: false, error: err.status === 403 ? "Forbidden" : "Not found" }));
 
 // ── Routes ─────────────────────────────────────────────────────────────────
+app.use("/api/auth",          authRoutes);
 app.use("/api/visual",        visualRoutes);
 app.use("/api/seller",        sellerRoutes);
 app.use("/api/dowry",         dowryRoutes);
@@ -102,6 +131,7 @@ app.use("/api/disputes",      disputeRoutes);
 app.use("/api/reviews",       reviewRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/banners",       bannerRoutes);
+app.use("/api/files",         fileRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -128,7 +158,7 @@ app.get("/api/health", (req, res) => {
 // v3.2: Socket.io diagnostic endpoint — verify which roles are connected
 // and which dispute rooms are currently occupied. Useful for debugging
 // "seller can't connect" / "admin can't join dispute" issues.
-app.get("/api/socket/status", (req, res) => {
+app.get("/api/socket/status", requireAdmin, (req, res) => {
   res.json({ success: true, ...getStatus() });
 });
 
@@ -141,8 +171,8 @@ app.get("/", (req, res) => {
       buyer: {
         recommend:     "POST /api/visual/recommend",
         categories:    "GET  /api/visual/categories",
-        register:      "POST /api/buyer/register",
-        login:         "POST /api/buyer/login",
+        register:      "POST /api/auth/buyer/register",
+        login:         "POST /api/auth/login  (portal: buyer)",
         cartSync:      "POST /api/buyer/:buyer_id/cart-sync",
         orders:        "GET  /api/orders?buyer_id=",
         createOrder:   "POST /api/orders",
@@ -157,8 +187,8 @@ app.get("/", (req, res) => {
         notifications: "GET  /api/notifications?user_id=&role=buyer",
       },
       seller: {
-        register:      "POST /api/seller/register",
-        login:         "POST /api/seller/login",
+        register:      "POST /api/auth/seller/register",
+        login:         "POST /api/auth/login  (portal: seller)",
         uploadProduct: "POST /api/seller/product",
         orders:        "GET  /api/seller/orders",
         location:      "GET  /api/seller/orders/:package_id/location",
@@ -168,7 +198,7 @@ app.get("/", (req, res) => {
         notifications: "GET  /api/notifications?user_id=&role=seller",
       },
       admin: {
-        login:         "POST /api/admin/login",
+        login:         "POST /api/auth/login  (portal: admin; no admin signup)",
         orders:        "GET  /api/admin/orders",
         orderDetail:   "GET  /api/admin/orders/:order_id",
         disputes:      "GET  /api/admin/disputes",
@@ -178,7 +208,7 @@ app.get("/", (req, res) => {
         bnplApps:      "GET  /api/admin/bnpl/applications",
       },
       bank: {
-        login:         "POST /api/bank/login  (officer@bank.com / bank123)",
+        login:         "POST /api/bank/login  (credentials from BANK_OFFICER_* in .env)",
         applications:  "GET  /api/bank/applications",
         appDetail:     "GET  /api/bank/applications/:application_no",
         decision:      "POST /api/bank/applications/:application_no/decision",
@@ -227,16 +257,24 @@ const start = async () => {
     setInterval(cleanupExpiredBanners, 5 * 60 * 1000);
     console.log('[Server] Banner cleanup timer started (every 5 min)');
 
+    // Email: report whether SMTP login works (never prints credentials).
+    require("./lib/mailer").verifyTransport().then((r) => {
+      const log = r.ok ? console.log : console.error;
+      log(`[Server] Email               : ${r.status} — ${r.detail}`);
+      for (const w of r.warnings || []) console.warn(`[Server] Email warning       : ${w}`);
+    });
+
     httpServer.listen(PORT, () => {
       console.log(`[Server] ShaadiSahulat Backend running on port ${PORT}`);
       console.log(`[Server] Socket.io           : ws://localhost:${PORT}/socket.io/`);
       console.log(`[Server] Visual ML Service   : ${process.env.VISUAL_ML_URL || "http://localhost:5002"}`);
       console.log(`[Server] Groq AI             : ${process.env.GROQ_API_KEY ? "✓ configured (GROQ_API_KEY set)" : "✗ not configured (will use VADER/template fallback)"}`);
+      console.log(`[Server] Auth                : JWT only (legacy endpoints + x-user headers removed)`);
       console.log(`[Server] API docs            : http://localhost:${PORT}/`);
       console.log(`[Server] Socket status       : http://localhost:${PORT}/api/socket/status`);
       console.log(`[Server] BNPL banks          : HBL, MCB  (seed: node seeds/seedBnplBanks.js)`);
-      console.log(`[Server] Bank officer login  : officer@bank.com / bank123`);
-      console.log(`[Server] Uploads served from : /uploads -> ${path.join(__dirname, "Uploads")}`);
+      console.log(`[Server] Bank officer login  : ${process.env.BANK_OFFICER_EMAIL && process.env.BANK_OFFICER_PASSWORD_HASH ? "configured (BANK_OFFICER_*)" : "NOT configured (set BANK_OFFICER_EMAIL + BANK_OFFICER_PASSWORD_HASH)"}`);
+      console.log(`[Server] Public uploads      : /uploads/{${PUBLIC_UPLOAD_DIRS.join(",")}} · private files via signed /api/files links`);
     });
   } catch (error) {
     console.error("[Server] Failed to start:", error.message);
@@ -244,4 +282,7 @@ const start = async () => {
   }
 };
 
-start();
+// Started only when run directly (node server.js / npm start); tests import the app without a DB.
+if (require.main === module) start();
+
+module.exports = { app, httpServer, PUBLIC_UPLOAD_DIRS };

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import adminApi from '../../api/adminApi';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLogin({ onLogin, onBack }) {
+  const navigate = useNavigate();
+  const { login, notice, clearNotice } = useAuth();
   const [form, setForm]   = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -10,17 +13,14 @@ export default function AdminLogin({ onLogin, onBack }) {
     e.preventDefault();
     setLoading(true);
     setError('');
+    clearNotice?.();
     try {
-      const res = await adminApi.loginAdmin(form);
-      if (res.success) {
-        // v3.2: Save admin to localStorage AND fire ss_auth_changed event
-        // so the SocketContext picks up the new identity immediately
-        // (the previous polling-based approach took up to 1.5s).
-        localStorage.setItem('ss_admin', JSON.stringify(res.admin));
-        try { window.dispatchEvent(new Event('ss_auth_changed')); } catch {}
-        onLogin(res.admin);
+      // JWT auth (portal "admin"); there is no admin registration.
+      const res = await login('admin', form.email, form.password);
+      if (res.ok) {
+        onLogin?.(res.user);
       } else {
-        setError(res.error || 'Invalid credentials');
+        setError(res.error || 'Invalid email or password.');
       }
     } catch {
       setError('Could not connect to server');
@@ -41,6 +41,11 @@ export default function AdminLogin({ onLogin, onBack }) {
         </div>
 
         <form onSubmit={handle} className="bg-gray-800 rounded-2xl p-8 space-y-5 border border-gray-700">
+          {notice && !error && (
+            <div className="bg-emerald-900/40 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-xl text-sm">
+              {notice}
+            </div>
+          )}
           {error && (
             <div className="bg-red-900/40 border border-red-500/50 text-red-300 px-4 py-3 rounded-xl text-sm">
               {error}
@@ -52,7 +57,8 @@ export default function AdminLogin({ onLogin, onBack }) {
               type="email"
               value={form.email}
               onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-              placeholder="admin@shaadisahulat.com"
+              placeholder="admin@email.com"
+              autoComplete="username"
               required
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
             />
@@ -67,6 +73,12 @@ export default function AdminLogin({ onLogin, onBack }) {
               required
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
             />
+            <div className="text-right mt-1.5">
+              <button type="button" onClick={() => navigate('/forgot-password?portal=admin')}
+                className="text-xs text-orange-400 hover:text-orange-300 transition-colors">
+                Forgot password?
+              </button>
+            </div>
           </div>
           <button
             type="submit"

@@ -81,7 +81,8 @@ async function estimateDowry(req, res) {
 async function saveEstimation(req, res) {
   try {
     const inputs  = validateAndNormalizeInputs(req.body);
-    const user_id = req.body.user_id || "anonymous";
+    // Owner comes from the verified JWT (buyer), never from req.body.user_id.
+    const user_id = req.user?.role === "buyer" ? req.user.id : "anonymous";
 
     // Validation: if fewer than 5 categories selected (priority != Not_Wanted), return error
     const activeCount = Object.values(inputs.priorities || {})
@@ -240,7 +241,8 @@ async function getEstimationByUser(req, res) {
 async function upsertEstimation(req, res) {
   try {
     const inputs  = validateAndNormalizeInputs(req.body);
-    const user_id = req.body.user_id || "anonymous";
+    // Owner comes from the verified JWT (buyer), never from req.body.user_id.
+    const user_id = req.user?.role === "buyer" ? req.user.id : "anonymous";
 
     const result = await hybridEstimate(inputs, true);
 
@@ -343,6 +345,10 @@ async function getEstimationById(req, res) {
     const estimation = await DowryEstimation.findById(req.params.id).lean();
     if (!estimation) {
       return res.status(404).json({ success: false, error: "Estimation not found" });
+    }
+    // Private: only the owning buyer or an admin (identity from the JWT).
+    if (req.user?.role !== "admin" && estimation.user_id !== req.user?.id) {
+      return res.status(403).json({ success: false, code: "FORBIDDEN", error: "You do not have access to this resource." });
     }
     return res.json({ success: true, data: estimation });
   } catch (error) {

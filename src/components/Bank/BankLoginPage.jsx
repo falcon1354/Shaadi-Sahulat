@@ -4,12 +4,12 @@ import { useNavigate } from "react-router-dom";
 
 /**
  * BankLoginPage — single bank officer login.
- * Default credentials: officer@bank.com / bank123
+ * Credentials are configured on the server (BANK_OFFICER_* in .env); nothing is prefilled.
  */
 export default function BankLoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("officer@bank.com");
-  const [password, setPassword] = useState("bank123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -48,9 +48,6 @@ export default function BankLoginPage() {
             {loading ? "Logging in..." : "LOGIN"}
           </button>
         </form>
-        <div className="mt-4 text-xs text-gray-500 text-center bg-blue-50 rounded-lg p-2">
-          Demo credentials: <b>officer@bank.com</b> / <b>bank123</b>
-        </div>
       </div>
     </div>
   );

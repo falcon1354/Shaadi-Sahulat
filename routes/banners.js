@@ -4,6 +4,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const Banner = require('../models/Banner');
+const { requireAdmin, requireSeller } = require('../lib/auth');
+const { requireRoles } = require('../lib/authorize');
 const { UPLOAD_BASE, publicUrl, saveBannerUploadAsync } = require('../lib/storage');
 
 const BANNER_ROOT = path.join(UPLOAD_BASE, 'Banners');
@@ -78,7 +80,7 @@ router.get('/active', async (req, res) => {
 });
 
 // ── GET /api/banners (Admin list all) ─────────────────────────────────────────
-router.get('/', async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   try {
     const banners = await Banner.find({}).sort({ sort_order: 1, created_at: -1 }).lean();
     return res.json({
@@ -94,10 +96,12 @@ router.get('/', async (req, res) => {
 });
 
 // ── GET /api/banners/seller-offers (Admin: list pending seller offers) ────────
-router.get('/seller-offers', async (req, res) => {
+router.get('/seller-offers', requireRoles('seller', 'admin'), async (req, res) => {
   try {
     const { status } = req.query;
     const filter = { seller_offer_status: { $ne: 'none' } };
+    // Sellers only ever see their own offers (identity from the JWT); admins see all.
+    if (req.user.role === 'seller') filter.seller_id = req.user.id;
     if (status && ['pending', 'approved', 'rejected'].includes(status)) {
       filter.seller_offer_status = status;
     }
@@ -116,9 +120,12 @@ router.get('/seller-offers', async (req, res) => {
 });
 
 // ── POST /api/banners/seller-offer (Seller creates promotional offer) ─────────
-router.post('/seller-offer', upload.single('image'), async (req, res) => {
+router.post('/seller-offer', requireSeller, upload.single('image'), async (req, res) => {
   try {
-    const { seller_id, seller_name, title, link_type, link_value, start_at, end_at,
+    // The offering seller is ALWAYS the verified caller; body seller_id/seller_name are ignored.
+    const seller_id = req.user.id;
+    const seller_name = req.user.name || '';
+    const { title, link_type, link_value, start_at, end_at,
             category_id, storefront, product_ids, offer_text } = req.body || {};
 
     if (!seller_id) {
@@ -186,7 +193,7 @@ router.post('/seller-offer', upload.single('image'), async (req, res) => {
 });
 
 // ── PUT /api/banners/seller-offer/:id/approve (Admin approves seller offer) ───
-router.put('/seller-offer/:id/approve', async (req, res) => {
+router.put('/seller-offer/:id/approve', requireAdmin, async (req, res) => {
   try {
     const banner = await Banner.findOne({ banner_id: req.params.id }) || await Banner.findById(req.params.id);
     if (!banner) {
@@ -217,7 +224,7 @@ router.put('/seller-offer/:id/approve', async (req, res) => {
 });
 
 // ── PUT /api/banners/seller-offer/:id/reject (Admin rejects seller offer) ─────
-router.put('/seller-offer/:id/reject', async (req, res) => {
+router.put('/seller-offer/:id/reject', requireAdmin, async (req, res) => {
   try {
     const banner = await Banner.findOne({ banner_id: req.params.id }) || await Banner.findById(req.params.id);
     if (!banner) {
@@ -249,7 +256,7 @@ router.put('/seller-offer/:id/reject', async (req, res) => {
 });
 
 // ── POST /api/banners (Admin create) ──────────────────────────────────────────
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', requireAdmin, upload.single('image'), async (req, res) => {
   try {
     const { title, link_type, link_value, start_at, end_at, is_active, sort_order, category_id, storefront } = req.body || {};
 
@@ -292,7 +299,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 });
 
 // ── PUT /api/banners/:id (Admin update) ───────────────────────────────────────
-router.put('/:id', upload.single('image'), async (req, res) => {
+router.put('/:id', requireAdmin, upload.single('image'), async (req, res) => {
   try {
     const banner = await Banner.findOne({ banner_id: req.params.id }) || await Banner.findById(req.params.id);
     if (!banner) {
@@ -333,7 +340,7 @@ router.put('/:id', upload.single('image'), async (req, res) => {
 });
 
 // ── DELETE /api/banners/:id (Admin delete) ────────────────────────────────────
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const banner = await Banner.findOneAndDelete({ banner_id: req.params.id }) || await Banner.findByIdAndDelete(req.params.id);
     if (!banner) {

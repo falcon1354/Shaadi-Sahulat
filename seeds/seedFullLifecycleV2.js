@@ -747,12 +747,12 @@ async function main() {
   for (const [col, cnt] of Object.entries(counts)) { console.log("    " + col + ": " + cnt); }
 
   console.log("\n  Login Credentials:");
-  console.log("    Admin:   admin@shaadisahulat.com  /  Admin@1234");
+  console.log("    Admin:   run seeds/seedAdmin.js (ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD)");
   console.log("    Seller:  ahmed@shaadisahulat.com  /  Test@1234");
   console.log("    Buyer 1: aisha@example.com        /  Buyer@1234");
   console.log("    Buyer 2: usman@example.com        /  Buyer@1234");
   console.log("    Buyer 3: fatima@example.com       /  Buyer@1234");
-  console.log("    Bank:   officer@bank.com          /  bank123");
+  console.log("    Bank:   BANK_OFFICER_EMAIL (password configured via BANK_OFFICER_PASSWORD_HASH in .env)");
 
   console.log("\n  Order Lifecycle Coverage:");
   const statuses = ["PENDING_BNPL_APPROVAL","CONFIRMED","PREPARING","SHIPPED","DELIVERED","DISPUTED","CANCELLED","COMPLETED"];

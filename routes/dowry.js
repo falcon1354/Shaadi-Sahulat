@@ -15,21 +15,29 @@ const {
   migrateBuyerDowryStatus,
   patchCategoryBudgets,
 } = require("../controllers/dowryController");
+const { requireAdmin, optionalAuth, authenticate } = require("../lib/auth");
+const { limits } = require("../lib/rateLimits");
+const { requireSelfParam } = require("../lib/authorize");
+
+// :user_id must be the signed-in buyer (admins may read, never mutate).
+const selfRead  = requireSelfParam("user_id", { role: "buyer", allowAdmin: true });
+const selfWrite = requireSelfParam("user_id", { role: "buyer" });
 
 // Specific routes before the wildcard /:id
-router.post("/estimate",           estimateDowry);
-router.post("/save",               saveEstimation);
-router.post("/upsert",             upsertEstimation);
-router.post("/rule-only",          estimateRuleOnly);
-router.post("/ml/init",            initML);
-router.post("/training/seed",      seedTrainingData);
-router.get(  "/migrate-buyer-status",     migrateBuyerDowryStatus);
-router.patch("/budgets/:user_id",         patchCategoryBudgets);
-router.get(  "/by-user/:user_id",         getEstimationByUser);
-router.get( "/history/:user_id",   getEstimationHistory);
+// Public: anonymous estimation keeps working.
+router.post("/estimate",           limits.dowryEstimate, estimateDowry);
+router.post("/save",               optionalAuth, saveEstimation);   // owner = JWT buyer, else "anonymous"
+router.post("/upsert",             optionalAuth, upsertEstimation); // owner = JWT buyer, else "anonymous"
+router.post("/rule-only",          limits.dowryEstimate, estimateRuleOnly);
+router.post("/ml/init",            requireAdmin, initML);
+router.post("/training/seed",      requireAdmin, seedTrainingData);
+router.get(  "/migrate-buyer-status",     requireAdmin, migrateBuyerDowryStatus);
+router.patch("/budgets/:user_id",         selfWrite, patchCategoryBudgets);
+router.get(  "/by-user/:user_id",         selfRead, getEstimationByUser);
+router.get( "/history/:user_id",   selfRead, getEstimationHistory);
 router.get( "/category-prices",    getCategoryPrices);
 router.get( "/ml/stats",           getMLStats);
 // Wildcard last
-router.get( "/:id",                getEstimationById);
+router.get( "/:id",                authenticate, getEstimationById); // owner or admin (checked in controller)
 
 module.exports = router;

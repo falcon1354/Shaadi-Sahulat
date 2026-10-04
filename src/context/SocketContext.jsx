@@ -1,6 +1,7 @@
 /**
- * SocketContext — wraps the app in a single Socket.io client that auto-
- * authenticates using the current buyer/seller/admin from localStorage.
+ * SocketContext — wraps the app in a single Socket.io client for the signed-in
+ * user from AuthProvider (server-verified session; nothing is read from localStorage).
+ * Phase 2G will move the handshake from query {role,id} to the access JWT.
  *
  * v3.2.0 FIXES (vs v3.1.0):
  *   - Removed the 1.5-second `setInterval` polling of localStorage. The
@@ -9,9 +10,8 @@
  *     in rare cases race with the socket connect effect and leave the
  *     socket in a half-initialised state, and (c) made the socket seem
  *     "flaky" because the connect logs were drowning in setState spam.
- *   - Now listens for a custom `ss_auth_changed` window event that the
- *     AuthContext fires whenever login/logout happens. The socket is
- *     torn down + rebuilt exactly once per real auth change.
+ *   - (v3.2 used an `ss_auth_changed` window event; since Phase 2E the socket
+ *     follows the AuthProvider user and, since Phase 2G, authenticates with the JWT.)
  *   - Added explicit console logging for connect / disconnect / connect
  *     error with the role:id so the user can verify in the browser
  *     console that the seller / admin really did connect.
@@ -23,15 +23,17 @@
  *     needs to be re-applied after every successful reconnect).
  *
  * Connection lifecycle:
- *   - On mount, the socket is created with role+id from localStorage.
- *   - On `ss_auth_changed` event (login/logout), the socket is rebuilt.
+ *   - The socket is created for the AuthProvider user (role+id from the verified session).
+ *   - On login/logout the user changes and the socket is rebuilt / disconnected.
  *   - On unmount, the socket is disconnected.
  *
  * Per spec: "Socket.io is between buyer, seller and Admin, and when the
  * user Select any one then notification occur at Seller, Admin."
  */
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { io } from 'socket.io-client';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useAuth } from './AuthContext';
+// JWT handshake + token-refresh/reconnect logic lives in src/api/socketClient.js (unit-tested).
+import { createAuthenticatedSocket } from '../api/socketClient';
 
 const BACKEND_URL = 'http://localhost:5000';
 
@@ -44,33 +46,20 @@ const SocketContext = createContext(null);
 const joinedDisputesRef = new Set();
 
 export function SocketProvider({ children }) {
-  // Determine the current user from localStorage (mirror AuthProvider logic)
-  const [currentUser, setCurrentUser] = useState(() => readCurrentUser());
+  // Connect only while AuthProvider has a server-verified session. The socket
+  // authenticates with the in-memory access JWT (handshake.auth.token); the
+  // server derives role/id from that token — nothing identity-related is sent.
+  const { user } = useAuth();
+  const role = user?.role || null;
+  const uid = user?.id || null;
+  const displayName = user?.name || '';
+  const currentUser = useMemo(
+    () => (role && uid ? { role, id: uid, name: displayName || role } : null),
+    [role, uid, displayName]
+  );
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef(null);
-
-  // Re-read current user whenever the AuthContext signals a change
-  // (login / logout). This replaces the old 1.5-second polling which
-  // caused excessive re-renders and intermittent socket flakiness.
-  useEffect(() => {
-    const handler = () => {
-      const next = readCurrentUser();
-      // Only update if role/id actually changed (deep equality on the
-      // two fields we care about).
-      setCurrentUser((prev) => {
-        const sameRole = prev?.role === next?.role;
-        const sameId   = prev?.id   === next?.id;
-        if (sameRole && sameId) return prev; // bail out — no real change
-        return next;
-      });
-    };
-    window.addEventListener('ss_auth_changed', handler);
-    // One-shot read on mount in case AuthContext fired before this effect
-    // attached (it can happen on page reload).
-    handler();
-    return () => window.removeEventListener('ss_auth_changed', handler);
-  }, []);
 
   // Connect / reconnect when user changes
   useEffect(() => {
@@ -84,15 +73,7 @@ export function SocketProvider({ children }) {
 
     if (!currentUser) return;
 
-    const newSocket = io(BACKEND_URL, {
-      path: '/socket.io/',
-      query: { role: currentUser.role, id: currentUser.id },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: Infinity,
-      timeout: 10000,
-    });
+    const { socket: newSocket, dispose } = createAuthenticatedSocket(BACKEND_URL);
 
     newSocket.on('connect', () => {
       setIsConnected(true);
@@ -104,7 +85,9 @@ export function SocketProvider({ children }) {
       // socket.io rooms are per-connection — they don't persist across
       // reconnects.
       for (const d of joinedDisputesRef) {
-        newSocket.emit('dispute:join', d);
+        newSocket.emit('dispute:join', d, (res) => {
+          if (res && res.ok === false) joinedDisputesRef.delete(d);
+        });
       }
     });
 
@@ -114,7 +97,11 @@ export function SocketProvider({ children }) {
     });
 
     newSocket.on('connect_error', (err) => {
-      console.warn(`[socket] ⚠ connect error: ${err.message}`);
+      console.warn(`[socket] ⚠ connect error: ${err?.data?.code || err.message}`);
+    });
+
+    newSocket.on('dispute:error', (e) => {
+      console.warn(`[socket] dispute access denied: ${e?.dispute_id || ''}`);
     });
 
     newSocket.on('reconnect', (attempt) => {
@@ -125,7 +112,7 @@ export function SocketProvider({ children }) {
     setSocket(newSocket);
 
     return () => {
-      try { newSocket.disconnect(); } catch {}
+      dispose();
       socketRef.current = null;
       setSocket(null);
       setIsConnected(false);
@@ -136,7 +123,12 @@ export function SocketProvider({ children }) {
   const joinDispute = useCallback((disputeId) => {
     if (!disputeId) return;
     joinedDisputesRef.add(disputeId);
-    socketRef.current?.emit('dispute:join', disputeId);
+    socketRef.current?.emit('dispute:join', disputeId, (res) => {
+      if (res && res.ok === false) {
+        joinedDisputesRef.delete(disputeId);
+        console.warn(`[socket] dispute:join ${disputeId} refused: ${res.error}`);
+      }
+    });
     console.log(`[socket] emit dispute:join ${disputeId}`);
   }, []);
 
@@ -146,8 +138,9 @@ export function SocketProvider({ children }) {
     socketRef.current?.emit('dispute:leave', disputeId);
   }, []);
 
-  const sendTyping = useCallback((disputeId, name) => {
-    socketRef.current?.emit('dispute:typing', { disputeId, name });
+  // The server shows the verified account name; `name` is kept for call-site compatibility.
+  const sendTyping = useCallback((disputeId, _name) => {
+    socketRef.current?.emit('dispute:typing', { disputeId });
   }, []);
 
   // Subscribe to a socket event. Returns an unsubscribe function.
@@ -183,31 +176,3 @@ export function useSocket() {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-function readCurrentUser() {
-  try {
-    const buyerStr  = localStorage.getItem('ss_buyer');
-    const sellerStr = localStorage.getItem('ss_seller');
-    const adminStr  = localStorage.getItem('ss_admin');
-    if (adminStr) {
-      const a = JSON.parse(adminStr);
-      if (a && (a.admin_id || a._id)) {
-        return { role: 'admin', id: a.admin_id || a._id, name: a.name || 'Admin' };
-      }
-    }
-    if (sellerStr) {
-      const s = JSON.parse(sellerStr);
-      if (s && s.seller_id) {
-        return { role: 'seller', id: s.seller_id, name: s.name || s.seller_name || 'Seller' };
-      }
-    }
-    if (buyerStr) {
-      const b = JSON.parse(buyerStr);
-      if (b && b.buyer_id) {
-        return { role: 'buyer', id: b.buyer_id, name: b.name || 'Buyer' };
-      }
-    }
-  } catch (e) {
-    console.warn('[socket] readCurrentUser failed:', e);
-  }
-  return null;
-}

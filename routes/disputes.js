@@ -15,8 +15,13 @@ const AdminWallet = require("../models/AdminWallet");
 const BnplApplication = require("../models/BnplApplication");
 const { restoreStock } = require("../services/stockService");
 
-const { requireAdmin } = require("../lib/auth");
-const { saveDisputeUploadAsync, publicUrl, makeDisputeUploadMiddleware } = require("../lib/storage");
+const { requireAdmin, requireBuyer, requireSeller, authenticate } = require("../lib/auth");
+const { forbid } = require("../lib/authorize");
+// Participant check shared with the Socket.IO layer (identity = req.user).
+const { isDisputeParticipant: isParticipant } = require("../lib/disputeAccess");
+const { saveDisputeUploadAsync, makeDisputeUploadMiddleware } = require("../lib/storage");
+// Evidence is private: responses carry short-lived signed links, never storage paths.
+const { presentDispute, presentEvidence } = require("../lib/privateFiles");
 const { pushNotification, notifyAll } = require("../lib/notify");
 const { emitDisputeMessage } = require("../lib/socket");
 const {
@@ -55,12 +60,13 @@ router.get("/meta/sla", (_req, res) => {
   });
 });
 
-router.get("/", async (req, res) => {
+router.get("/", authenticate, async (req, res) => {
   try {
-    const { role, id, filter } = req.query;
-    if (!role || !id) {
-      return res.status(400).json({ success: false, error: "role and id query params required" });
-    }
+    // role/id come from the verified JWT; query values may only restate them.
+    const { role, id } = req.user;
+    const { filter } = req.query;
+    if (req.query.role && req.query.role !== role) return forbid(res);
+    if (role !== "admin" && req.query.id && req.query.id !== id) return forbid(res);
     const q = {};
     if (role === "buyer") q.buyer_id = id;
     else if (role === "seller") q.seller_id = id;
@@ -78,56 +84,81 @@ router.get("/", async (req, res) => {
     }
 
     const disputes = await Dispute.find(q).sort({ created_at: -1 }).lean();
-    const orderIds = Array.from(new Set(disputes.map((d) => d.order_id).filter(Boolean)));
-    const buyerIds = Array.from(new Set(disputes.map((d) => d.buyer_id).filter(Boolean)));
-    const sellerIds = Array.from(new Set(disputes.map((d) => d.seller_id).filter(Boolean)));
 
-    const [orders, buyers, sellers] = await Promise.all([
-      Order.find({ order_id: { $in: orderIds } }).lean(),
-      Buyer.find({ buyer_id: { $in: buyerIds } }).lean(),
-      Seller.find({ seller_id: { $in: sellerIds } }).lean(),
-    ]);
+const orderIds = Array.from(
+  new Set(disputes.map((d) => d.order_id).filter(Boolean))
+);
 
-    const orderMap = {};
-    for (const o of orders) orderMap[o.order_id] = o;
-    const buyerMap = {};
-    for (const b of buyers) buyerMap[b.buyer_id] = b.name;
-    const sellerMap = {};
-    for (const s of sellers) sellerMap[s.seller_id] = s.name || s.business_name;
+const buyerIds = Array.from(
+  new Set(disputes.map((d) => d.buyer_id).filter(Boolean))
+);
 
-    const enriched = disputes.map((d) => {
-      const o = orderMap[d.order_id];
-      const itemTitles = (o?.items || []).map((it) => it.title).filter(Boolean);
-      const orderName = itemTitles.length > 0
-        ? (itemTitles.length === 1 ? itemTitles[0] : `${itemTitles[0]} + ${itemTitles.length - 1} more`)
-        : (d.title || `Order ${d.order_id}`);
+const sellerIds = Array.from(
+  new Set(disputes.map((d) => d.seller_id).filter(Boolean))
+);
 
-      const buyerName = o?.buyer_name || buyerMap[d.buyer_id] || d.buyer_id;
-      const sellerName = sellerMap[d.seller_id] || d.seller_id;
+const [orders, buyers, sellers] = await Promise.all([
+  Order.find({ order_id: { $in: orderIds } }).lean(),
+  Buyer.find({ buyer_id: { $in: buyerIds } }).lean(),
+  Seller.find({ seller_id: { $in: sellerIds } }).lean(),
+]);
 
-      return {
-        ...d,
-        order_name: orderName,
-        buyer_name: buyerName,
-        seller_name: sellerName,
-        buyer_email: o?.buyer_email || "",
-        order_amount: o?.total_amount || d.order_amount || 0,
-        items_count: o?.items_count || (o?.items || []).length,
-        items: o?.items || [],
-        order_status: o?.status || "",
-        sla: buildSlaSnapshot(d, o || {}),
-      };
-    });
-    return res.json({ success: true, disputes: enriched });
+const orderMap = {};
+for (const o of orders) orderMap[o.order_id] = o;
+
+const buyerMap = {};
+for (const b of buyers) buyerMap[b.buyer_id] = b.name;
+
+const sellerMap = {};
+for (const s of sellers) {
+  sellerMap[s.seller_id] = s.name || s.business_name;
+}
+
+const enriched = disputes.map((d) => {
+  const o = orderMap[d.order_id];
+
+  const itemTitles = (o?.items || [])
+    .map((it) => it.title)
+    .filter(Boolean);
+
+  const orderName =
+    itemTitles.length > 0
+      ? itemTitles.length === 1
+        ? itemTitles[0]
+        : `${itemTitles[0]} + ${itemTitles.length - 1} more`
+      : d.title || `Order ${d.order_id}`;
+
+  const buyerName =
+    o?.buyer_name || buyerMap[d.buyer_id] || d.buyer_id;
+
+  const sellerName =
+    sellerMap[d.seller_id] || d.seller_id;
+
+  return {
+    ...presentDispute(d),
+    order_name: orderName,
+    buyer_name: buyerName,
+    seller_name: sellerName,
+    buyer_email: o?.buyer_email || "",
+    order_amount: o?.total_amount || d.order_amount || 0,
+    items_count: o?.items_count || (o?.items || []).length,
+    items: o?.items || [],
+    order_status: o?.status || "",
+    sla: buildSlaSnapshot(d, o || {}),
+  };
+});
+
+return res.json({ success: true, disputes: enriched });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-router.get("/:dispute_id", async (req, res) => {
+router.get("/:dispute_id", authenticate, async (req, res) => {
   try {
     const dispute = await Dispute.findOne({ dispute_id: req.params.dispute_id }).lean();
     if (!dispute) return res.status(404).json({ success: false, error: "Dispute not found" });
+    if (!isParticipant(dispute, req.user)) return forbid(res);
 
     const messages = await DisputeMessage.find({ dispute_id: dispute.dispute_id })
       .sort({ created_at: 1 })
@@ -136,7 +167,7 @@ router.get("/:dispute_id", async (req, res) => {
 
     return res.json({
       success: true,
-      dispute,
+      dispute: presentDispute(dispute),
       messages,
       order: order
         ? {
@@ -158,18 +189,20 @@ router.get("/:dispute_id", async (req, res) => {
   }
 });
 
-router.post("/:dispute_id/messages", async (req, res) => {
+router.post("/:dispute_id/messages", authenticate, async (req, res) => {
   try {
-    const { from_role, from_id, from_name, message } = req.body || {};
-    if (!from_role || !from_id || !message) {
-      return res.status(400).json({ success: false, error: "from_role, from_id, and message are required" });
-    }
-    if (!["buyer", "seller", "admin"].includes(from_role)) {
-      return res.status(400).json({ success: false, error: "from_role must be buyer, seller, or admin" });
+    // Sender identity is ALWAYS the verified caller; body from_role/from_id/from_name are ignored.
+    const from_role = req.user.role;
+    const from_id = req.user.id;
+    const from_name = req.user.name || "";
+    const { message } = req.body || {};
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ success: false, error: "message is required" });
     }
 
     const dispute = await Dispute.findOne({ dispute_id: req.params.dispute_id });
     if (!dispute) return res.status(404).json({ success: false, error: "Dispute not found" });
+    if (!isParticipant(dispute, req.user)) return forbid(res);
 
     if (dispute.chat_locked || ["RESOLVED", "CANCELLED"].includes(dispute.status)) {
       return res.status(400).json({ success: false, error: `Dispute is ${dispute.status}. Chat is closed.` });
@@ -207,7 +240,7 @@ router.post("/:dispute_id/messages", async (req, res) => {
       { id: dispute.buyer_id, role: "buyer" },
       { id: dispute.seller_id, role: "seller" },
       { id: "admin", role: "admin" },
-    ].filter((r) => !(r.role === from_role && r.id === from_id));
+    ].filter((r) => !(r.role === from_role && (r.id === from_id || from_role === "admin")));
 
     await Promise.all(
       recipients.map((r) =>
@@ -228,20 +261,29 @@ router.post("/:dispute_id/messages", async (req, res) => {
   }
 });
 
-router.post("/:dispute_id/evidence", disputeUpload, async (req, res) => {
+/** Reject non-owners before multer parses any uploaded file. */
+async function requireDisputeBuyer(req, res, next) {
   try {
-    const { from_id, from_role, description } = req.body || {};
-    if (from_role !== "buyer") {
-      return res.status(403).json({
-        success: false,
-        error: "Only the buyer can upload dispute evidence.",
-      });
+    const d = await Dispute.findOne({ dispute_id: req.params.dispute_id }).lean();
+    if (!d) return res.status(404).json({ success: false, error: "Dispute not found" });
+    if (d.buyer_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: "Only the dispute buyer can upload evidence." });
     }
+    next();
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+router.post("/:dispute_id/evidence", requireBuyer, requireDisputeBuyer, disputeUpload, async (req, res) => {
+  try {
+    const { description } = req.body || {};
 
     const dispute = await Dispute.findOne({ dispute_id: req.params.dispute_id });
     if (!dispute) return res.status(404).json({ success: false, error: "Dispute not found" });
 
-    if (from_id && dispute.buyer_id !== from_id) {
+    // Mandatory ownership: only this dispute's buyer (from the JWT) may upload.
+    if (dispute.buyer_id !== req.user.id) {
       return res.status(403).json({ success: false, error: "Only the dispute buyer can upload evidence." });
     }
 
@@ -277,16 +319,15 @@ router.post("/:dispute_id/evidence", disputeUpload, async (req, res) => {
     return res.status(201).json({
       success: true,
       message: `${files.length} file(s) uploaded as evidence.`,
-      evidence: evidenceEntries.map((e) => ({
-        file_path: e.file_path,
+      evidence: presentEvidence(evidenceEntries).map((e) => ({
         original_name: e.original_name,
-        url: publicUrl(e.file_path),
+        url: e.url,
         uploaded_by: e.uploaded_by,
       })),
     });
-  } catch (err) {
+ } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
-  }
+}
 });
 
 /**
@@ -390,9 +431,9 @@ const sellerResponseDelegates = {
 };
 
 /** Seller pre-arbitration response (48h window) — uses delegate map above. */
-router.post("/:dispute_id/seller-respond", async (req, res) => {
+router.post("/:dispute_id/seller-respond", requireSeller, async (req, res) => {
   try {
-    const { seller_id, action, note, refund_percent, tracking_number } = req.body || {};
+    const { action, note, refund_percent, tracking_number } = req.body || {};
     const allowed = SELLER_ACTIONS.map((a) => a.id);
     if (!allowed.includes(action)) {
       return res.status(400).json({ success: false, error: `action must be one of: ${allowed.join(", ")}` });
@@ -400,7 +441,7 @@ router.post("/:dispute_id/seller-respond", async (req, res) => {
 
     const dispute = await Dispute.findOne({ dispute_id: req.params.dispute_id });
     if (!dispute) return res.status(404).json({ success: false, error: "Dispute not found" });
-    if (seller_id && dispute.seller_id !== seller_id) {
+    if (dispute.seller_id !== req.user.id) {
       return res.status(403).json({ success: false, error: "Not your dispute" });
     }
     if (!["SELLER_RESPONSE_PENDING", "OPEN"].includes(dispute.status)) {
@@ -440,19 +481,19 @@ router.post("/:dispute_id/seller-respond", async (req, res) => {
       ref_id: dispute.dispute_id,
     });
 
-    return res.json({ success: true, dispute, sla: buildSlaSnapshot(dispute.toObject(), order || {}) });
+    return res.json({ success: true, dispute: presentDispute(dispute), sla: buildSlaSnapshot(dispute.toObject(), order || {}) });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
 /** Buyer accepts/rejects seller offer. */
-router.post("/:dispute_id/buyer-review", async (req, res) => {
+router.post("/:dispute_id/buyer-review", requireBuyer, async (req, res) => {
   try {
-    const { buyer_id, accept } = req.body || {};
+    const { accept } = req.body || {};
     const dispute = await Dispute.findOne({ dispute_id: req.params.dispute_id });
     if (!dispute) return res.status(404).json({ success: false, error: "Dispute not found" });
-    if (buyer_id && dispute.buyer_id !== buyer_id) {
+    if (dispute.buyer_id !== req.user.id) {
       return res.status(403).json({ success: false, error: "Not your dispute" });
     }
     if (dispute.status !== "BUYER_REVIEW_PENDING") {
@@ -499,7 +540,7 @@ router.post("/:dispute_id/buyer-review", async (req, res) => {
       await postSystem(dispute, "Buyer rejected the seller's offer. Escalated to admin.");
     }
 
-    return res.json({ success: true, dispute });
+    return res.json({ success: true, dispute: presentDispute(dispute) });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -623,7 +664,7 @@ router.post("/:dispute_id/admin-decision", requireAdmin, async (req, res) => {
     return res.json({
       success: true,
       message: `Dispute resolved: ${resolvedOutcome.label}`,
-      dispute,
+      dispute: presentDispute(dispute),
       order_status: order.status,
       payment_status: order.payment_status,
       appeal_deadline: dispute.appeal_deadline,

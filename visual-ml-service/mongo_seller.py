@@ -124,6 +124,20 @@ def ensure_seller_indexes():
 
 # ── Seller CRUD ────────────────────────────────────────────────────────────
 
+# Credential / auth-state fields that must never leave this module in a response.
+# (password_hash = login secret; auth = Node-owned auth state: token hashes, lockout, …)
+SELLER_PRIVATE_FIELDS = ("password_hash", "auth")
+SELLER_PUBLIC_PROJECTION = {"_id": 0, "password_hash": 0, "auth": 0}
+
+
+def _strip_private(doc: dict | None) -> dict | None:
+    if doc is None:
+        return None
+    doc.pop("_id", None)
+    for field in SELLER_PRIVATE_FIELDS:
+        doc.pop(field, None)
+    return doc
+
 def create_seller(
     name: str,
     email: str,
@@ -133,7 +147,15 @@ def create_seller(
     seller_type: str = "individual",
     max_listings: int | None = 5,
     category_restriction: str | None = None,
+    password_hash: str | None = None,
+    auth: dict | None = None,
 ) -> dict | None:
+    """Create a seller.
+
+    `password_hash` / `auth` are only passed by the internal, secret-protected
+    route used by the Node auth service (which hashes with bcrypt). When
+    `password_hash` is given, `password` is ignored.
+    """
     db = _get_db()
     if db is None:
         return None
@@ -148,7 +170,7 @@ def create_seller(
         "email":                email.strip().lower(),
         "phone":                phone.strip(),
         "city":                 city.strip(),
-        "password_hash":        generate_password_hash(password) if password else None,
+        "password_hash":        password_hash if password_hash else (generate_password_hash(password) if password else None),
         "seller_type":          seller_type,           # individual | company
         "max_listings":         max_listings,           # 5 for individual, None = unlimited
         "category_restriction": category_restriction,  # major_category ID or None
@@ -156,17 +178,19 @@ def create_seller(
         "created_at":           datetime.utcnow(),
         "updated_at":           datetime.utcnow(),
     }
+    if auth:
+        doc["auth"] = auth
     db[SELLERS_COLLECTION].insert_one(doc)
-    doc.pop("_id", None)
-    doc.pop("password_hash", None)   # never return hash to callers
-    return doc
+    return _strip_private(doc)   # never return hash / auth state to callers
 
 
 def get_seller(seller_id: str) -> dict | None:
     db = _get_db()
     if db is None:
         return None
-    doc = db[SELLERS_COLLECTION].find_one({"seller_id": seller_id}, {"_id": 0})
+    doc = db[SELLERS_COLLECTION].find_one(
+        {"seller_id": seller_id}, SELLER_PUBLIC_PROJECTION
+    )
     return doc
 
 
@@ -175,7 +199,7 @@ def get_seller_by_email(email: str) -> dict | None:
     if db is None:
         return None
     doc = db[SELLERS_COLLECTION].find_one(
-        {"email": email.strip().lower()}, {"_id": 0, "password_hash": 0}
+        {"email": email.strip().lower()}, SELLER_PUBLIC_PROJECTION
     )
     return doc
 
@@ -191,15 +215,15 @@ def login_seller(email: str, password: str) -> dict | None:
     if not doc:
         return {"error": "No account found for this email."}
     pw_hash = doc.get("password_hash")
-    if not pw_hash:
-        # Account has no password — allow email-only login (backward compat)
-        result = dict(doc)
-        result.pop("password_hash", None)
-        return result
-    if check_password_hash(pw_hash, password):
-        result = dict(doc)
-        result.pop("password_hash", None)
-        return result
+    if not pw_hash or not password:
+        # Never authenticate without a stored hash; same response as a wrong password.
+        return {"error": "Incorrect password."}
+    try:
+        valid = check_password_hash(pw_hash, password)
+    except (ValueError, TypeError):
+        valid = False  # malformed stored hash
+    if valid:
+        return _strip_private(dict(doc))
     return {"error": "Incorrect password."}
 
 
