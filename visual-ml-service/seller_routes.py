@@ -3,10 +3,11 @@ ShaadiSahulat - Seller API Blueprint (v2)
 =========================================
 Flask Blueprint mounted at /seller.
 
-Endpoints
+Endpoints (all require X-Internal-Secret from the Node backend — see internal_auth.py)
 ---------
-POST  /seller/register                  — Register a new seller
-POST  /seller/login                     — Seller login
+POST  /seller/register                  — REMOVED (410); Node /api/auth/seller/register is the only entry point
+POST  /seller/internal/create           — INTERNAL: create seller with Node-computed bcrypt hash (X-Internal-Secret)
+POST  /seller/login                     — REMOVED (410); Node /api/auth/login verifies credentials
 GET   /seller/profile/<seller_id>       — Get seller profile
 GET   /seller/by-email?email=           — Look up seller by email
 GET   /seller/categories                — Return full category tree (for UI)
@@ -18,7 +19,8 @@ PUT   /seller/product/<product_id>      — Update product metadata
 DELETE /seller/product/<product_id>     — Delete product + filesystem images
 """
 
-import os
+import re
+from datetime import datetime
 try:
     import torch
     import torchvision.transforms as transforms
@@ -36,7 +38,7 @@ from config import (
     SELLER_CATEGORY_TREE, SELLER_MAJOR_CATEGORY_IDS, WEDDING_DRESS_SUBCATEGORY_IDS,
 )
 from mongo_seller import (
-    create_seller, get_seller, get_seller_by_email, login_seller,
+    create_seller, get_seller, get_seller_by_email,
     create_product, update_product_embeddings,
     get_product, list_products, get_public_products, update_product, delete_product,
     ensure_seller_indexes,
@@ -71,57 +73,114 @@ def _setup_indexes():
 
 # ── Seller Registration / Auth ─────────────────────────────────────────────
 
+def _removed(replacement: str):
+    return jsonify({
+        "success": False,
+        "code": "ENDPOINT_REMOVED",
+        "error": f"This endpoint has been removed. Use {replacement}.",
+    }), 410
+
+
 @seller_bp.route("/register", methods=["POST"])
 def register_seller():
-    data = request.get_json(silent=True) or {}
-    name     = (data.get("name")     or "").strip()
-    email    = (data.get("email")    or "").strip()
-    password = (data.get("password") or "").strip()
+    """Removed in Phase 2I — sellers register through Node (POST /api/auth/seller/register)."""
+    return _removed("POST /api/auth/seller/register")
 
-    if not name:
-        return jsonify({"success": False, "error": "name is required"}), 400
-    if not email or "@" not in email:
-        return jsonify({"success": False, "error": "valid email is required"}), 400
-    if not password or len(password) < 6:
-        return jsonify({"success": False, "error": "password must be at least 6 characters"}), 400
 
+def _seller_type_rules(data: dict) -> tuple[str, int | None]:
+    """Authoritative seller_type → max_listings rule (company = unlimited, else 5)."""
     seller_type = data.get("seller_type", "individual")
     if seller_type not in ("individual", "company"):
         seller_type = "individual"
+    return seller_type, (None if seller_type == "company" else 5)
 
-    max_listings = None if seller_type == "company" else 5
+
+# ── Internal (Node auth service only) ───────────────────────────────────────
+# Node/Express is the authentication authority. These routes are NOT a login
+# mechanism: they only perform seller database operations on behalf of Node and
+# require the shared INTERNAL_API_SECRET (X-Internal-Secret header).
+
+_BCRYPT_RE = re.compile(r"^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$")
+_AUTH_BOOL_FIELDS = ("email_verified",)
+_AUTH_INT_FIELDS = ("token_version", "failed_logins")
+_AUTH_DATE_FIELDS = ("password_changed_at", "last_login_at")
+
+
+# Shared check (visual-ml-service/internal_auth.py). The app-wide before_request
+# guard already enforces it; the route keeps an explicit check as defence in depth.
+from internal_auth import internal_request_allowed as _internal_request_allowed
+
+
+def _clean_auth_state(raw) -> dict:
+    """Whitelist the auth sub-document Node may initialise (types enforced)."""
+    raw = raw if isinstance(raw, dict) else {}
+    auth = {}
+    for key in _AUTH_BOOL_FIELDS:
+        if isinstance(raw.get(key), bool):
+            auth[key] = raw[key]
+    for key in _AUTH_INT_FIELDS:
+        value = raw.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            auth[key] = value
+    for key in _AUTH_DATE_FIELDS:
+        value = raw.get(key)
+        if isinstance(value, str):
+            try:
+                auth[key] = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+    auth.setdefault("token_version", 0)
+    auth.setdefault("failed_logins", 0)
+    return auth
+
+
+@seller_bp.route("/internal/create", methods=["POST"])
+def internal_create_seller():
+    """Create a seller with a bcrypt hash computed by the Node auth service."""
+    allowed, status = _internal_request_allowed()
+    if not allowed:
+        return jsonify({"success": False, "error": "Forbidden"}), status
+
+    data = request.get_json(silent=True) or {}
+    name          = data.get("name")
+    email         = data.get("email")
+    password_hash = data.get("password_hash")
+    phone         = data.get("phone", "")
+    city          = data.get("city", "")
+
+    if not isinstance(name, str) or not name.strip():
+        return jsonify({"success": False, "error": "name is required"}), 400
+    if not isinstance(email, str) or "@" not in email:
+        return jsonify({"success": False, "error": "valid email is required"}), 400
+    if not isinstance(password_hash, str) or not _BCRYPT_RE.match(password_hash):
+        return jsonify({"success": False, "error": "bcrypt password_hash is required"}), 400
+    if not isinstance(phone, str) or not isinstance(city, str):
+        return jsonify({"success": False, "error": "phone and city must be strings"}), 400
+
+    seller_type, max_listings = _seller_type_rules(data)
 
     result = create_seller(
         name=name,
         email=email,
-        phone=data.get("phone", ""),
-        city=data.get("city", ""),
-        password=password,
+        phone=phone,
+        city=city,
         seller_type=seller_type,
         max_listings=max_listings,
-        category_restriction=None,  # all sellers can upload in any category
+        category_restriction=None,
+        password_hash=password_hash,
+        auth=_clean_auth_state(data.get("auth")),
     )
     if result is None:
         return jsonify({"success": False, "error": "Database unavailable"}), 503
     if "error" in result:
-        return jsonify({"success": False, "error": result["error"]}), 409
+        return jsonify({"success": False, "code": "EMAIL_IN_USE", "error": "Email already registered."}), 409
     return jsonify({"success": True, "seller": result}), 201
 
 
 @seller_bp.route("/login", methods=["POST"])
 def login_seller_route():
-    data     = request.get_json(silent=True) or {}
-    email    = (data.get("email")    or "").strip()
-    password = (data.get("password") or "").strip()
-    if not email or not password:
-        return jsonify({"success": False, "error": "email and password are required"}), 400
-
-    result = login_seller(email, password)
-    if result is None:
-        return jsonify({"success": False, "error": "Database unavailable"}), 503
-    if "error" in result:
-        return jsonify({"success": False, "error": result["error"]}), 401
-    return jsonify({"success": True, "seller": result})
+    """Removed in Phase 2I — Node is the only credential verifier (POST /api/auth/login)."""
+    return _removed("POST /api/auth/login")
 
 
 @seller_bp.route("/profile/<seller_id>", methods=["GET"])
@@ -651,7 +710,7 @@ def get_all_sellers():
     db = _get_db()
     if db is None:
         return jsonify({"success": False, "sellers": []}), 503
-    sellers = list(db[SELLERS_COLLECTION].find({}, {"password_hash": 0}))
+    sellers = list(db[SELLERS_COLLECTION].find({}, {"password_hash": 0, "auth": 0}))
     for s in sellers:
         s["_id"] = str(s["_id"])
         s["product_count"] = db[PRODUCTS_COLLECTION].count_documents({"seller_id": s.get("seller_id")})

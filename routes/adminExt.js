@@ -48,6 +48,7 @@ function _hasPendingRelease(o) {
 const { requireAdmin } = require("../lib/auth");
 const { computeSellerPayout, generateTransactionId, generatePayoutId } = require("../lib/helpers");
 const { pushNotification, notifySellerAndAdmin } = require("../lib/notify");
+const { presentDispute } = require("../lib/privateFiles");
 
 // All admin extension endpoints require admin
 router.use(requireAdmin);
@@ -137,7 +138,7 @@ router.get("/orders/:order_id", async (req, res) => {
       success: true,
       order,
       packages,
-      disputes,
+      disputes: disputes.map(presentDispute),
       payout,
       bnpl,
     });
@@ -150,7 +151,7 @@ router.get("/orders/:order_id", async (req, res) => {
 router.get("/disputes", async (req, res) => {
   try {
     const disputes = await Dispute.find().sort({ created_at: -1 }).limit(200).lean();
-    return res.json({ success: true, count: disputes.length, disputes });
+    return res.json({ success: true, count: disputes.length, disputes: disputes.map(presentDispute) });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

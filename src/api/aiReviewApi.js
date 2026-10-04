@@ -7,10 +7,11 @@
  *   2. Generate 3 review drafts (Short / Medium / Long) based on
  *      product title + description + the buyer's selected rating.
  */
+import { authFetch } from "./http";
 const BASE = 'http://localhost:5000/api/reviews/ai';
 
 export async function suggestRating({ text, product_title, product_description }) {
-  const res = await fetch(`${BASE}/suggest-rating`, {
+  const res = await authFetch(`${BASE}/suggest-rating`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, product_title, product_description }),
@@ -19,7 +20,7 @@ export async function suggestRating({ text, product_title, product_description }
 }
 
 export async function generateReviews({ product_title, product_description, rating, length }) {
-  const res = await fetch(`${BASE}/generate-reviews`, {
+  const res = await authFetch(`${BASE}/generate-reviews`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ product_title, product_description, rating, length }),
@@ -29,7 +30,7 @@ export async function generateReviews({ product_title, product_description, rati
 
 export async function getAiStatus() {
   try {
-    const res = await fetch(`${BASE.replace('/ai', '')}/ai/status`);
+    const res = await authFetch(`${BASE.replace('/ai', '')}/ai/status`);
     return res.json();
   } catch {
     return { success: false, groq_configured: false, provider: 'unknown' };
@@ -40,7 +41,7 @@ export async function getAiStatus() {
 export async function previewReviewVoice({
   text, rating, agent, buyer_id, product_id, order_id, persist = false,
 }) {
-  const res = await fetch(`${BASE.replace('/ai', '')}/preview-voice`, {
+  const res = await authFetch(`${BASE.replace('/ai', '')}/preview-voice`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

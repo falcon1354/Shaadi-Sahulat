@@ -31,8 +31,11 @@ const Order = require("../models/Order");
 const Notification = require("../models/Notification");
 
 const { requireBuyer } = require("../lib/auth");
+const { limits } = require("../lib/rateLimits");
 const { encrypt, decrypt, maskCnic, maskIban } = require("../lib/crypto");
-const { saveBnplUploadAsync, resolvePath, publicUrl, makeBnplUploadMiddleware, makeBnplOcrPreviewMiddleware, materializeLocal } = require("../lib/storage");
+const { saveBnplUploadAsync, resolvePath, makeBnplUploadMiddleware, makeBnplOcrPreviewMiddleware, materializeLocal } = require("../lib/storage");
+// CNIC / utility-bill files are private: clients only ever get short-lived signed links.
+const { signPrivateFileUrl } = require("../lib/privateFiles");
 const { runOcrPipeline, runOcrOnBuffer } = require("../lib/ocr");
 const { checkBnplEligibility } = require("../lib/eligibility");
 const {
@@ -51,7 +54,7 @@ const upload = makeBnplUploadMiddleware();
 const ocrPreviewUpload = makeBnplOcrPreviewMiddleware();
 
 // ---------- CNIC OCR preview (autofill CNIC number after front upload) ----------
-router.post("/ocr-preview", requireBuyer, ocrPreviewUpload, async (req, res) => {
+router.post("/ocr-preview", requireBuyer, limits.ocr, ocrPreviewUpload, async (req, res) => {
   try {
     const file = req.file;
     if (!file?.buffer) {
@@ -134,7 +137,7 @@ router.get("/profile", requireBuyer, async (req, res) => {
 });
 
 // ---------- Step 3: submit application ----------
-router.post("/applications", requireBuyer, upload, async (req, res) => {
+router.post("/applications", requireBuyer, limits.bnplSubmit, upload, async (req, res) => {
   try {
     const {
       order_id,
@@ -429,60 +432,9 @@ router.get("/applications/:application_no", requireBuyer, async (req, res) => {
   }
 });
 
-// ---------- Serve BNPL document for the owning buyer ----------
-router.get("/applications/:application_no/document/:docKey", async (req, res) => {
-  try {
-    // Headers preferred; query buyer_id allowed so <a target=_blank> can open docs.
-    const buyerId = req.header("x-user-id") || req.query.buyer_id;
-    if (!buyerId) {
-      return res.status(401).json({ success: false, error: "Buyer authentication required" });
-    }
-    const app = await BnplApplication.findOne({
-      application_no: req.params.application_no,
-      buyer_id: buyerId,
-    }).lean();
-    if (!app) return res.status(404).json({ success: false, error: "Application not found" });
-
-    const docKey = req.params.docKey;
-    let filePath = "";
-    let mimeType = "application/octet-stream";
-    let originalName = docKey;
-
-    let byId = await BnplDocument.findOne({
-      application_id: app.application_no,
-      doc_type: docKey,
-    }).lean();
-    if (!byId && /^[a-fA-F0-9]{24}$/.test(docKey)) {
-      byId = await BnplDocument.findOne({
-        application_id: app.application_no,
-        _id: docKey,
-      }).lean();
-    }
-    if (byId) {
-      filePath = byId.file_path;
-      mimeType = byId.mime_type || mimeType;
-      originalName = byId.original_name || originalName;
-    } else {
-      const bundle = await BnplDocumentBundle.findOne({ application_id: app.application_no }).lean();
-      const slot = bundle?.[docKey];
-      if (slot?.file_path) {
-        filePath = slot.file_path;
-        mimeType = slot.mime_type || mimeType;
-        originalName = slot.original_name || originalName;
-      }
-    }
-    if (!filePath) return res.status(404).json({ success: false, error: "Document not found" });
-    if (/^https?:\/\//i.test(filePath)) return res.redirect(filePath);
-
-    const abs = resolvePath(filePath);
-    if (!fs.existsSync(abs)) return res.status(404).json({ success: false, error: "File missing on disk" });
-    res.setHeader("Content-Type", mimeType);
-    res.setHeader("Content-Disposition", `inline; filename="${originalName}"`);
-    return res.sendFile(abs);
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
+// BNPL documents (CNIC / utility bill) are private. The owning buyer gets short-lived
+// signed links in the application detail response (documents[].url → /api/files/private).
+// There is deliberately NO document route here that takes the buyer from a header or query.
 
 // ---------- Deprecated: buyer offer-accept removed (approval completes BNPL) ----------
 router.post("/applications/:application_no/accept-offer", requireBuyer, async (req, res) => {
@@ -595,13 +547,6 @@ async function getApplicationForResponse(applicationNo, buyerId) {
   // Prefer BnplDocumentBundle over individual BnplDocument rows (v3.2)
   const bundle = await BnplDocumentBundle.findOne({ application_id: app.application_no }).lean();
   let docs;
-  const buyerDocUrl = (docType, filePath) => {
-    const direct = filePath ? publicUrl(filePath) : "";
-    if (/^https?:\/\//i.test(direct)) return direct;
-    if (direct.startsWith("/uploads/")) return direct;
-    return `/api/bnpl/applications/${applicationNo}/document/${docType}`;
-  };
-
   if (bundle) {
     docs = ["cnic_front", "cnic_back", "utility_bill"]
       .map(type => {
@@ -611,7 +556,7 @@ async function getApplicationForResponse(applicationNo, buyerId) {
           doc_type: type,
           original_name: b.original_name || "",
           mime_type: b.mime_type || "",
-          url: b.file_path ? buyerDocUrl(type, b.file_path) : "",
+          url: b.file_path ? signPrivateFileUrl(b.file_path) : "",
           ocr_extracted_cnic: type === "cnic_front" ? (b.ocr_extracted_cnic || "") : "",
           ocr_confidence: b.ocr_confidence || 0,
           ocr_completed_at: bundle.ocr_completed_at || null,
@@ -625,7 +570,7 @@ async function getApplicationForResponse(applicationNo, buyerId) {
       doc_type: d.doc_type,
       original_name: d.original_name,
       mime_type: d.mime_type,
-      url: buyerDocUrl(d.doc_type, d.file_path),
+      url: signPrivateFileUrl(d.file_path),
       ocr_extracted_cnic: d.ocr_extracted_cnic,
       ocr_confidence: d.ocr_confidence,
       ocr_completed_at: d.ocr_completed_at,
@@ -671,7 +616,7 @@ async function getApplicationForResponse(applicationNo, buyerId) {
       doc_type: d.doc_type,
       original_name: d.original_name,
       mime_type: d.mime_type,
-      url: d.url || (d.file_path ? publicUrl(d.file_path) : ""),
+      url: d.url, // signed link built above (the mapped docs no longer carry file_path)
       ocr_extracted_cnic: d.ocr_extracted_cnic,
       ocr_confidence: d.ocr_confidence,
       ocr_completed_at: d.ocr_completed_at,

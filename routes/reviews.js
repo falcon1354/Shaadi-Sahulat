@@ -21,6 +21,9 @@
  *     (GET /api/reviews/product/:product_id)
  */
 const express = require("express");
+const { requireAdmin, requireBuyer, authenticate } = require("../lib/auth");
+const { limits } = require("../lib/rateLimits");
+const { requireSelfParam } = require("../lib/authorize");
 const router = express.Router();
 const Review = require("../models/Review");
 const { publicUrl } = require("../lib/storage");
@@ -122,7 +125,8 @@ router.get("/seller/:seller_id", async (req, res) => {
 // ── Seller: list ALL reviews for the seller's products ──────────────────────
 //   Returns both visible=true and visible=false so the seller can see
 //   moderated comments. Admin can also see the same set via /admin/all.
-router.get("/seller/:seller_id/all", async (req, res) => {
+// Includes hidden reviews → the seller themself or an admin only.
+router.get("/seller/:seller_id/all", requireSelfParam("seller_id", { role: "seller", allowAdmin: true }), async (req, res) => {
   try {
     const sellerId = req.params.seller_id;
     if (!sellerId) {
@@ -147,7 +151,7 @@ router.get("/seller/:seller_id/all", async (req, res) => {
 });
 
 // ── Admin: list ALL reviews across the platform ─────────────────────────────
-router.get("/admin/all", async (req, res) => {
+router.get("/admin/all", requireAdmin, async (req, res) => {
   try {
     const { q, min_rating, max_rating } = req.query;
     const filter = {};
@@ -184,7 +188,8 @@ router.get("/admin/all", async (req, res) => {
 // ── AI: suggest a star rating from review text ──────────────────────────────
 //   body: { text, product_title?, product_description? }
 //   returns: { success, suggested_rating, sentiment, is_relevant, reason }
-router.post("/ai/suggest-rating", async (req, res) => {
+// AI endpoints call a paid LLM → signed-in users only.
+router.post("/ai/suggest-rating", authenticate, limits.aiSuggestRating, async (req, res) => {
   try {
     const { text, product_title, product_description } = req.body || {};
     if (!text || typeof text !== "string" || text.trim().length < 1) {
@@ -208,7 +213,7 @@ router.post("/ai/suggest-rating", async (req, res) => {
 //   body: { product_title, product_description?, rating, length }
 //   length: "short" | "medium" | "long"
 //   returns: { success, reviews: [{text, length} x3] }
-router.post("/ai/generate-reviews", async (req, res) => {
+router.post("/ai/generate-reviews", authenticate, limits.aiGenerate, async (req, res) => {
   try {
     const { product_title, product_description, rating, length } = req.body || {};
     if (!product_title || !product_title.trim()) {
@@ -241,7 +246,7 @@ router.post("/ai/generate-reviews", async (req, res) => {
 // ── Preview / convert review text → voice (4 agents, same as tone-voice) ─────
 // Body: { text, rating, agent, buyer_id?, product_id?, order_id?, persist? }
 // Returns audio as base64 data URL for immediate playback; optionally uploads to Cloudinary.
-router.post("/preview-voice", async (req, res) => {
+router.post("/preview-voice", requireBuyer, limits.reviewVoice, async (req, res) => {
   try {
     if (!isReviewTtsEnabled()) {
       return res.status(503).json({
@@ -249,7 +254,8 @@ router.post("/preview-voice", async (req, res) => {
         error: "Review TTS is disabled. Set REVIEW_TTS_ENABLED=true and run tone-voice on port 8000.",
       });
     }
-    const { text, rating, agent, buyer_id, product_id, order_id, persist } = req.body || {};
+    const { text, rating, agent, product_id, order_id, persist } = req.body || {};
+    const buyer_id = req.user.id; // storage owner = verified buyer, never req.body.buyer_id
     const trimmed = String(text || "").trim();
     if (!trimmed || trimmed.length < 2) {
       return res.status(400).json({ success: false, error: "Review text is required (min 2 characters)" });

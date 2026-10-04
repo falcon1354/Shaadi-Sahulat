@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../../api/http';
 import { useCategories } from '../../hooks/useCategories';
 import sellerApi from '../../api/sellerApi';
 
@@ -34,7 +35,7 @@ export default function BannerManager() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch(BASE);
+      const res = await authFetch(BASE);
       const data = await res.json();
       if (data.success) setBanners(data.banners || []);
     } catch { }
@@ -43,7 +44,7 @@ export default function BannerManager() {
 
   const loadSellerOffers = async () => {
     try {
-      const res = await fetch(`${BASE}/seller-offers?status=pending`);
+      const res = await authFetch(`${BASE}/seller-offers?status=pending`);
       const data = await res.json();
       if (data.success) setSellerOffers(data.offers || []);
     } catch { }
@@ -116,7 +117,7 @@ export default function BannerManager() {
     const method = editBanner ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, { method, body: fd });
+      const res = await authFetch(url, { method, body: fd });
       const data = await res.json();
       if (data.success) {
         setShowForm(false);
@@ -134,7 +135,7 @@ export default function BannerManager() {
   const handleDelete = async (b) => {
     if (!window.confirm(`Delete banner "${b.title || 'Untitled'}"?`)) return;
     try {
-      await fetch(`${BASE}/${b.banner_id || b._id}`, { method: 'DELETE' });
+      await authFetch(`${BASE}/${b.banner_id || b._id}`, { method: 'DELETE' });
       load();
     } catch { }
   };
@@ -144,14 +145,14 @@ export default function BannerManager() {
     fd.append('is_active', String(!b.is_active));
     fd.append('storefront', b.storefront || 'new');
     try {
-      await fetch(`${BASE}/${b.banner_id || b._id}`, { method: 'PUT', body: fd });
+      await authFetch(`${BASE}/${b.banner_id || b._id}`, { method: 'PUT', body: fd });
       load();
     } catch { }
   };
 
   const handleApproveOffer = async (offer) => {
     try {
-      const res = await fetch(`${BASE}/seller-offer/${offer.banner_id || offer._id}/approve`, {
+      const res = await authFetch(`${BASE}/seller-offer/${offer.banner_id || offer._id}/approve`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ suggested_price: suggestedPrice || undefined }),
@@ -171,7 +172,7 @@ export default function BannerManager() {
 
   const handleRejectOffer = async (offer) => {
     try {
-      const res = await fetch(`${BASE}/seller-offer/${offer.banner_id || offer._id}/reject`, {
+      const res = await authFetch(`${BASE}/seller-offer/${offer.banner_id || offer._id}/reject`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: rejectionReason || 'Not suitable at this time' }),

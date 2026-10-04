@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { registerSeller, loginSeller } from '../../api/sellerApi';
+import { useAuth } from '../../context/AuthContext';
+import RegistrationOtpPanel from '../Auth/RegistrationOtpPanel';
 import loginSignupImg from '../../assets/hero/LoginSignup1.jpeg';
 import logo from '../../assets/ShaadiSahulat Logo PNG.png';
 
 export default function SellerAuthPage({ onLogin }) {
   const navigate = useNavigate();
+  const { login, register, notice, clearNotice } = useAuth();
   const [mode,    setMode]    = useState('login');   // 'login' | 'register'
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
+  const [pending, setPending] = useState(null);  // OTP-first sign-up: set after the code is emailed
 
   const [form, setForm] = useState({
     name:        '',
@@ -25,24 +28,29 @@ export default function SellerAuthPage({ onLogin }) {
     e.preventDefault();
     setLoading(true);
     setError('');
+    clearNotice?.();
     try {
+      // JWT auth: the session lives in an HttpOnly cookie + in-memory access token.
       const result = mode === 'register'
-        ? await registerSeller(form)
-        : await loginSeller({ email: form.email, password: form.password });
+        ? await register('seller', {
+            name: form.name, email: form.email, password: form.password,
+            phone: form.phone, city: form.city, seller_type: form.seller_type,
+          })
+        : await login('seller', form.email, form.password);
 
-      if (!result.success) {
-        setError(result.error || 'Something went wrong.');
+      if (!result.ok) {
+        setError(result.error || 'Something went wrong. Please try again.');
         return;
       }
-
-      // Persist seller to localStorage & notify parent
-      const sellerData = result.seller;
-      localStorage.setItem('ss_seller', JSON.stringify(sellerData));
-      // v3.2: notify SocketContext immediately (no 1.5s wait)
-      try { window.dispatchEvent(new Event('ss_auth_changed')); } catch {}
-      onLogin(sellerData);
-    } catch (err) {
-      setError('Network error: ' + err.message);
+      if (result.pending) {
+        // No account yet: it is created only after the emailed code is verified.
+        setForm(f => ({ ...f, password: '' }));
+        setPending(result.pending);
+        return;
+      }
+      onLogin?.(result.user);
+    } catch {
+      setError('Could not reach the server. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -79,6 +87,18 @@ export default function SellerAuthPage({ onLogin }) {
         </div>
 
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-7 sm:p-8">
+          {pending ? (
+            <RegistrationOtpPanel
+              pending={pending}
+              theme="indigo"
+              onVerified={(u) => onLogin?.(u)}
+              onBackToSignIn={() => {
+                setPending(null);
+                setMode('login');
+                setError('');
+              }}
+            />
+          ) : (<>
           {/* Tab switcher */}
           <div className="flex gap-1 bg-gray-100/90 p-1.5 rounded-2xl mb-5">
             {[
@@ -96,6 +116,12 @@ export default function SellerAuthPage({ onLogin }) {
             ))}
           </div>
 
+          {notice && !error && (
+            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-medium">
+              {notice}
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium">
               {error}
@@ -107,7 +133,9 @@ export default function SellerAuthPage({ onLogin }) {
             {/* Register-only fields */}
             {mode === 'register' && (
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Business / Full Name</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Business / Full Name
+                </label>
                 <input
                   type="text"
                   value={form.name}
@@ -141,8 +169,28 @@ export default function SellerAuthPage({ onLogin }) {
                 onChange={e => update('password', e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50/50"
+                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50/50"
               />
+
+              {mode === 'register' && (
+                <p className="text-[11px] text-gray-500 mt-1">
+                  At least 8 characters, with a letter and a number.
+                </p>
+              )}
+
+              {mode === 'login' && (
+                <div className="text-right mt-1">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/forgot-password?portal=seller')}
+                    className="text-[11px] text-indigo-600 font-bold hover:underline cursor-pointer"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
             </div>
 
             {/* Register-only: phone, city, seller type */}
@@ -214,6 +262,7 @@ export default function SellerAuthPage({ onLogin }) {
             </button>
           </p>
 
+          </>)}
         <div className="text-center mt-5">
           <button
             onClick={() => navigate('/')}

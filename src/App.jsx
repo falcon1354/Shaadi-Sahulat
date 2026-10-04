@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Routes, Route, Navigate, useNavigate, useLocation, Outlet, useParams
 } from 'react-router-dom';
@@ -48,124 +48,25 @@ import GlobalSearch from './components/Common/GlobalSearch';
 import { listBuyerOrders } from './api/orderApi';
 import { CartProvider, useCart } from './context/CartContext';
 import { SocketProvider } from './context/SocketContext';
-import {
-  getBuyerFromStorage, saveBuyerToStorage,
-  clearBuyerFromStorage, getFullBuyerData
-} from './api/buyerApi';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import RequireRole, { AuthLoading } from './auth/RequireRole';
+import { ROLE_HOME, postLoginPath } from './auth/guard';
+import ChangePasswordPanel from './components/Common/ChangePasswordPanel';
+import EmailVerificationBanner from './components/Common/EmailVerificationBanner';
+import ForgotPasswordPage from './components/Auth/ForgotPasswordPage';
+import ResetPasswordPage from './components/Auth/ResetPasswordPage';
+import VerifyEmailPage from './components/Auth/VerifyEmailPage';
 import {
   LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User,
   ShoppingCart, PlusCircle, Package, LineChart, Star
 } from 'lucide-react';
 import logo from './assets/ShaadiSahulat Logo PNG.png';
 
-// ── Auth Context ──────────────────────────────────────────────────────────────
-
-const AuthContext = createContext(null);
-function useAuth() { return useContext(AuthContext); }
+// ── Auth ──────────────────────────────────────────────────────────────────────
+// Session state lives in src/context/AuthContext.jsx (JWT + HttpOnly refresh cookie).
+// Re-exported here so existing imports of { useAuth } from '../../App' keep working.
 export { useAuth };
 
-function AuthProvider({ children }) {
-  const [buyer, setBuyerState] = useState(() => getBuyerFromStorage());
-  const [seller, setSellerState] = useState(() => {
-    const s = localStorage.getItem('ss_seller');
-    return s ? JSON.parse(s) : null;
-  });
-  const [admin, setAdminState] = useState(() => {
-    const s = localStorage.getItem('ss_admin');
-    return s ? JSON.parse(s) : null;
-  });
-
-  // Fire a custom event whenever auth changes so the SocketContext can
-  // rebuild its socket without polling localStorage every 1.5s.
-  // (v3.2 fix — the old polling caused re-renders + intermittent flakiness.)
-  const fireAuthChanged = () => {
-    try { window.dispatchEvent(new Event('ss_auth_changed')); } catch { }
-  };
-
-  const loginBuyer = (b) => {
-    try { sessionStorage.setItem("ss_active_role", "buyer"); } catch { }
-    saveBuyerToStorage(b);
-    setBuyerState(b);
-    if (b?.buyer_id) {
-      if (Array.isArray(b.wishlist_items)) {
-        localStorage.setItem(`ss_wishlist_${b.buyer_id}`, JSON.stringify(b.wishlist_items));
-      }
-      if (Array.isArray(b.recently_viewed_items)) {
-        localStorage.setItem(`ss_recently_viewed_${b.buyer_id}`, JSON.stringify(b.recently_viewed_items));
-      }
-      if (Array.isArray(b.cart_items) && b.cart_items.length > 0) {
-        const existing = localStorage.getItem(`ss_cart_${b.buyer_id}`);
-        if (!existing || existing === '[]') {
-          localStorage.setItem(`ss_cart_${b.buyer_id}`, JSON.stringify(b.cart_items));
-        }
-      }
-      if (!localStorage.getItem(`ss_dowry_${b.buyer_id}`)) {
-        getFullBuyerData(b.buyer_id).then(res => {
-          if (!res?.success || !res.dowry_estimation) return;
-          const est = res.dowry_estimation;
-          const budgets = est.category_budgets;
-          if (!budgets || !Object.keys(budgets).length) return;
-          const total = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
-          const originalIds = Array.isArray(est.original_category_ids) && est.original_category_ids.length
-            ? est.original_category_ids
-            : Object.keys(budgets).filter(k => (budgets[k]?.estimated || 0) > 0);
-          const payload = JSON.stringify({
-            estimation_id: est._id,
-            total_budget: total || est.total_recommended_budget,
-            category_budgets: budgets,
-            original_category_ids: originalIds,
-            saved_at: est.updated_at || est.created_at || new Date().toISOString(),
-          });
-          localStorage.setItem(`ss_dowry_${b.buyer_id}`, payload);
-          localStorage.setItem('ss_dowry_latest', payload);
-        }).catch(() => { });
-      }
-    }
-    fireAuthChanged();
-  };
-
-  const loginSeller = (s) => {
-    try { sessionStorage.setItem("ss_active_role", "seller"); } catch { }
-    localStorage.setItem('ss_seller', JSON.stringify(s));
-    setSellerState(s);
-    fireAuthChanged();
-  };
-
-  const loginAdmin = (a) => {
-    try { sessionStorage.setItem("ss_active_role", "admin"); } catch { }
-    localStorage.setItem('ss_admin', JSON.stringify(a));
-    setAdminState(a);
-    fireAuthChanged();
-  };
-
-  const logoutBuyer = () => {
-    clearBuyerFromStorage();
-    setBuyerState(null);
-    fireAuthChanged();
-  };
-
-  const logoutSeller = () => {
-    localStorage.removeItem('ss_seller');
-    setSellerState(null);
-    fireAuthChanged();
-  };
-
-  const logoutAdmin = () => {
-    localStorage.removeItem('ss_admin');
-    setAdminState(null);
-    fireAuthChanged();
-  };
-
-  return (
-    <AuthContext.Provider value={{
-      buyer, seller, admin,
-      loginBuyer, loginSeller, loginAdmin,
-      logoutBuyer, logoutSeller, logoutAdmin,
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
 
 // ── Level helpers ─────────────────────────────────────────────────────────────
 
@@ -400,23 +301,12 @@ const SELLER_NAV_MAP = {
 
 // ── Route guards ──────────────────────────────────────────────────────────────
 
-function RequireBuyer() {
-  const { buyer } = useAuth();
-  try { if (buyer) sessionStorage.setItem("ss_active_role", "buyer"); } catch { }
-  return buyer ? <Outlet /> : <Navigate to="/buyer/login" replace />;
-}
 
-function RequireSeller() {
-  const { seller } = useAuth();
-  try { if (seller) sessionStorage.setItem("ss_active_role", "seller"); } catch { }
-  return seller ? <Outlet /> : <Navigate to="/seller/login" replace />;
-}
-
-function RequireAdmin() {
-  const { admin } = useAuth();
-  try { if (admin) sessionStorage.setItem("ss_active_role", "admin"); } catch { }
-  return admin ? <Outlet /> : <Navigate to="/admin/login" replace />;
-}
+// Role-aware guards backed by the server-verified session (see src/auth/RequireRole.jsx).
+// They never consult localStorage, sessionStorage or ?as= query parameters.
+function RequireBuyer()  { return <RequireRole role="buyer" />; }
+function RequireSeller() { return <RequireRole role="seller" />; }
+function RequireAdmin()  { return <RequireRole role="admin" />; }
 
 // ── Buyer Layout ──────────────────────────────────────────────────────────────
 
@@ -454,9 +344,9 @@ function BuyerLayout() {
     || location.pathname.includes('/buyer/retail/product/')
     || location.pathname.includes('/buyer/thrift/product/');
 
-  const handleLogout = () => {
-    logoutBuyer();
-    navigate('/');
+  const handleLogout = async () => {
+    await logoutBuyer();
+    navigate('/buyer/login', { replace: true });
   };
 
   // Floating "Add to Cart" — for the dashboard, opens the cart drawer.
@@ -605,9 +495,9 @@ function SellerLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seg]);
 
-  const handleLogout = () => {
-    logoutSeller();
-    navigate('/');
+  const handleLogout = async () => {
+    await logoutSeller();
+    navigate('/seller/login', { replace: true });
   };
 
   return (
@@ -694,11 +584,15 @@ function SellerLayout() {
 function AdminLayoutWrapper() {
   const { admin, logoutAdmin } = useAuth();
   const navigate = useNavigate();
-  const handleLogout = () => {
-    logoutAdmin();
-    navigate('/');
+  const handleLogout = async () => {
+    await logoutAdmin();
+    navigate('/admin/login', { replace: true });
   };
   return <AdminLayout admin={admin} onLogout={handleLogout} />;
+}
+
+function AdminSecurityPage() {
+  return <ChangePasswordPanel />;
 }
 
 // ── Buyer page components ─────────────────────────────────────────────────────
@@ -766,7 +660,13 @@ function BuyerProjectionPage() {
 
 function BuyerAccountPage() {
   const { buyer } = useAuth();
-  return <BuyerAccountView buyer={buyer} />;
+  return (
+    <>
+      <EmailVerificationBanner className="max-w-2xl mx-auto mb-6" />
+      <BuyerAccountView buyer={buyer} />
+      <ChangePasswordPanel className="max-w-2xl mx-auto mt-6" />
+    </>
+  );
 }
 
 function BuyerProductDetailPage() {
@@ -834,7 +734,13 @@ function SellerFinancePage() {
 
 function SellerAccountPage() {
   const { seller } = useAuth();
-  return <SellerAccountView seller={seller} />;
+  return (
+    <>
+      <EmailVerificationBanner className="max-w-lg mx-auto mb-4" />
+      <SellerAccountView seller={seller} />
+      <ChangePasswordPanel className="max-w-lg mx-auto mt-4" />
+    </>
+  );
 }
 
 // ── Wrapper pages for new modules (inject auth from context) ──────────────────
@@ -906,65 +812,94 @@ function AdminReviewsPageWrapper() {
   return <AdminReviewsPage admin={admin} />;
 }
 function DisputeChatWrapper() {
-  const { buyer, seller, admin } = useAuth();
-  const location = useLocation();
-  // Prefer explicit role (query/state) so admin isn't forced to "buyer" when both sessions exist
-  const preferred =
-    location.state?.asRole ||
-    new URLSearchParams(location.search).get("as") ||
-    sessionStorage.getItem("ss_active_role");
-
-  const sessions = {
-    buyer: buyer
-      ? { id: buyer.buyer_id, role: "buyer", name: buyer.name || "Buyer" }
-      : null,
-    seller: seller
-      ? { id: seller.seller_id, role: "seller", name: seller.name || "Seller" }
-      : null,
-    admin: admin
-      ? { id: admin.admin_id || admin._id, role: "admin", name: admin.name || "Admin" }
-      : null,
-  };
-
-  if (preferred && sessions[preferred]) {
-    return <DisputeChatPage user={sessions[preferred]} />;
-  }
-
-  const present = ["admin", "seller", "buyer"]
-    .map((r) => sessions[r])
-    .filter(Boolean);
-  if (present.length === 1) return <DisputeChatPage user={present[0]} />;
-  if (sessions.admin) return <DisputeChatPage user={sessions.admin} />;
-  if (sessions.seller) return <DisputeChatPage user={sessions.seller} />;
-  if (sessions.buyer) return <DisputeChatPage user={sessions.buyer} />;
-  return <Navigate to="/" replace />;
+  // One verified session per browser. The role comes ONLY from the server-verified
+  // session — `?as=` / location.state.asRole links are informational and never grant a role.
+  const { status, user } = useAuth();
+  if (status === "loading") return <AuthLoading />;
+  if (status !== "authenticated" || !user) return <Navigate to="/" replace />;
+  const fallbackName = { buyer: "Buyer", seller: "Seller", admin: "Admin" }[user.role];
+  return <DisputeChatPage user={{ id: user.id, role: user.role, name: user.name || fallbackName }} />;
 }
 
 // ── Login pages ───────────────────────────────────────────────────────────────
 
-function BuyerLoginPage() {
-  const { buyer, loginBuyer } = useAuth();
+const ROLE_LABEL = { buyer: 'Buyer', seller: 'Seller', admin: 'Admin' };
+
+/** Shown on a login page when this browser is already signed in with a different role. */
+function SignedInAsOtherRole({ currentRole, targetRole }) {
+  const { logout } = useAuth();
   const navigate = useNavigate();
-  if (buyer) return <Navigate to="/buyer/dashboard" replace />;
-  return <BuyerAuthPage onLogin={(b) => { loginBuyer(b); navigate('/buyer/dashboard'); }} />;
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="min-h-screen bg-[#FCFBFB] flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6 text-center">
+        <h2 className="text-xl font-bold text-gray-800 mb-2">
+          You're signed in as a {ROLE_LABEL[currentRole]}
+        </h2>
+        <p className="text-sm text-gray-500 mb-5">
+          Only one account can be signed in per browser. Sign out to continue as a {ROLE_LABEL[targetRole]},
+          or use a separate browser profile.
+        </p>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={() => navigate(ROLE_HOME[currentRole], { replace: true })}
+            className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Go to my dashboard
+          </button>
+          <button
+            disabled={busy}
+            onClick={async () => { setBusy(true); await logout(); setBusy(false); }}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#a37b3d] to-[#c69a54] text-white text-sm font-bold disabled:opacity-60">
+            {busy ? 'Signing out…' : 'Sign out'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Shared login-route wrapper: waits for session restore, then routes by verified role. */
+function RoleLoginRoute({ role, children }) {
+  const { status, role: currentRole } = useAuth();
+  const location = useLocation();
+  if (status === 'loading') return <AuthLoading />;
+  if (status === 'authenticated') {
+    if (currentRole === role) return <Navigate to={postLoginPath(role, location.state?.from)} replace />;
+    return <SignedInAsOtherRole currentRole={currentRole} targetRole={role} />;
+  }
+  return children;
+}
+
+function BuyerLoginPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <RoleLoginRoute role="buyer">
+      <BuyerAuthPage onLogin={(u) => navigate(postLoginPath(u.role, location.state?.from), { replace: true })} />
+    </RoleLoginRoute>
+  );
 }
 
 function SellerLoginPage() {
-  const { seller, loginSeller } = useAuth();
   const navigate = useNavigate();
-  if (seller) return <Navigate to="/seller/dashboard" replace />;
-  return <SellerAuthPage onLogin={(s) => { loginSeller(s); navigate('/seller/dashboard'); }} />;
+  const location = useLocation();
+  return (
+    <RoleLoginRoute role="seller">
+      <SellerAuthPage onLogin={(u) => navigate(postLoginPath(u.role, location.state?.from), { replace: true })} />
+    </RoleLoginRoute>
+  );
 }
 
 function AdminLoginPage() {
-  const { admin, loginAdmin } = useAuth();
   const navigate = useNavigate();
-  if (admin) return <Navigate to="/admin/dashboard" replace />;
+  const location = useLocation();
   return (
-    <AdminLogin
-      onLogin={(a) => { loginAdmin(a); navigate('/admin/dashboard'); }}
-      onBack={() => navigate('/')}
-    />
+    <RoleLoginRoute role="admin">
+      <AdminLogin
+        onLogin={(u) => navigate(postLoginPath(u.role, location.state?.from), { replace: true })}
+        onBack={() => navigate('/')}
+      />
+    </RoleLoginRoute>
   );
 }
 
@@ -1000,6 +935,11 @@ export default function App() {
           <Routes>
             {/* Landing */}
             <Route path="/" element={<Landing />} />
+
+            {/* Password reset + email verification (public; one-time token in ?token=) */}
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password"  element={<ResetPasswordPage />} />
+            <Route path="/verify-email"    element={<VerifyEmailPage />} />
 
             {/* Buyer */}
             <Route path="/buyer/login" element={<BuyerLoginPage />} />
@@ -1065,13 +1005,14 @@ export default function App() {
                 <Route path="sellers" element={<SellerManagement />} />
                 <Route path="buyers" element={<BuyerManagement />} />
                 <Route path="marketplace" element={<MarketplacePage isAdminView={true} />} />
-                <Route path="categories" element={<CategoryManager />} />
-                <Route path="banners" element={<Navigate to="dashboard" replace />} />
-                <Route path="orders" element={<AdminOrdersPageWrapper />} />
-                <Route path="disputes" element={<AdminDisputesPageWrapper />} />
-                <Route path="reviews" element={<AdminReviewsPageWrapper />} />
-                <Route path="wallet" element={<AdminWalletPageWrapper />} />
-                <Route path="bnpl-repayments" element={<AdminBnplRepaymentsPageWrapper />} />
+<Route path="categories" element={<CategoryManager />} />
+<Route path="banners" element={<Navigate to="dashboard" replace />} />
+<Route path="orders" element={<AdminOrdersPageWrapper />} />
+<Route path="disputes" element={<AdminDisputesPageWrapper />} />
+<Route path="reviews" element={<AdminReviewsPageWrapper />} />
+<Route path="wallet" element={<AdminWalletPageWrapper />} />
+<Route path="security" element={<AdminSecurityPage />} />
+<Route path="bnpl-repayments" element={<AdminBnplRepaymentsPageWrapper />} />
               </Route>
             </Route>
 

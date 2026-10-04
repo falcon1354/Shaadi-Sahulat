@@ -11,10 +11,30 @@ Run: python app.py
 Default port: 5001
 """
 
+import hmac
 import os
 import json
+from pathlib import Path
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
+
+def _load_root_env() -> None:
+    """Load KEY=VALUE pairs from the repo-root .env (without overriding real env vars)."""
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    try:
+        lines = env_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_root_env()
 
 # Local modules
 from dataset_generator import generate_dataset, save_dataset, load_dataset, append_user_to_dataset, CSV_PATH
@@ -22,7 +42,21 @@ from kmeans_trainer import train_kmeans, save_model, load_and_preprocess, retrai
 from predictor import predict_adjustment
 
 app = Flask(__name__)
-CORS(app)
+# Internal service: only the Node backend calls it (X-Internal-Secret); /health is public.
+CORS(app, origins=[os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000").rstrip("/")])
+
+
+@app.before_request
+def _require_internal_secret():
+    if request.method in ("GET", "HEAD") and request.path == "/health":
+        return None
+    expected = os.environ.get("INTERNAL_API_SECRET", "")
+    if not expected:
+        return jsonify({"success": False, "error": "Forbidden"}), 503  # fail closed
+    provided = request.headers.get("X-Internal-Secret", "")
+    if not provided or not hmac.compare_digest(provided.encode("utf-8"), expected.encode("utf-8")):
+        return jsonify({"success": False, "error": "Forbidden"}), 401
+    return None
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
@@ -233,5 +267,9 @@ if __name__ == "__main__":
         save_model(model, scaler, cluster_stats)
         print("[init] Setup complete!")
 
-    print("[server] Starting ML microservice on port 5001...")
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    # Internal service: localhost only (override with ML_SERVICE_HOST); the Werkzeug
+    # debugger (remote code execution) stays off unless FLASK_DEBUG=true.
+    host = os.environ.get("ML_SERVICE_HOST", "127.0.0.1")
+    debug = os.environ.get("FLASK_DEBUG", "").strip().lower() in ("1", "true", "yes")
+    print(f"[server] Starting ML microservice on {host}:5001...")
+    app.run(host=host, port=5001, debug=debug)

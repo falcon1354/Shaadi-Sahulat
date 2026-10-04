@@ -1,4 +1,3 @@
-const bcrypt        = require("bcryptjs");
 const path          = require("path");
 const fs            = require("fs");
 const Admin         = require("../models/Admin");
@@ -18,21 +17,8 @@ async function mlFetch(endpoint, options = {}) {
     .catch(() => null);
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
-
-async function loginAdmin(req, res) {
-  try {
-    const { email, password } = req.body;
-    const admin = await Admin.findOne({ email: email?.toLowerCase() }).lean();
-    if (!admin) return res.status(401).json({ success: false, error: "Invalid credentials" });
-    const ok = bcrypt.compareSync(password, admin.password_hash);
-    if (!ok)  return res.status(401).json({ success: false, error: "Invalid credentials" });
-    const { password_hash, ...safe } = admin;
-    return res.json({ success: true, admin: safe });
-  } catch (e) {
-    return res.status(500).json({ success: false, error: e.message });
-  }
-}
+// Admin sign-in lives in controllers/authController.js (POST /api/auth/login, portal "admin").
+// The legacy /api/admin/login handler was removed in Phase 2I. There is no admin signup.
 
 // ── Sellers ───────────────────────────────────────────────────────────────────
 
@@ -373,7 +359,6 @@ async function deleteSubcategory(req, res) {
 }
 
 module.exports = {
-  loginAdmin,
   getAllSellers,
   getSellerProducts,
   removeProduct,
