@@ -47,6 +47,8 @@ const {
   validateIban,
 } = require("../lib/helpers");
 const { pushNotification, notifyBuyerAndAdmin } = require("../lib/notify");
+const { finalizeBnplApproval } = require("../lib/bnplFulfillment");
+const fs = require("fs");
 
 const upload = makeBnplUploadMiddleware();
 const ocrPreviewUpload = makeBnplOcrPreviewMiddleware();
@@ -203,14 +205,12 @@ router.post("/applications", requireBuyer, limits.bnplSubmit, upload, async (req
       account_title: accountTitle,
       plan_months: plan,
       amount: order.total_amount,
-      status: elig.auto_approve ? "APPROVED" : "PENDING_BANK_VERIFICATION",
-      risk_score: elig.auto_approve ? 100 : null,
-      risk_category: elig.auto_approve ? "LOW RISK" : null,
-      officer_comment: elig.auto_approve
-        ? "Auto-approved: prior verified documents on file, amount below PKR 50,000 threshold."
-        : "",
-      decision_at: elig.auto_approve ? new Date() : null,
-      offer_expires_at: elig.auto_approve ? offerExpiry() : null,
+      status: "PENDING_BANK_VERIFICATION",
+      risk_score: null,
+      risk_category: null,
+      officer_comment: "",
+      decision_at: null,
+      offer_expires_at: null,
     });
 
     // --- persist uploaded files + run OCR ---
@@ -324,56 +324,47 @@ router.post("/applications", requireBuyer, limits.bnplSubmit, upload, async (req
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // --- Step 4: auto-approve small applications ---
-    if (elig.auto_approve) {
-      const planCalc = computePlan(order.total_amount, plan);
-      const expires = offerExpiry();
-      await BnplOfferLetter.create({
-        application_id: applicationNo,
-        offer_no: generateOfferNo(),
-        buyer_id: req.user.id,
-        approved_amount: planCalc.approved_amount,
-        plan_months: plan,
-        processing_fee: planCalc.processing_fee,
-        monthly_installment: planCalc.monthly_installment,
-        total_payable: planCalc.total_payable,
-        valid_until: expires,
-        status: "PENDING",
-        installments: buildInstallmentSchedule(planCalc.monthly_installment, plan),
-      });
-    }
-
-    // --- update order status + timeline ---
-    // Auto-approved apps should not remain PENDING_BNPL_APPROVAL.
-    const nextOrderStatus = elig.auto_approve ? "CONFIRMED" : "PENDING_BNPL_APPROVAL";
+    // Mark order pending BNPL until approval (auto or banker).
     await Order.updateOne(
       { order_id: order.order_id },
       {
         $set: {
-          status: nextOrderStatus,
+          status: "PENDING_BNPL_APPROVAL",
           payment_method: "BNPL",
+          payment_status: "PENDING",
           bnpl_application_id: applicationNo,
         },
         $push: {
           timeline: {
-            status: nextOrderStatus,
+            status: "PENDING_BNPL_APPROVAL",
             at: new Date(),
             by: "buyer",
             by_id: req.user.id,
-            note: elig.auto_approve
-              ? `BNPL application ${applicationNo} auto-approved (plan: ${plan} months). Order confirmed.`
-              : `BNPL application ${applicationNo} submitted (plan: ${plan} months)`,
+            note: `BNPL application ${applicationNo} submitted (plan: ${plan} months)`,
           },
         },
       }
     );
 
+    // Auto-approve amounts below PKR 5,000 — completes BNPL immediately (no buyer accept).
+    if (elig.auto_approve) {
+      await finalizeBnplApproval({
+        applicationNo,
+        planMonths: plan,
+        comment: `Auto-approved: amount below PKR ${require("../lib/eligibility").AUTO_APPROVE_THRESHOLD.toLocaleString()} threshold.`,
+        by: "system",
+        byId: "auto_approve",
+      });
+    }
+
     // --- notifications ---
     await notifyBuyerAndAdmin({
       buyer_id: req.user.id,
-      title: "BNPL Application Submitted",
-      message: `Your BNPL application ${applicationNo} for order ${order.order_id} has been submitted. ${
-        elig.auto_approve ? "Auto-approved — offer letter generated." : "Pending bank verification (1-2 hours)."
+      title: elig.auto_approve ? "BNPL Auto-Approved" : "BNPL Application Submitted",
+      message: `Your BNPL application ${applicationNo} for order ${order.order_id} ${
+        elig.auto_approve
+          ? "was auto-approved. Sellers can now fulfill the order."
+          : "has been submitted and is pending bank verification."
       }`,
       type: "bnpl",
       ref_id: applicationNo,
@@ -383,7 +374,7 @@ router.post("/applications", requireBuyer, limits.bnplSubmit, upload, async (req
     return res.status(201).json({
       success: true,
       message: elig.auto_approve
-        ? "BNPL application auto-approved. Offer letter generated."
+        ? "BNPL application auto-approved. Order released for fulfillment."
         : "BNPL application submitted. Pending bank verification.",
       application: populated,
       ocr: { extracted_cnic: ocrCnic, confidence: ocrConfidence },
@@ -406,6 +397,30 @@ router.get("/applications", requireBuyer, async (req, res) => {
   }
 });
 
+// ---------- Buyer repayment status (My BNPL) ----------
+router.get("/repayments", requireBuyer, async (req, res) => {
+  try {
+    const { listRepayments } = require("../lib/bnplRepayment");
+    const data = await listRepayments({ buyer_id: req.user.id });
+    return res.json({ success: true, ...data });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/repayments/:application_no", requireBuyer, async (req, res) => {
+  try {
+    const { getRepaymentDetail } = require("../lib/bnplRepayment");
+    const detail = await getRepaymentDetail(req.params.application_no);
+    if (!detail || detail.buyer_id !== req.user.id) {
+      return res.status(404).json({ success: false, error: "Repayment not found" });
+    }
+    return res.json({ success: true, repayment: detail });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ---------- single application ----------
 router.get("/applications/:application_no", requireBuyer, async (req, res) => {
   try {
@@ -417,7 +432,11 @@ router.get("/applications/:application_no", requireBuyer, async (req, res) => {
   }
 });
 
-// ---------- Step 7: accept offer ----------
+// BNPL documents (CNIC / utility bill) are private. The owning buyer gets short-lived
+// signed links in the application detail response (documents[].url → /api/files/private).
+// There is deliberately NO document route here that takes the buyer from a header or query.
+
+// ---------- Deprecated: buyer offer-accept removed (approval completes BNPL) ----------
 router.post("/applications/:application_no/accept-offer", requireBuyer, async (req, res) => {
   try {
     const app = await BnplApplication.findOne({
@@ -425,63 +444,32 @@ router.post("/applications/:application_no/accept-offer", requireBuyer, async (r
       buyer_id: req.user.id,
     });
     if (!app) return res.status(404).json({ success: false, error: "Application not found" });
-    if (app.status !== "APPROVED") {
-      return res.status(400).json({ success: false, error: `Cannot accept offer in status ${app.status}` });
+
+    // Idempotent: approval already finalizes BNPL — never regress order timeline/status.
+    if (app.status === "OFFER_ACCEPTED") {
+      return res.json({
+        success: true,
+        message: "BNPL already finalized on approval. No buyer accept step is required.",
+        application: await getApplicationForResponse(app.application_no),
+      });
     }
-
-    // Check countdown timer expiration: offer_expires_at < now → reject
-    if (app.offer_expires_at && new Date(app.offer_expires_at) < new Date()) {
-      await BnplApplication.updateOne({ _id: app._id }, { $set: { status: "OFFER_EXPIRED" } });
-      return res.status(400).json({ success: false, error: "Offer has expired (3-day countdown elapsed). Application transitioned to OFFER_EXPIRED." });
+    if (app.status === "APPROVED") {
+      await finalizeBnplApproval({
+        applicationNo: app.application_no,
+        planMonths: app.plan_months,
+        comment: "Legacy accept-offer bridge — finalized without regressing order status.",
+        by: "buyer",
+        byId: req.user.id,
+      });
+      return res.json({
+        success: true,
+        message: "BNPL finalized. Buyer offer-accept is no longer part of the flow.",
+        application: await getApplicationForResponse(app.application_no),
+      });
     }
-
-    const offer = await BnplOfferLetter.findOne({ application_id: app.application_no });
-    if (!offer) return res.status(404).json({ success: false, error: "Offer letter not found" });
-
-    if (new Date(offer.valid_until) < new Date()) {
-      await BnplOfferLetter.updateOne({ _id: offer._id }, { $set: { status: "EXPIRED" } });
-      await BnplApplication.updateOne({ _id: app._id }, { $set: { status: "OFFER_EXPIRED" } });
-      return res.status(400).json({ success: false, error: "Offer has expired" });
-    }
-
-    await BnplOfferLetter.updateOne(
-      { _id: offer._id },
-      { $set: { status: "ACCEPTED", accepted_at: new Date() } }
-    );
-    await BnplApplication.updateOne(
-      { _id: app._id },
-      { $set: { status: "OFFER_ACCEPTED" } }
-    );
-
-    // Order → CONFIRMED (ready for seller to prepare)
-    await Order.updateOne(
-      { order_id: app.order_id },
-      {
-        $set: { status: "CONFIRMED", payment_status: "PAID" },
-        $push: {
-          timeline: {
-            status: "CONFIRMED",
-            at: new Date(),
-            by: "buyer",
-            by_id: req.user.id,
-            note: `BNPL offer accepted (${app.plan_months}-month plan). Order ready for seller fulfillment.`,
-          },
-        },
-      }
-    );
-
-    await notifyBuyerAndAdmin({
-      buyer_id: req.user.id,
-      title: "BNPL Offer Accepted",
-      message: `Your BNPL offer for application ${app.application_no} has been accepted. Order ${app.order_id} is now CONFIRMED.`,
-      type: "bnpl",
-      ref_id: app.application_no,
-    });
-
-    return res.json({
-      success: true,
-      message: "Offer accepted. Installment plan activated. Order is now CONFIRMED.",
-      application: await getApplicationForResponse(app.application_no),
+    return res.status(400).json({
+      success: false,
+      error: `Offer accept is disabled. Current status: ${app.status}. Wait for bank approval.`,
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -564,7 +552,7 @@ async function getApplicationForResponse(applicationNo, buyerId) {
       .map(type => {
         const b = bundle[type] || {};
         return {
-          _id: bundle._id,
+          _id: `${bundle._id}-${type}`,
           doc_type: type,
           original_name: b.original_name || "",
           mime_type: b.mime_type || "",
@@ -622,6 +610,7 @@ async function getApplicationForResponse(applicationNo, buyerId) {
           installments: offer.installments || [],
         }
       : null,
+    // docs already include resolved `url` — do not re-run publicUrl on missing file_path
     documents: docs.map(d => ({
       _id: d._id,
       doc_type: d.doc_type,

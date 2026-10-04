@@ -4,46 +4,47 @@ import {
 } from 'react-router-dom';
 
 // ── Page component imports ────────────────────────────────────────────────────
-import VisualRecPage       from './components/VisualRec/VisualRecPage';
-import SellerPage          from './components/Seller/SellerPage';
-import SellerAuthPage      from './components/Seller/SellerAuthPage';
-import SellerDashboard     from './components/Seller/SellerDashboard';
-import ProductList         from './components/Seller/ProductList';
+import VisualRecPage from './components/VisualRec/VisualRecPage';
+import SellerPage from './components/Seller/SellerPage';
+import SellerAuthPage from './components/Seller/SellerAuthPage';
+import SellerDashboard from './components/Seller/SellerDashboard';
+import ProductList from './components/Seller/ProductList';
 import SellerFinancialProj from './components/Seller/SellerFinancialProjection';
-import MarketplacePage     from './components/Marketplace/MarketplacePage';
-import ProductDetailPage   from './components/Marketplace/ProductDetailPage';
-import ThriftHomePage      from './components/Thrift/ThriftHomePage';
-import DowryPage           from './components/Dowry/DowryPage';
-import BuyerAuthPage       from './components/Buyer/BuyerAuthPage';
-import BuyerDashboard      from './components/Buyer/BuyerDashboard';
-import FinalProjection     from './components/Buyer/FinalProjection';
-import CartDrawer          from './components/Cart/CartDrawer';
-import LandingPage         from './components/LandingPage';
-import AdminLogin          from './components/Admin/AdminLogin';
-import AdminLayout         from './components/Admin/AdminLayout';
-import FinancialDashboard  from './components/Admin/FinancialDashboard';
-import SellerManagement    from './components/Admin/SellerManagement';
-import BuyerManagement     from './components/Admin/BuyerManagement';
-import CategoryManager     from './components/Admin/CategoryManager';
-import OrdersPage          from './components/Admin/OrdersPage';
-import AdminDisputesPage    from './components/Admin/AdminDisputesPage';
-import AdminWalletPage      from './components/Admin/AdminWalletPage';
-import CheckoutPage         from './components/Cart/CheckoutPage';
-import BuyerOrdersPage      from './components/Orders/BuyerOrdersPage';
+import MarketplacePage from './components/Marketplace/MarketplacePage';
+import ProductDetailPage from './components/Marketplace/ProductDetailPage';
+import ThriftHomePage from './components/Thrift/ThriftHomePage';
+import DowryPage from './components/Dowry/DowryPage';
+import BuyerAuthPage from './components/Buyer/BuyerAuthPage';
+import BuyerDashboard from './components/Buyer/BuyerDashboard';
+import FinalProjection from './components/Buyer/FinalProjection';
+import CartDrawer from './components/Cart/CartDrawer';
+import LandingPage from './components/LandingPage';
+import AdminLogin from './components/Admin/AdminLogin';
+import AdminLayout from './components/Admin/AdminLayout';
+import FinancialDashboard from './components/Admin/FinancialDashboard';
+import SellerManagement from './components/Admin/SellerManagement';
+import BuyerManagement from './components/Admin/BuyerManagement';
+import CategoryManager from './components/Admin/CategoryManager';
+import OrdersPage from './components/Admin/OrdersPage';
+import AdminDisputesPage from './components/Admin/AdminDisputesPage';
+import AdminWalletPage from './components/Admin/AdminWalletPage';
+import AdminBnplRepaymentsPage from './components/Admin/AdminBnplRepaymentsPage';
+import CheckoutPage from './components/Cart/CheckoutPage';
+import BuyerOrdersPage from './components/Orders/BuyerOrdersPage';
 import BuyerOrderDetailPage from './components/Orders/BuyerOrderDetailPage';
-import BNPLApplyPage        from './components/BNPL/BNPLApplyPage';
-import BNPLStatusPage       from './components/BNPL/BNPLStatusPage';
-import SellerOrdersPage     from './components/Seller/SellerOrdersPage';
+import BNPLApplyPage from './components/BNPL/BNPLApplyPage';
+import BNPLStatusPage from './components/BNPL/BNPLStatusPage';
+import SellerOrdersPage from './components/Seller/SellerOrdersPage';
 import SellerOrderDetailPage from './components/Seller/SellerOrderDetailPage';
-import BankLoginPage        from './components/Bank/BankLoginPage';
-import BankDashboardPage    from './components/Bank/BankDashboardPage';
-import DisputeChatPage      from './components/Disputes/DisputeChatPage';
-import SellerReviewsPage    from './components/Seller/SellerReviewsPage';
-import AdminReviewsPage     from './components/Admin/AdminReviewsPage';
-import NotificationBell     from './components/Common/NotificationBell';
-import NavBadge             from './components/Common/NavBadge';
+import BankLoginPage from './components/Bank/BankLoginPage';
+import BankDashboardPage from './components/Bank/BankDashboardPage';
+import DisputeChatPage from './components/Disputes/DisputeChatPage';
+import SellerReviewsPage from './components/Seller/SellerReviewsPage';
+import AdminReviewsPage from './components/Admin/AdminReviewsPage';
+import NotificationBell from './components/Common/NotificationBell';
+import NavBadge from './components/Common/NavBadge';
 import { useNotifications, NAV_BADGE_TYPES } from './hooks/useNotifications';
-import GlobalSearch         from './components/Common/GlobalSearch';
+import GlobalSearch from './components/Common/GlobalSearch';
 import { listBuyerOrders } from './api/orderApi';
 import { CartProvider, useCart } from './context/CartContext';
 import { SocketProvider } from './context/SocketContext';
@@ -66,18 +67,19 @@ import logo from './assets/ShaadiSahulat Logo PNG.png';
 // Re-exported here so existing imports of { useAuth } from '../../App' keep working.
 export { useAuth };
 
+
 // ── Level helpers ─────────────────────────────────────────────────────────────
 
 function getBuyerLevel(orders = 0) {
-  if (orders >= 7) return { level: 3, label: 'Loyal Buyer',  color: 'from-teal-500 to-green-500',  next: null, nextAt: null };
-  if (orders >= 3) return { level: 2, label: 'Active Buyer', color: 'from-[#a37b3d] to-[#ECD4A8]', next: 3,    nextAt: 7,   progress: (orders - 3) / 4 };
-  return            { level: 1, label: 'New Buyer',    color: 'from-[#c09858] to-[#ECD4A8]', next: 2,    nextAt: 3,   progress: orders / 3 };
+  if (orders >= 7) return { level: 3, label: 'Loyal Buyer', color: 'from-teal-500 to-green-500', next: null, nextAt: null };
+  if (orders >= 3) return { level: 2, label: 'Active Buyer', color: 'from-[#a37b3d] to-[#ECD4A8]', next: 3, nextAt: 7, progress: (orders - 3) / 4 };
+  return { level: 1, label: 'New Buyer', color: 'from-[#c09858] to-[#ECD4A8]', next: 2, nextAt: 3, progress: orders / 3 };
 }
 
 function getSellerLevel(orders = 0) {
-  if (orders >= 50) return { level: 3, label: 'Elite Seller',   color: 'from-amber-500 to-orange-500', next: null, nextAt: null };
-  if (orders >= 10) return { level: 2, label: 'Trusted Seller', color: 'from-blue-500 to-teal-500',   next: 3,    nextAt: 50,  progress: (orders - 10) / 40 };
-  return             { level: 1, label: 'Starter Seller', color: 'from-[#ECD4A8] to-[#a37b3d]',  next: 2,    nextAt: 10,  progress: orders / 10 };
+  if (orders >= 50) return { level: 3, label: 'Elite Seller', color: 'from-amber-500 to-orange-500', next: null, nextAt: null };
+  if (orders >= 10) return { level: 2, label: 'Trusted Seller', color: 'from-blue-500 to-teal-500', next: 3, nextAt: 50, progress: (orders - 10) / 40 };
+  return { level: 1, label: 'Starter Seller', color: 'from-[#ECD4A8] to-[#a37b3d]', next: 2, nextAt: 10, progress: orders / 10 };
 }
 
 function LevelBadge({ level, label, colorClass }) {
@@ -117,7 +119,7 @@ function BuyerAccountView({ buyer }) {
             setRealOrderCount(res.orders.length);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [buyer?.buyer_id]);
 
@@ -174,9 +176,9 @@ function BuyerAccountView({ buyer }) {
         <LevelProgress info={levelInfo} ordersLabel={`${realOrderCount} order${realOrderCount !== 1 ? 's' : ''}`} />
         <div className="mt-5 grid grid-cols-3 gap-3 text-xs text-center">
           {[
-            { l: 1, label: 'New Buyer',    at: 'On registration' },
+            { l: 1, label: 'New Buyer', at: 'On registration' },
             { l: 2, label: 'Active Buyer', at: '3+ orders' },
-            { l: 3, label: 'Loyal Buyer',  at: '7+ orders' },
+            { l: 3, label: 'Loyal Buyer', at: '7+ orders' },
           ].map(({ l, label, at }) => (
             <div key={l} className={`rounded-2xl p-3 border transition-all ${levelInfo.level >= l ? 'bg-[#FFF5F8] border-[#ECD4A8] text-[#a37b3d] font-bold shadow-sm' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
               <p className="text-sm font-extrabold">L{l}</p>
@@ -191,9 +193,9 @@ function BuyerAccountView({ buyer }) {
 }
 
 function SellerAccountView({ seller }) {
-  const orders    = seller?.completed_orders || seller?.orders_count || 0;
+  const orders = seller?.completed_orders || seller?.orders_count || 0;
   const levelInfo = getSellerLevel(orders);
-  const joined    = seller?.created_at
+  const joined = seller?.created_at
     ? new Date(seller.created_at).toLocaleDateString('en-PK', { year: 'numeric', month: 'short' })
     : 'Recently';
   const maxListings = seller?.max_listings ?? (seller?.seller_type === 'company' ? '∞' : 5);
@@ -252,7 +254,7 @@ function SellerAccountView({ seller }) {
           {[
             { l: 1, label: 'Starter Seller', at: 'On registration' },
             { l: 2, label: 'Trusted Seller', at: '10+ orders' },
-            { l: 3, label: 'Elite Seller',   at: '50+ orders' },
+            { l: 3, label: 'Elite Seller', at: '50+ orders' },
           ].map(({ l, label, at }) => (
             <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-[#FFF5F8] border-[#ECD4A8] text-[#a37b3d]' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
               <p className="font-bold">L{l}</p>
@@ -269,23 +271,23 @@ function SellerAccountView({ seller }) {
 // ── Nav view lists ────────────────────────────────────────────────────────────
 
 const BUYER_VIEWS = [
-  { id: 'dashboard',   label: 'Dashboard',        icon: <LayoutDashboard size={20} /> },
-  { id: 'marketplace', label: 'Marketplace',       icon: <ShoppingBag size={20} /> },
-  { id: 'visual',      label: 'Find by Photo',     icon: <Camera size={20} /> },
-  { id: 'dowry',       label: 'Budget Estimator',  icon: <Calculator size={20} /> },
-  { id: 'orders',      label: 'My Orders',         icon: <Package size={20} /> },
-  { id: 'bnpl',        label: 'My BNPL',           icon: <ShoppingCart size={20} /> },
-  { id: 'account',     label: 'My Account',        icon: <User size={20} /> },
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+  { id: 'marketplace', label: 'Marketplace', icon: <ShoppingBag size={20} /> },
+  { id: 'visual', label: 'Find by Photo', icon: <Camera size={20} /> },
+  { id: 'dowry', label: 'Budget Estimator', icon: <Calculator size={20} /> },
+  { id: 'orders', label: 'My Orders', icon: <Package size={20} /> },
+  { id: 'bnpl', label: 'My BNPL', icon: <ShoppingCart size={20} /> },
+  { id: 'account', label: 'My Account', icon: <User size={20} /> },
 ];
 
 const SELLER_VIEWS = [
-  { id: 'dashboard', label: 'Dashboard',            icon: <LayoutDashboard size={20} /> },
-  { id: 'upload',    label: 'Upload Product',       icon: <PlusCircle size={20} /> },
-  { id: 'products',  label: 'My Products',          icon: <Package size={20} /> },
-  { id: 'orders',    label: 'Orders to Fulfill',    icon: <ShoppingCart size={20} /> },
-  { id: 'reviews',   label: 'Reviews',              icon: <Star size={20} /> },
-  { id: 'finance',   label: 'Financial Projection', icon: <LineChart size={20} /> },
-  { id: 'account',   label: 'My Account',           icon: <User size={20} /> },
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+  { id: 'upload', label: 'Upload Product', icon: <PlusCircle size={20} /> },
+  { id: 'products', label: 'My Products', icon: <Package size={20} /> },
+  { id: 'orders', label: 'Orders to Fulfill', icon: <ShoppingCart size={20} /> },
+  { id: 'reviews', label: 'Reviews', icon: <Star size={20} /> },
+  { id: 'finance', label: 'Financial Projection', icon: <LineChart size={20} /> },
+  { id: 'account', label: 'My Account', icon: <User size={20} /> },
 ];
 
 // Maps old view IDs (used by SellerDashboard's onNavigate) to new URL segments
@@ -299,6 +301,7 @@ const SELLER_NAV_MAP = {
 
 // ── Route guards ──────────────────────────────────────────────────────────────
 
+
 // Role-aware guards backed by the server-verified session (see src/auth/RequireRole.jsx).
 // They never consult localStorage, sessionStorage or ?as= query parameters.
 function RequireBuyer()  { return <RequireRole role="buyer" />; }
@@ -309,8 +312,8 @@ function RequireAdmin()  { return <RequireRole role="admin" />; }
 
 function BuyerLayout() {
   const { buyer, logoutBuyer } = useAuth();
-  const navigate   = useNavigate();
-  const location   = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { totalItems, setBuyerId, items, addItem } = useCart();
   const [cartOpen, setCart] = useState(false);
   const { navBadges, markTypesRead } = useNotifications(buyer?.buyer_id, 'buyer');
@@ -368,11 +371,10 @@ function BuyerLayout() {
             <button
               key={v.id}
               onClick={() => navigate(`/buyer/${v.id}`)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
-                seg === v.id
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${seg === v.id
                   ? 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
                   : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-gray-800'
-              }`}
+                }`}
             >
               <span className={`text-lg transition-transform duration-300 ${seg === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
               <span>{v.label}</span>
@@ -400,14 +402,15 @@ function BuyerLayout() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col min-h-screen min-w-0">
+      <main className="flex-1 flex flex-col min-h-screen">
         <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
           <div className="px-4 py-3 flex items-center justify-between gap-3">
             <div className="md:hidden flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
               <h1 className="font-bold text-gray-800">ShaadiSahulat</h1>
             </div>
-            {/* Search bar — marketplace / thrift / product pages only */}
+            {/* Big-Task-Batch2 §Thrift Search — common Search bar in the
+                Navbar, shown ONLY on marketplace/thrift/product pages. */}
             {showGlobalSearch && (
               <div className="hidden md:block flex-1 max-w-md">
                 <GlobalSearch onSelectProduct={(p) => {
@@ -420,6 +423,7 @@ function BuyerLayout() {
             )}
             <div className="flex items-center gap-2 ml-auto">
               <span className="hidden sm:block text-xs text-gray-500">Hi, {buyer?.name?.split(' ')[0]}</span>
+              {/* Big-Task-Batch2 §0: hide the NotificationBell on the Dashboard page only */}
               {!isDashboard && (
                 <NotificationBell
                   userId={buyer?.buyer_id}
@@ -514,11 +518,10 @@ function SellerLayout() {
             <button
               key={v.id}
               onClick={() => navigate(`/seller/${v.id}`)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
-                seg === v.id
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${seg === v.id
                   ? 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
                   : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-gray-800'
-              }`}
+                }`}
             >
               <span className={`text-lg transition-transform duration-300 ${seg === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
               <span>{v.label}</span>
@@ -605,8 +608,8 @@ function BuyerDashboardPage() {
 
 function BuyerMarketplacePage() {
   const { buyer } = useAuth();
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [highlightId, setHighlightId] = useState(location.state?.highlightProductId || null);
 
   return (
@@ -623,7 +626,7 @@ function BuyerMarketplacePage() {
 
 function BuyerThriftPage() {
   const { buyer } = useAuth();
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   return (
     <ThriftHomePage
       buyer={buyer}
@@ -634,7 +637,7 @@ function BuyerThriftPage() {
 
 function BuyerVisualPage() {
   const { buyer } = useAuth();
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   return (
     <VisualRecPage
       userId={buyer?.buyer_id}
@@ -667,15 +670,15 @@ function BuyerAccountPage() {
 }
 
 function BuyerProductDetailPage() {
-  const { buyer }    = useAuth();
-  const navigate     = useNavigate();
+  const { buyer } = useAuth();
+  const navigate = useNavigate();
   const { productId } = useParams();
-  const location     = useLocation();
-  const product      = location.state?.product || null;
+  const location = useLocation();
+  const product = location.state?.product || null;
   // Determine storefront from URL: /buyer/retail/product/:id  OR  /buyer/thrift/product/:id
   // Fall back to "marketplace" for legacy /buyer/product/:id and /buyer/thrift/:id links.
   const pathSegments = location.pathname.split('/');
-  const from         = pathSegments.includes('thrift') ? 'thrift' : 'marketplace';
+  const from = pathSegments.includes('thrift') ? 'thrift' : 'marketplace';
 
   const goListing = (crumb) => {
     if (from === 'thrift') {
@@ -706,7 +709,7 @@ function BuyerProductDetailPage() {
 
 function SellerDashboardPage() {
   const { seller } = useAuth();
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
   return (
     <SellerDashboard
       seller={seller}
@@ -790,6 +793,11 @@ function AdminDisputesPageWrapper() {
 function AdminWalletPageWrapper() {
   const { admin } = useAuth();
   return <AdminWalletPage admin={admin} />;
+}
+
+function AdminBnplRepaymentsPageWrapper() {
+  const { admin } = useAuth();
+  return <AdminBnplRepaymentsPage admin={admin} />;
 }
 function FinancialDashboardWrapper() {
   const { admin } = useAuth();
@@ -938,24 +946,24 @@ export default function App() {
             <Route path="/buyer" element={<RequireBuyer />}>
               <Route element={<BuyerLayout />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard"           element={<BuyerDashboardPage />} />
-                <Route path="marketplace"         element={<BuyerMarketplacePage />} />
-                <Route path="thrift"              element={<BuyerThriftPage />} />
+                <Route path="dashboard" element={<BuyerDashboardPage />} />
+                <Route path="marketplace" element={<BuyerMarketplacePage />} />
+                <Route path="thrift" element={<BuyerThriftPage />} />
                 {/* ── Storefront-aware PDP URLs (Big-Task-Batch2 §1.1.3) ── */}
                 {/* /buyer/retail/product/:id  vs  /buyer/thrift/product/:id  */}
                 <Route path="retail/product/:productId" element={<BuyerProductDetailPage />} />
                 <Route path="thrift/product/:productId" element={<BuyerProductDetailPage />} />
                 {/* Legacy fallback routes — still work for older links */}
-                <Route path="thrift/:productId"   element={<BuyerProductDetailPage />} />
-                <Route path="visual"              element={<BuyerVisualPage />} />
-                <Route path="dowry"               element={<BuyerDowryPage />} />
-                <Route path="projection"          element={<Navigate to="/buyer/dashboard" replace />} />
-                <Route path="account"             element={<BuyerAccountPage />} />
-                <Route path="product/:productId"  element={<BuyerProductDetailPage />} />
-                <Route path="orders"              element={<BuyerOrdersPageWrapper />} />
-                <Route path="orders/:orderId"     element={<BuyerOrderDetailPageWrapper />} />
-                <Route path="bnpl"                element={<BNPLStatusPageWrapper />} />
-                <Route path="checkout"            element={<CheckoutPageWrapper />} />
+                <Route path="thrift/:productId" element={<BuyerProductDetailPage />} />
+                <Route path="visual" element={<BuyerVisualPage />} />
+                <Route path="dowry" element={<BuyerDowryPage />} />
+                <Route path="projection" element={<Navigate to="/buyer/dashboard" replace />} />
+                <Route path="account" element={<BuyerAccountPage />} />
+                <Route path="product/:productId" element={<BuyerProductDetailPage />} />
+                <Route path="orders" element={<BuyerOrdersPageWrapper />} />
+                <Route path="orders/:orderId" element={<BuyerOrderDetailPageWrapper />} />
+                <Route path="bnpl" element={<BNPLStatusPageWrapper />} />
+                <Route path="checkout" element={<CheckoutPageWrapper />} />
               </Route>
             </Route>
 
@@ -968,7 +976,7 @@ export default function App() {
             <Route path="/disputes/:disputeId" element={<DisputeChatWrapper />} />
 
             {/* Bank officer portal — fully standalone */}
-            <Route path="/bank/login"     element={<BankLoginPage />} />
+            <Route path="/bank/login" element={<BankLoginPage />} />
             <Route path="/bank/dashboard" element={<BankDashboardPage />} />
 
             {/* Seller */}
@@ -977,14 +985,14 @@ export default function App() {
               <Route element={<SellerLayout />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<SellerDashboardPage />} />
-                <Route path="upload"    element={<SellerUploadPage />} />
-                <Route path="products"  element={<SellerProductsPage />} />
-                <Route path="finance"   element={<SellerFinancePage />} />
-                <Route path="orders"    element={<SellerOrdersPageWrapper />} />
+                <Route path="upload" element={<SellerUploadPage />} />
+                <Route path="products" element={<SellerProductsPage />} />
+                <Route path="finance" element={<SellerFinancePage />} />
+                <Route path="orders" element={<SellerOrdersPageWrapper />} />
                 <Route path="orders/:orderId" element={<SellerOrderDetailPageWrapper />} />
-                <Route path="reviews"   element={<SellerReviewsPageWrapper />} />
-                <Route path="account"   element={<SellerAccountPage />} />
-                <Route path="offers"    element={<Navigate to="dashboard" replace />} />
+                <Route path="reviews" element={<SellerReviewsPageWrapper />} />
+                <Route path="account" element={<SellerAccountPage />} />
+                <Route path="offers" element={<Navigate to="dashboard" replace />} />
               </Route>
             </Route>
 
@@ -993,17 +1001,18 @@ export default function App() {
             <Route path="/admin" element={<RequireAdmin />}>
               <Route element={<AdminLayoutWrapper />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard"   element={<FinancialDashboardWrapper />} />
-                <Route path="sellers"     element={<SellerManagement />} />
-                <Route path="buyers"      element={<BuyerManagement />} />
+                <Route path="dashboard" element={<FinancialDashboardWrapper />} />
+                <Route path="sellers" element={<SellerManagement />} />
+                <Route path="buyers" element={<BuyerManagement />} />
                 <Route path="marketplace" element={<MarketplacePage isAdminView={true} />} />
-                <Route path="categories"  element={<CategoryManager />} />
-                <Route path="banners"     element={<Navigate to="dashboard" replace />} />
-                <Route path="orders"      element={<AdminOrdersPageWrapper />} />
-                <Route path="disputes"    element={<AdminDisputesPageWrapper />} />
-                <Route path="reviews"     element={<AdminReviewsPageWrapper />} />
-                <Route path="wallet"      element={<AdminWalletPageWrapper />} />
-                <Route path="security"    element={<AdminSecurityPage />} />
+<Route path="categories" element={<CategoryManager />} />
+<Route path="banners" element={<Navigate to="dashboard" replace />} />
+<Route path="orders" element={<AdminOrdersPageWrapper />} />
+<Route path="disputes" element={<AdminDisputesPageWrapper />} />
+<Route path="reviews" element={<AdminReviewsPageWrapper />} />
+<Route path="wallet" element={<AdminWalletPageWrapper />} />
+<Route path="security" element={<AdminSecurityPage />} />
+<Route path="bnpl-repayments" element={<AdminBnplRepaymentsPageWrapper />} />
               </Route>
             </Route>
 

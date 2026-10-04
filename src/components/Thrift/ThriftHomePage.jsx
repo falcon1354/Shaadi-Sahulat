@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import sellerApi, { resolveImageUrl } from '../../api/sellerApi';
 import { useCategories, resolveCategoryIconUrl } from '../../hooks/useCategories';
 import ThriftProductCard from './ThriftProductCard';
+import heroThriftImg from '../../assets/hero/Hero_Thrift.jpeg';
 
 // Helper: render a category icon that may be either an emoji string OR an
 // admin-uploaded PNG path (e.g. "Categories/<id>.png"). Keeps ThriftHomePage
@@ -64,30 +65,7 @@ export default function ThriftHomePage({ buyer, onProductClick }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Thrift-specific Navbar with distinct styling */}
-      <div className="bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-2">
-                <span className="text-3xl">♻️</span> Thrift Marketplace
-              </h1>
-              <p className="text-emerald-100 text-sm mt-1">Pre-loved items at amazing prices — every item is one-of-a-kind</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate('/buyer/marketplace')}
-                className="px-4 py-2 bg-white/20 backdrop-blur-md text-white text-sm font-bold rounded-xl hover:bg-white/30 transition-all border border-white/30"
-              >
-                🛍️ New Marketplace
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
+    <div className="space-y-8">
         {/* Category Section */}
         <div>
           <h2 className="text-lg font-extrabold text-gray-900 mb-3 flex items-center gap-2">
@@ -169,7 +147,6 @@ export default function ThriftHomePage({ buyer, onProductClick }) {
           </p>
           <p className="text-amber-600 text-xs mt-1">Please review condition and photos carefully before purchasing</p>
         </div>
-      </div>
     </div>
   );
 }

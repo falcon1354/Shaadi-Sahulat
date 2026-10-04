@@ -110,7 +110,7 @@ function fake(Model, name) {
 
 const MODELS = ["Buyer", "Admin", "Order", "Package", "Dispute", "DisputeMessage", "Review", "Notification",
   "DowryEstimation", "VisualRecommendation", "Banner", "BnplApplication", "BnplBank", "BnplOfferLetter",
-  "BnplDocumentBundle", "BnplDocument", "BnplUser", "SellerPayout", "AdminWallet", "AdminCategory", "AuthSession"];
+  "BnplDocumentBundle", "BnplDocument", "BnplUser", "SellerPayout", "AdminWallet", "AdminCategory", "AuthSession", "Seller"];
 const M = {};
 for (const n of MODELS) { M[n] = require(`../../models/${n}`); fake(M[n], n); }
 

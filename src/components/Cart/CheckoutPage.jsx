@@ -1,6 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import orderApi from "../../api/orderApi";
-import { saveAddress, getSavedAddresses } from "../../api/buyerApi";
+import { saveAddress, getSavedAddresses, getFullBuyerData } from "../../api/buyerApi";
+
+/** Refresh local dowry budgets from Mongo after order (spent is deducted server-side). */
+function syncDowryFromServer(buyerId) {
+  if (!buyerId) return;
+  getFullBuyerData(buyerId).then(res => {
+    if (!res?.success || !res.dowry_estimation?.category_budgets) return;
+    const est = res.dowry_estimation;
+    const budgets = est.category_budgets;
+    const total = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
+    const originalIds = Array.isArray(est.original_category_ids) && est.original_category_ids.length
+      ? est.original_category_ids
+      : Object.keys(budgets).filter(k => (budgets[k]?.estimated || 0) > 0);
+    const payload = {
+      estimation_id: est._id,
+      total_budget: total || est.total_recommended_budget,
+      category_budgets: budgets,
+      original_category_ids: originalIds,
+      saved_at: est.updated_at || est.created_at || new Date().toISOString(),
+    };
+    const s = JSON.stringify(payload);
+    localStorage.setItem(`ss_dowry_${buyerId}`, s);
+    localStorage.setItem('ss_dowry_latest', s);
+    window.dispatchEvent(new CustomEvent('dowry-updated', { detail: { buyerId } }));
+  }).catch(() => {});
+}
 
 function formatPhone(raw) {
   const digits = raw.replace(/\D/g, '');
@@ -246,6 +271,8 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
       });
       if (!result.success) throw new Error(result.error || "Failed to create order");
       setPlacedOrder(result.order);
+      // Sync spent/remaining from Mongo (order route already deducted once)
+      syncDowryFromServer(buyer?.buyer_id);
       // Save address for future use
       if (buyer?.buyer_id && address.line1) {
         saveAddress(buyer.buyer_id, shippingAddress).catch(() => {});

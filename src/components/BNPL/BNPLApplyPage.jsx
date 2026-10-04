@@ -196,7 +196,7 @@ export default function BNPLApplyPage({ buyer }) {
           <ul className="text-sm text-gray-700 list-disc pl-5 mb-4">
             <li>Cart total: PKR {order.total_amount.toLocaleString()}</li>
             <li>Minimum BNPL amount: PKR 5,000</li>
-            {order.total_amount < 50000 && <li>Fast-path available if you have prior approved applications (auto-approval).</li>}
+            {order.total_amount < 5000 && <li>Amounts under PKR 5,000 are auto-approved instantly.</li>}
           </ul>
           <button onClick={checkElig} disabled={loading}
             className="w-full py-2.5 bg-[#a37b3d] hover:bg-[#8a6633] text-white rounded-xl text-sm font-semibold disabled:opacity-50">
@@ -304,7 +304,7 @@ export default function BNPLApplyPage({ buyer }) {
           <p className="text-sm">Documents: CNIC front, CNIC back, utility bill</p>
           {eligibility?.auto_approve && (
             <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-2 text-xs">
-              ✓ Eligible for auto-approval (amount &lt; PKR 50,000 + prior verified docs).
+              ✓ Eligible for auto-approval (amount &lt; PKR 5,000).
             </div>
           )}
           <label className="flex items-center text-xs text-gray-600">

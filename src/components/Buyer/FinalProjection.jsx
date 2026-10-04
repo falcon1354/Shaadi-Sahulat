@@ -8,6 +8,7 @@ import { getFullBuyerData } from '../../api/buyerApi';
 import orderApi from '../../api/orderApi';
 import bnplApi from '../../api/bnplApi';
 import { filterDisplayBudgetEntries, isRetiredCategory, splitAllocatedAndDeleted } from '../../lib/dowryDisplay';
+import { spentByCategoryFromOrders, applySpentToBudgets } from '../../lib/dowrySpent';
 import CategoryThumb from '../Dowry/CategoryThumb';
 import {
   Sparkles, DollarSign, Wallet, ArrowUpRight, Info, HelpCircle,
@@ -52,56 +53,63 @@ export default function FinalProjection({ buyer }) {
   const [historyPage, setHistoryPage]   = useState(1);
   const HISTORY_PAGE_SIZE = 10;
 
-  // Mount: load from localStorage, seed from MongoDB if empty
+  // Mount: local first, then Mongo + all orders for a stable spent overlay
   useEffect(() => {
     const local = readDowry(buyerId);
-    if (local) { setDowry(local); return; }
+    if (local) setDowry(local);
     if (!buyerId) return;
 
-    getFullBuyerData(buyerId).then(res => {
-      if (!res?.success || !res.dowry_estimation) return;
-      const est     = res.dowry_estimation;
-      const budgets = est.category_budgets;
-      if (!budgets || !Object.keys(budgets).length) return;
-      const total   = Object.values(budgets).reduce((s, v) => s + (v?.estimated || 0), 0);
-      const originalIds = Array.isArray(est.original_category_ids) && est.original_category_ids.length
-        ? est.original_category_ids
-        : Object.keys(budgets).filter(k => (budgets[k]?.estimated || 0) > 0);
-      const payload = {
-        estimation_id:         est._id,
-        total_budget:          total || est.total_recommended_budget,
-        category_budgets:      budgets,
-        original_category_ids: originalIds,
-        saved_at:              est.updated_at || est.created_at || new Date().toISOString(),
-      };
-      const s = JSON.stringify(payload);
-      localStorage.setItem(`ss_dowry_${buyerId}`, s);
-      localStorage.setItem('ss_dowry_latest', s);
-      setDowry(payload);
-    }).catch(() => {});
+    let cancelled = false;
+    (async () => {
+      try {
+        const [fullRes, ordersRes, appsRes] = await Promise.all([
+          getFullBuyerData(buyerId),
+          orderApi.listBuyerOrders(buyerId, { page: 1, limit: 200 }),
+          bnplApi.listMyApplications(buyerId),
+        ]);
+        if (cancelled) return;
+
+        const orderList = ordersRes?.success ? (ordersRes.orders || []) : [];
+        const apps = appsRes?.success ? (appsRes.applications || []) : [];
+        setOrders(orderList);
+        setBnplApps(apps);
+
+        const est = fullRes?.success ? fullRes.dowry_estimation : null;
+        const budgets = est?.category_budgets || local?.category_budgets;
+        if (!budgets || !Object.keys(budgets).length) return;
+
+        const spentByCat = spentByCategoryFromOrders(orderList, apps);
+        const { budgets: synced } = applySpentToBudgets(budgets, spentByCat);
+        const total = Object.values(synced).reduce((s, v) => s + (v?.estimated || 0), 0);
+        const originalIds = Array.isArray(est?.original_category_ids) && est.original_category_ids.length
+          ? est.original_category_ids
+          : Object.keys(synced).filter((k) => (synced[k]?.estimated || 0) > 0);
+        const payload = {
+          estimation_id: est?._id || local?.estimation_id,
+          total_budget: total || est?.total_recommended_budget,
+          category_budgets: synced,
+          original_category_ids: originalIds,
+          saved_at: est?.updated_at || est?.created_at || new Date().toISOString(),
+        };
+        const s = JSON.stringify(payload);
+        localStorage.setItem(`ss_dowry_${buyerId}`, s);
+        localStorage.setItem('ss_dowry_latest', s);
+        setDowry(payload);
+      } catch (_) { /* keep local */ }
+    })();
+
+    return () => { cancelled = true; };
   }, [buyerId]);
 
-  // Re-read when any component shifts budget
+  // Re-read when any component shifts budget (do NOT dispatch on mount — that races other views)
   useEffect(() => {
     const handler = (e) => {
       if (!e.detail?.buyerId || e.detail.buyerId === buyerId) {
         setDowry(readDowry(buyerId));
       }
     };
-    window.dispatchEvent(new CustomEvent('dowry-updated', { detail: { buyerId } }));
     window.addEventListener('dowry-updated', handler);
     return () => window.removeEventListener('dowry-updated', handler);
-  }, [buyerId]);
-
-  // Fetch buyer orders + BNPL apps (for the Purchase History section)
-  useEffect(() => {
-    if (!buyerId) return;
-    orderApi.listBuyerOrders(buyerId, { page: 1, limit: 100 }).then(r => {
-      setOrders(r.success ? r.orders : []);
-    }).catch(() => {});
-    bnplApi.listMyApplications(buyerId).then(r => {
-      setBnplApps(r.success ? r.applications : []);
-    }).catch(() => {});
   }, [buyerId]);
 
   // Build the Purchase History entries — completed/delivered PAID orders,

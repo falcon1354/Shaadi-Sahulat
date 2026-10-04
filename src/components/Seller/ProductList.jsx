@@ -268,6 +268,81 @@ function EditModal({ product, onSave, onClose }) {
   );
 }
 
+function ConvertListingModal({ product, categories, onSaved, onClose }) {
+  const cat = categories.find(c => c.category_id === product.major_category);
+  const thriftAllowed = (cat?.storefront || 'both') !== 'new';
+  const isThrift = (product.marketplace_type || '').toLowerCase() === 'thrift';
+  const target = isThrift ? 'new' : 'thrift';
+  const [price, setPrice] = useState(isThrift ? String(product.price || '') : String(product.discount_price || product.price || ''));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = async () => {
+    if (target === 'thrift' && !thriftAllowed) {
+      setError('This category/subcategory is not enabled for Thrift listings.');
+      return;
+    }
+    const num = Number(price);
+    if (!Number.isFinite(num) || num <= 0) {
+      setError(target === 'thrift' ? 'Enter a Discounted Price.' : 'Enter a New Price.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const updates = target === 'thrift'
+        ? {
+            marketplace_type: 'thrift',
+            condition: 'Thrift',
+            discount_price: num,
+            original_price: product.original_price || product.price,
+            stock_quantity: 1,
+          }
+        : {
+            marketplace_type: 'new',
+            condition: 'New',
+            price: num,
+            discount_price: null,
+            original_price: '',
+          };
+      const data = await sellerApi.updateProduct(product.product_id, updates);
+      if (!data.success && data.success !== undefined) throw new Error(data.error || 'Update failed');
+      onSaved(data.product || { ...product, ...updates });
+    } catch (e) {
+      setError(e.message || 'Conversion failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-bold text-gray-800 mb-2">
+          Convert to {target === 'thrift' ? 'Thrift' : 'New'}
+        </h3>
+        <p className="text-xs text-gray-500 mb-4">{product.title}</p>
+        {!thriftAllowed && target === 'thrift' && (
+          <p className="text-xs text-red-600 mb-3">Thrift is not enabled for this category.</p>
+        )}
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {target === 'thrift' ? 'Discounted Price (PKR)' : 'New Price (PKR)'}
+        </label>
+        <input type="number" value={price} onChange={e => setPrice(e.target.value)}
+          className="w-full border rounded-lg px-3 py-2 text-sm mb-3" />
+        {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2 border rounded-lg text-sm">Cancel</button>
+          <button onClick={submit} disabled={saving || (target === 'thrift' && !thriftAllowed)}
+            className="flex-1 py-2 bg-[#a37b3d] text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+            {saving ? 'Saving…' : 'Convert'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── ProductList (full redesign) ───────────────────────────────────────────
 
 export default function ProductList({ sellerId, refreshTrigger, seller }) {
@@ -280,6 +355,7 @@ export default function ProductList({ sellerId, refreshTrigger, seller }) {
   const [loading,  setLoading]  = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [editing,  setEditing]  = useState(null);
+  const [convertTarget, setConvertTarget] = useState(null);
   const [error,    setError]    = useState('');
 
   // Filter / sort state
@@ -478,7 +554,7 @@ export default function ProductList({ sellerId, refreshTrigger, seller }) {
             className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#a37b3d]">
             <option value="all">All</option>
             <option value="available">Available</option>
-            <option value="out_of_stock">Sold</option>
+            <option value="out_of_stock">Out of Stock</option>
             <option value="freeze">Freeze</option>
             <option value="hidden">Hidden</option>
             <option value="processing">Processing</option>
@@ -619,10 +695,23 @@ export default function ProductList({ sellerId, refreshTrigger, seller }) {
                               ? (STATUS_COLORS.freeze || 'bg-slate-200 text-slate-700')
                               : (STATUS_COLORS[prod.availability_status] || 'bg-emerald-100 text-emerald-700')
                           }`}>
-                            {isFreeze ? 'Freeze' : (prod.availability_status || 'available')}
+                            {isFreeze
+                              ? 'Freeze'
+                              : (Number(prod.stock_quantity) > 0 && (prod.availability_status || '') === 'out_of_stock')
+                                ? 'Available'
+                                : (prod.availability_status === 'out_of_stock'
+                                    ? 'Out of Stock'
+                                    : (prod.availability_status || 'available'))}
                           </span>
                           {/* Action buttons */}
                           <div className="flex gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => setConvertTarget(prod)}
+                              title="Convert New ↔ Thrift"
+                              className="px-2 py-1 text-[10px] font-bold text-[#a37b3d] border border-[#ECD4A8] rounded-lg hover:bg-[#FFF5F8]"
+                            >
+                              {(prod.marketplace_type || 'new') === 'thrift' ? '→ New' : '→ Thrift'}
+                            </button>
                             <button
                               onClick={() => setEditing(prod)}
                               title="Edit"
@@ -660,6 +749,17 @@ export default function ProductList({ sellerId, refreshTrigger, seller }) {
       {/* Edit modal */}
       {editing && (
         <EditModal product={editing} onSave={handleSaved} onClose={() => setEditing(null)} />
+      )}
+      {convertTarget && (
+        <ConvertListingModal
+          product={convertTarget}
+          categories={categories}
+          onSaved={(updated) => {
+            setProducts(ps => ps.map(p => p.product_id === updated.product_id ? { ...p, ...updated } : p));
+            setConvertTarget(null);
+          }}
+          onClose={() => setConvertTarget(null)}
+        />
       )}
     </div>
   );

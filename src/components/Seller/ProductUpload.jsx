@@ -581,13 +581,6 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                 {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
-              <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
           </div>
         )}
 
@@ -607,13 +600,6 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
                 {FURNITURE_MATS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
-              <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
           </div>
         )}
 
@@ -624,13 +610,6 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
               <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
               <input type="text" value={form.brand} onChange={set('brand')} placeholder="e.g. Samsung, Haier, Dawlance"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
-              <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
             </div>
           </div>
         )}
@@ -648,13 +627,6 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
               <input type="text" value={form.material} onChange={set('material')} placeholder="e.g. Steel, Bone China"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
-              <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
           </div>
         )}
 
@@ -665,13 +637,6 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
               <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
               <input type="text" value={form.color} onChange={set('color')} placeholder="e.g. Warm White, Gold"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
-              <select value={form.condition} onChange={set('condition')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
             </div>
           </div>
         )}
