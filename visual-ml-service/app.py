@@ -73,8 +73,13 @@ except ImportError:
     def print_dataset_report(*_a, **_k):
         pass
 
+from internal_auth import install_internal_guard, frontend_origins, debug_enabled
+
 app = Flask(__name__)
-CORS(app)
+# Browser access is limited to the configured frontend; everything except /images
+# and /health additionally requires the Node backend's X-Internal-Secret.
+CORS(app, origins=frontend_origins())
+install_internal_guard(app)
 
 # Register blueprints
 app.register_blueprint(seller_bp)
@@ -487,4 +492,5 @@ if __name__ == "__main__":
 
     print_dataset_report()
     print(f"[server] Starting on port {FLASK_PORT} …")
-    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=True)
+    # Localhost by default (VISUAL_ML_HOST); the Werkzeug debugger stays off unless FLASK_DEBUG=true.
+    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=debug_enabled())

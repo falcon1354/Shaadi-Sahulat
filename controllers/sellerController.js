@@ -7,31 +7,16 @@
 
 const sellerClient = require("../services/sellerClient");
 
-// ── Seller registration ────────────────────────────────────────────────────
-
-async function registerSeller(req, res) {
-  try {
-    const result = await sellerClient.registerSeller(req.body);
-    const code   = result.success === false ? (result.error?.includes("already") ? 409 : 400) : 201;
-    res.status(code).json(result);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-}
-
-async function loginSeller(req, res) {
-  try {
-    const result = await sellerClient.loginSeller(req.body);
-    const code   = result.success === false ? 401 : 200;
-    res.status(code).json(result);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-}
+// Registration / login live in controllers/authController.js (POST /api/auth/*).
+// The legacy /api/seller/register + /login handlers were removed in Phase 2I.
 
 async function getSellerProfile(req, res) {
   try {
     const result = await sellerClient.getSellerProfile(req.params.seller_id);
+    if (result?.seller) {  // never expose credentials / auth state
+      delete result.seller.password_hash;
+      delete result.seller.auth;
+    }
     const code   = result.success === false ? 404 : 200;
     res.status(code).json(result);
   } catch (err) {
@@ -150,8 +135,6 @@ async function getPriceSuggestion(req, res) {
 }
 
 module.exports = {
-  registerSeller,
-  loginSeller,
   getSellerProfile,
   getSellerByEmail,
   uploadProduct,

@@ -1,7 +1,8 @@
 const express = require("express");
 const router  = express.Router();
+const { requireAdmin } = require("../lib/auth");
+const { endpointRemoved } = require("../lib/authorize");
 const {
-  loginAdmin,
   getAllSellers,
   getSellerProducts,
   removeProduct,
@@ -30,8 +31,11 @@ const {
 // BNPL + Order Processing admin extensions
 const adminExtRoutes = require("./adminExt");
 
-// Auth
-router.post("/login",   loginAdmin);
+// Legacy admin login was removed in Phase 2I (all methods → 410 Gone). There is no admin signup.
+router.all("/login", endpointRemoved("POST /api/auth/login"));
+
+// Everything below requires a verified admin (JWT): no identity → 401, buyer/seller → 403.
+router.use(requireAdmin);
 
 // Sellers
 router.get( "/sellers",                     getAllSellers);

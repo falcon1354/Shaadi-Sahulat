@@ -40,7 +40,7 @@ async function run() {
     );
     console.log(`[seed] bank upserted: ${b.code} — ${b.name} (prefix ${b.iban_prefix})`);
   }
-  console.log("[seed] Done. Bank officer login: officer@bank.com / bank123");
+  console.log("[seed] Done. Bank officer login uses BANK_OFFICER_EMAIL / BANK_OFFICER_PASSWORD_HASH from .env.");
   await mongoose.disconnect();
   process.exit(0);
 }

@@ -42,7 +42,8 @@ const DisputeMessage = require("../models/DisputeMessage");
 const Review = require("../models/Review");
 const Notification = require("../models/Notification");
 
-const { requireBuyer, requireSeller, requireAdmin, optionalBuyer } = require("../lib/auth");
+const { requireBuyer, requireSeller, authenticate } = require("../lib/auth");
+const { forbid, sameOrAbsent } = require("../lib/authorize");
 const {
   generateOrderId,
   generatePackageId,
@@ -58,9 +59,12 @@ const {
 const DowryEstimation = require("../models/DowryEstimation");
 const { pushNotification, notifyBuyerAndAdmin, notifySellerAndAdmin, notifyAll } = require("../lib/notify");
 const { publicUrl, makeDisputeUploadMiddleware } = require("../lib/storage");
+const { presentDispute } = require("../lib/privateFiles");
 const { attachReviewVoices } = require("../lib/reviewVoice");
 const { normalizeAgent } = require("../lib/toneVoiceClient");
-const { deductStockForOrderItems, restoreStockForOrderItems } = require("../lib/inventory");
+const { deductStockForOrderItems, restoreStockForOrderItems, findProduct, isOrderable } = require("../lib/inventory");
+const { resolveDelivery } = require("../lib/shipping");
+const BnplApplication = require("../models/BnplApplication");
 
 const disputeUpload = makeDisputeUploadMiddleware();
 
@@ -93,36 +97,61 @@ router.post("/", requireBuyer, async (req, res) => {
       return res.status(400).json({ success: false, error: "Phone number must be 11 digits starting with 03" });
     }
 
-    // Delivery method
-    const delivery_method = req.body.delivery_method || "standard";
+    // ── Delivery: the buyer picks the METHOD, the server sets the PRICE ─────
+    // SECURITY (Phase 2I): a client-sent shipping_cost is ignored; the cost comes
+    // from lib/shipping.js (same table the checkout page displays).
+    const delivery = resolveDelivery(req.body.delivery_method);
+    if (!delivery) {
+      return res.status(400).json({ success: false, error: "delivery_method must be standard or express" });
+    }
+    const delivery_method = delivery.method;
+    const buyer_shipping_cost = delivery.cost;
 
-    // ── Buyer-chosen shipping cost (checkout form) ─────────────────────
-    // The checkout page lets the buyer choose a delivery type and see its
-    // cost up-front.  We persist it now so the Order Detail page shows
-    // Subtotal + Shipping as separate line items and Total = Subtotal + Shipping.
-    const buyer_shipping_cost = Number(req.body.shipping_cost) || 0;
+    // A BNPL application may only be linked to an order by the buyer who owns it.
+    if (bnpl_application_id !== undefined && bnpl_application_id !== null && bnpl_application_id !== "") {
+      const ownApp = typeof bnpl_application_id === "string" &&
+        await BnplApplication.exists({ application_no: bnpl_application_id, buyer_id: req.user.id });
+      if (!ownApp || payment_method !== "BNPL") {
+        return res.status(400).json({ success: false, error: "Invalid BNPL application reference" });
+      }
+    }
 
-    // Validate items + compute subtotal
+    // Validate items + compute subtotal.
+    // SECURITY: seller_id, price, discount, title and image come from the product record
+    // in MongoDB — never from the client (prevents attributing orders to another
+    // seller or price tampering). Only products the marketplace itself lists
+    // (availability_status "available", not awaiting/failed admin approval) from an
+    // existing, enabled seller can be ordered.
     let subtotal = 0;
-    const orderItems = items.map(it => {
-      const price = Number(it.discount_price != null ? it.discount_price : it.price) || 0;
+    const orderItems = [];
+    for (const it of items) {
+      const productId = typeof it?.product_id === "string" ? it.product_id : "";
+      const found = productId ? await findProduct(productId) : null;
+      if (!found || !found.doc?.seller_id || !(await isOrderable(found.doc))) {
+        return res.status(400).json({ success: false, error: `Product not available: ${productId || "(missing id)"}` });
+      }
+      const p = found.doc;
+      const listPrice = Number(p.price) || 0;
+      const dbDiscount = Number(p.discount_price);
+      const discount_price = Number.isFinite(dbDiscount) && dbDiscount > 0 && dbDiscount < listPrice ? dbDiscount : null;
+      const price = discount_price ?? listPrice;
       const qty = Math.max(1, parseInt(it.qty, 10) || 1);
       const sub = price * qty;
       subtotal += sub;
-      return {
-        product_id: it.product_id,
-        seller_id: it.seller_id,
-        title: it.title || "",
-        major_category: it.major_category || "",
-        subcategory: it.subcategory || "",
-        item_type: it.item_type || "",
-        image_url: it.image_url || "",
+      orderItems.push({
+        product_id: p.product_id || productId,
+        seller_id: p.seller_id,
+        title: p.title || p.name || "",
+        major_category: p.major_category || "",
+        subcategory: p.subcategory || "",
+        item_type: p.item_type || "",
+        image_url: p.primary_image_url || p.image_url || (Array.isArray(p.images) && (p.images[0]?.url || p.images[0]?.image_url)) || "",
         price,
-        discount_price: it.discount_price != null ? Number(it.discount_price) : null,
+        discount_price,
         qty,
         subtotal: sub,
-      };
-    });
+      });
+    }
 
     const orderId = generateOrderId();
     const initialStatus = payment_method === "BNPL" ? "PENDING_BNPL_APPROVAL" : "CONFIRMED";
@@ -133,12 +162,9 @@ router.post("/", requireBuyer, async (req, res) => {
 
     // ── Seller view token (hashed, for /orders/ORD-XXXX?t=<token>) ────
     // Lets the seller open an order-detail URL that a buyer cannot guess.
+    // 96 bits from the OS CSPRNG (24 hex chars, same format as before).
     const crypto = require("crypto");
-    const seller_view_token = crypto
-      .createHash("sha256")
-      .update(`${orderId}|${req.user.id}|${Date.now()}|${Math.random()}`)
-      .digest("hex")
-      .slice(0, 24);
+    const seller_view_token = crypto.randomBytes(12).toString("hex");
 
     // Deduct inventory at sale time (before order row is written)
     try {
@@ -299,10 +325,41 @@ router.post("/", requireBuyer, async (req, res) => {
   }
 });
 
-// ---------- list orders (buyer or seller) ----------
-router.get("/", async (req, res) => {
+// ---------- authorization helpers ----------
+/**
+ * Load an order and allow: its buyer, a seller with a package in it, or an admin.
+ * Identity comes only from the verified JWT (req.user).
+ */
+async function requireOrderParticipant(req, res, next) {
   try {
-    const { buyer_id, seller_id } = req.query;
+    const order = await Order.findOne({ order_id: req.params.order_id }).lean();
+    if (!order) return res.status(404).json({ success: false, error: "Order not found" });
+    const { role, id } = req.user;
+    const allowed =
+      role === "admin" ||
+      (role === "buyer" && order.buyer_id === id) ||
+      (role === "seller" && Boolean(await Package.exists({ order_id: order.order_id, seller_id: id })));
+    if (!allowed) return forbid(res);
+    req.order = order;
+    next();
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+// ---------- list orders (buyer or seller) ----------
+// buyer_id / seller_id query params must match the caller (admins may pass any).
+router.get("/", authenticate, async (req, res) => {
+  try {
+    const { role, id } = req.user;
+    let { buyer_id, seller_id } = req.query;
+    if (role === "buyer") {
+      if (seller_id || !sameOrAbsent(buyer_id, id)) return forbid(res);
+      buyer_id = id;
+    } else if (role === "seller") {
+      if (buyer_id || !sameOrAbsent(seller_id, id)) return forbid(res);
+      seller_id = id;
+    }
 
     if (buyer_id) {
       const page  = parseInt(req.query.page, 10) || 1;
@@ -331,10 +388,9 @@ router.get("/", async (req, res) => {
 });
 
 // ---------- single order ----------
-router.get("/:order_id", async (req, res) => {
+router.get("/:order_id", authenticate, requireOrderParticipant, async (req, res) => {
   try {
-    const order = await Order.findOne({ order_id: req.params.order_id }).lean();
-    if (!order) return res.status(404).json({ success: false, error: "Order not found" });
+    const order = req.order;
 
     const packages = await Package.find({ order_id: order.order_id }).lean();
     const disputes = await Dispute.find({ order_id: order.order_id }).lean();
@@ -356,7 +412,7 @@ router.get("/:order_id", async (req, res) => {
       success: true,
       order,
       packages,
-      disputes,
+      disputes: disputes.map(presentDispute),
       available_actions,
       sla: buildSlaSnapshot(openDispute || {}, order),
       dispute_categories: DISPUTE_CATEGORIES.filter((c) => c.id !== "poor_quality" && c.id !== "not_received"),
@@ -373,7 +429,7 @@ router.get("/:order_id", async (req, res) => {
 });
 
 // ---------- packages for an order ----------
-router.get("/:order_id/packages", async (req, res) => {
+router.get("/:order_id/packages", authenticate, requireOrderParticipant, async (req, res) => {
   try {
     const packages = await Package.find({ order_id: req.params.order_id }).lean();
     return res.json({ success: true, packages });
@@ -753,17 +809,18 @@ router.post("/:order_id/buyer-confirm", requireBuyer, async (req, res) => {
     );
 
     try {
-      const { getIO } = require("../lib/socket");
-      const io = getIO();
-      if (io) {
-        io.emit("order:dispute-opened", {
-          order_id: order.order_id,
-          dispute_id: dispute.dispute_id,
-          buyer_id: req.user.id,
-          seller_id: order.primary_seller_id,
-          dispute_type: disputeType,
-        });
-      }
+      // Only the dispute's parties + admins (previously broadcast to EVERY socket).
+      const { emitToUser, emitToAdmins } = require("../lib/socket");
+      const evt = {
+        order_id: order.order_id,
+        dispute_id: dispute.dispute_id,
+        buyer_id: req.user.id,
+        seller_id: order.primary_seller_id,
+        dispute_type: disputeType,
+      };
+      emitToUser("buyer", req.user.id, "order:dispute-opened", evt);
+      if (order.primary_seller_id) emitToUser("seller", order.primary_seller_id, "order:dispute-opened", evt);
+      emitToAdmins("order:dispute-opened", evt);
     } catch (socketErr) {
       console.warn("[orders] Socket.io dispute event emit failed:", socketErr.message);
     }

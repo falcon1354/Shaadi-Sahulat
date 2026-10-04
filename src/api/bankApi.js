@@ -1,6 +1,7 @@
 /**
  * Bank officer API client.
- * Token is stored in localStorage under 'ss_bank_officer' after login.
+ * The officer token is kept in sessionStorage (tab-scoped, cleared when the tab closes)
+ * under 'ss_bank_officer' — never in localStorage, which persists across sessions.
  */
 const BASE = "http://localhost:5000/api/bank";
 
@@ -8,17 +9,21 @@ function _headers(token) {
   return { "x-officer-token": token };
 }
 
+const KEY = "ss_bank_officer";
+// Remove any copy persisted by older builds (localStorage).
+try { localStorage.removeItem(KEY); } catch { /* storage unavailable */ }
+
 export function getOfficerFromStorage() {
-  try { return JSON.parse(localStorage.getItem("ss_bank_officer") || "null"); }
+  try { return JSON.parse(sessionStorage.getItem(KEY) || "null"); }
   catch { return null; }
 }
 
 export function saveOfficerToStorage(officer) {
-  localStorage.setItem("ss_bank_officer", JSON.stringify(officer));
+  try { sessionStorage.setItem(KEY, JSON.stringify(officer)); } catch { /* storage unavailable */ }
 }
 
 export function clearOfficerFromStorage() {
-  localStorage.removeItem("ss_bank_officer");
+  try { sessionStorage.removeItem(KEY); } catch { /* storage unavailable */ }
 }
 
 export async function login(email, password) {

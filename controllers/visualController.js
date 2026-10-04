@@ -22,7 +22,8 @@ exports.recommend = async (req, res) => {
 
     const preferredCategory = req.body.preferred_category || null;
     const limit       = parseInt(req.body.limit) || 10;
-    const userId      = req.body.user_id || "anonymous";
+    // History owner = verified JWT user (never req.body.user_id); anonymous otherwise.
+    const userId      = req.user?.id || "anonymous";
     const description = (req.body.description || "").trim();
 
     // Send to Python ML service

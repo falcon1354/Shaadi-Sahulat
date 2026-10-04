@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { authAxios as axios } from './http';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 

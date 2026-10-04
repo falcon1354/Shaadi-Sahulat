@@ -1,24 +1,25 @@
 /**
  * Review + Notification API clients.
  */
+import { authFetch } from "./http";
 const REV_BASE = "http://localhost:5000/api/reviews";
 const NTF_BASE = "http://localhost:5000/api/notifications";
 
 // ── Reviews ────────────────────────────────────────────────────────────────
 
 export async function getProductReviews(productId) {
-  const res = await fetch(`${REV_BASE}/product/${productId}`);
+  const res = await authFetch(`${REV_BASE}/product/${productId}`);
   return res.json();
 }
 
 export async function getSellerRating(sellerId) {
-  const res = await fetch(`${REV_BASE}/seller/${sellerId}`);
+  const res = await authFetch(`${REV_BASE}/seller/${sellerId}`);
   return res.json();
 }
 
 /** Seller: list ALL reviews for the seller's products (visible + hidden). */
 export async function getSellerAllReviews(sellerId) {
-  const res = await fetch(`${REV_BASE}/seller/${sellerId}/all`);
+  const res = await authFetch(`${REV_BASE}/seller/${sellerId}/all`);
   return res.json();
 }
 
@@ -29,19 +30,19 @@ export async function getAdminAllReviews({ q, min_rating, max_rating } = {}) {
   if (min_rating)  params.set('min_rating', min_rating);
   if (max_rating)  params.set('max_rating', max_rating);
   const qs = params.toString();
-  const res = await fetch(`${REV_BASE}/admin/all${qs ? `?${qs}` : ''}`);
+  const res = await authFetch(`${REV_BASE}/admin/all${qs ? `?${qs}` : ''}`);
   return res.json();
 }
 
 // ── Notifications ──────────────────────────────────────────────────────────
 
 export async function listNotifications(userId, role) {
-  const res = await fetch(`${NTF_BASE}/?user_id=${userId}&role=${role}`);
+  const res = await authFetch(`${NTF_BASE}/?user_id=${userId}&role=${role}`);
   return res.json();
 }
 
 export async function markNotificationRead(id) {
-  const res = await fetch(`${NTF_BASE}/${id}/read`, { method: "POST" });
+  const res = await authFetch(`${NTF_BASE}/${id}/read`, { method: "POST" });
   return res.json();
 }
 
@@ -49,7 +50,7 @@ export async function markAllNotificationsRead(userId, role, { type, types } = {
   const params = new URLSearchParams({ user_id: userId, role });
   if (types?.length) params.set("types", types.join(","));
   else if (type) params.set("type", type);
-  const res = await fetch(`${NTF_BASE}/read-all?${params}`, {
+  const res = await authFetch(`${NTF_BASE}/read-all?${params}`, {
     method: "POST",
   });
   return res.json();

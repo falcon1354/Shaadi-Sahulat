@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt   = require("bcryptjs");
+const authStateSchema = require("./authState");
 
 const buyerSchema = new mongoose.Schema(
   {
@@ -55,6 +56,10 @@ const buyerSchema = new mongoose.Schema(
     total_orders:              { type: Number,  default: 0 },
     saved_addresses:           { type: mongoose.Schema.Types.Mixed, default: [] },
     preferred_delivery_method: { type: String,  default: "standard" },
+
+    // Auth state (JWT auth). Hidden from queries unless explicitly selected ("+auth").
+    // Absent on legacy accounts: treated as verified, token_version 0, not locked.
+    auth: { type: authStateSchema, select: false, default: undefined },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );
@@ -62,5 +67,10 @@ const buyerSchema = new mongoose.Schema(
 buyerSchema.methods.checkPassword = function (plain) {
   return bcrypt.compareSync(plain, this.password_hash);
 };
+
+// One-time token lookups (password reset / email verification) — sparse, hashes only.
+buyerSchema.index({ "auth.reset_token_hash": 1 }, { sparse: true });
+buyerSchema.index({ "auth.verify_token_hash": 1 }, { sparse: true });
+buyerSchema.index({ "auth.verify_used_hash": 1 }, { sparse: true });
 
 module.exports = mongoose.model("Buyer", buyerSchema);
