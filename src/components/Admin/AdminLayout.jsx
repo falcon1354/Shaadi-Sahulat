@@ -13,6 +13,7 @@ const ADMIN_VIEWS = [
   { id: 'orders',      label: 'Orders',            icon: '📦' },
   { id: 'disputes',    label: 'Disputes',          icon: '⚠️' },
   { id: 'wallet',      label: 'Wallet',            icon: '💰' },
+  { id: 'security',    label: 'Change Password',   icon: '🔒' },
 ];
 
 export default function AdminLayout({ admin, onLogout }) {

@@ -1,63 +1,57 @@
+import { authFetch } from "./http";
 const BASE = "http://localhost:5000/api/admin";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-export async function loginAdmin({ email, password }) {
-  const res = await fetch(`${BASE}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  return res.json();
-}
+// Login: see src/context/AuthContext.jsx (POST /api/auth/login, portal "admin").
 
 // ── Sellers ───────────────────────────────────────────────────────────────────
 export async function getAllSellers() {
-  const res = await fetch(`${BASE}/sellers`);
+  const res = await authFetch(`${BASE}/sellers`);
   return res.json();
 }
 
 export async function getSellerProducts(seller_id) {
-  const res = await fetch(`${BASE}/sellers/${seller_id}/products`);
+  const res = await authFetch(`${BASE}/sellers/${seller_id}/products`);
   return res.json();
 }
 
 export async function removeProduct(product_id) {
-  const res = await fetch(`${BASE}/product/${product_id}`, { method: "DELETE" });
+  const res = await authFetch(`${BASE}/product/${product_id}`, { method: "DELETE" });
   return res.json();
 }
 
 export async function freezeProduct(product_id) {
-  const res = await fetch(`${BASE}/product/${product_id}/freeze`, { method: "PATCH" });
+  const res = await authFetch(`${BASE}/product/${product_id}/freeze`, { method: "PATCH" });
   return res.json();
 }
 
 export async function unfreezeProduct(product_id) {
-  const res = await fetch(`${BASE}/product/${product_id}/unfreeze`, { method: "PATCH" });
+  const res = await authFetch(`${BASE}/product/${product_id}/unfreeze`, { method: "PATCH" });
   return res.json();
 }
 
 // ── Buyers ────────────────────────────────────────────────────────────────────
 export async function getAllBuyers() {
-  const res = await fetch(`${BASE}/buyers`);
+  const res = await authFetch(`${BASE}/buyers`);
   return res.json();
 }
 
 // ── Financial ─────────────────────────────────────────────────────────────────
 export async function getStats() {
-  const res = await fetch(`${BASE}/stats`);
+  const res = await authFetch(`${BASE}/stats`);
   return res.json();
 }
 
 export async function getAllProducts({ major_category = "", page = 1, limit = 50 } = {}) {
   const params = new URLSearchParams({ page, limit });
   if (major_category) params.set("major_category", major_category);
-  const res = await fetch(`${BASE}/products?${params}`);
+  const res = await authFetch(`${BASE}/products?${params}`);
   return res.json();
 }
 
 // ── Categories ────────────────────────────────────────────────────────────────
 export async function getAdminCategories() {
-  const res = await fetch(`${BASE}/categories`);
+  const res = await authFetch(`${BASE}/categories`);
   return res.json();
 }
 
@@ -68,10 +62,10 @@ export async function addCategory(data, placeholderFile = null) {
       if (v !== undefined && v !== null) form.append(k, String(v));
     });
     form.append("placeholder", placeholderFile);
-    const res = await fetch(`${BASE}/categories`, { method: "POST", body: form });
+    const res = await authFetch(`${BASE}/categories`, { method: "POST", body: form });
     return res.json();
   }
-  const res = await fetch(`${BASE}/categories`, {
+  const res = await authFetch(`${BASE}/categories`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -80,7 +74,7 @@ export async function addCategory(data, placeholderFile = null) {
 }
 
 export async function addSubcategory(category_id, data) {
-  const res = await fetch(`${BASE}/categories/${category_id}/subcategory`, {
+  const res = await authFetch(`${BASE}/categories/${category_id}/subcategory`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -89,7 +83,7 @@ export async function addSubcategory(category_id, data) {
 }
 
 export async function updateCategoryPrices(category_id, { price_min, price_max }) {
-  const res = await fetch(`${BASE}/categories/${category_id}/prices`, {
+  const res = await authFetch(`${BASE}/categories/${category_id}/prices`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ price_min, price_max }),
@@ -98,7 +92,7 @@ export async function updateCategoryPrices(category_id, { price_min, price_max }
 }
 
 export async function addCustomField(category_id, subcategory_id, field) {
-  const res = await fetch(`${BASE}/categories/${category_id}/subcategory/${subcategory_id}/field`, {
+  const res = await authFetch(`${BASE}/categories/${category_id}/subcategory/${subcategory_id}/field`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(field),
@@ -107,14 +101,14 @@ export async function addCustomField(category_id, subcategory_id, field) {
 }
 
 export async function removeCustomField(category_id, subcategory_id, field_id) {
-  const res = await fetch(`${BASE}/categories/${category_id}/subcategory/${subcategory_id}/field/${field_id}`, {
+  const res = await authFetch(`${BASE}/categories/${category_id}/subcategory/${subcategory_id}/field/${field_id}`, {
     method: "DELETE",
   });
   return res.json();
 }
 
 export async function updateSubcategoryPrices(category_id, subcategory_id, { price_min, price_max }) {
-  const res = await fetch(`${BASE}/categories/${category_id}/subcategory/${subcategory_id}/prices`, {
+  const res = await authFetch(`${BASE}/categories/${category_id}/subcategory/${subcategory_id}/prices`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ price_min, price_max }),
@@ -123,12 +117,12 @@ export async function updateSubcategoryPrices(category_id, subcategory_id, { pri
 }
 
 export async function getSellerWithCounts() {
-  const res = await fetch(`${BASE}/sellers`);
+  const res = await authFetch(`${BASE}/sellers`);
   return res.json();
 }
 
 export async function editCategory(category_id, data) {
-  const res = await fetch(`${BASE}/categories/${category_id}`, {
+  const res = await authFetch(`${BASE}/categories/${category_id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -139,7 +133,7 @@ export async function editCategory(category_id, data) {
 export async function updateCategoryIcon(category_id, iconFile) {
   const form = new FormData();
   form.append('icon', iconFile);
-  const res = await fetch(`${BASE}/categories/${category_id}/icon`, {
+  const res = await authFetch(`${BASE}/categories/${category_id}/icon`, {
     method: "POST",
     body: form,
   });
@@ -149,7 +143,7 @@ export async function updateCategoryIcon(category_id, iconFile) {
 export async function updateCategoryPlaceholder(category_id, placeholderFile) {
   const form = new FormData();
   form.append("placeholder", placeholderFile);
-  const res = await fetch(`${BASE}/categories/${category_id}/placeholder`, {
+  const res = await authFetch(`${BASE}/categories/${category_id}/placeholder`, {
     method: "POST",
     body: form,
   });
@@ -157,14 +151,14 @@ export async function updateCategoryPlaceholder(category_id, placeholderFile) {
 }
 
 export async function deleteCategory(category_id) {
-  const res = await fetch(`${BASE}/categories/${encodeURIComponent(category_id)}`, {
+  const res = await authFetch(`${BASE}/categories/${encodeURIComponent(category_id)}`, {
     method: "DELETE",
   });
   return res.json();
 }
 
 export default {
-  loginAdmin, getAllSellers, getSellerProducts,
+  getAllSellers, getSellerProducts,
   removeProduct, freezeProduct, unfreezeProduct,
   getAllBuyers, getStats, getAllProducts, getSellerWithCounts,
   getAdminCategories, addCategory, addSubcategory,

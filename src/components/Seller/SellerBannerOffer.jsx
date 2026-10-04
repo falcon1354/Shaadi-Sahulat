@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../../api/http';
 import sellerApi, { resolveImageUrl } from '../../api/sellerApi';
 
 const BASE = 'http://localhost:5000/api/banners';
@@ -37,7 +38,7 @@ export default function SellerBannerOffer({ seller }) {
 
   const loadMyOffers = async () => {
     try {
-      const res = await fetch(`${BASE}/seller-offers?status=pending`);
+      const res = await authFetch(`${BASE}/seller-offers?status=pending`);
       const data = await res.json();
       if (data.success) {
         setMyOffers((data.offers || []).filter(o => o.seller_id === seller?.seller_id));
@@ -113,7 +114,7 @@ export default function SellerBannerOffer({ seller }) {
     }
 
     try {
-      const res = await fetch(`${BASE}/seller-offer`, { method: 'POST', body: fd });
+      const res = await authFetch(`${BASE}/seller-offer`, { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
         setMessage('Offer submitted for admin review! You will be notified once approved.');

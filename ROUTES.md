@@ -32,7 +32,7 @@ localStorage). All protected BNPL/Order routes expect these headers:
 
 | Method | Path                                            | Auth   | Purpose                                       |
 |--------|-------------------------------------------------|--------|-----------------------------------------------|
-| POST   | `/login`                                        | —      | Body: `{email, password}`. Default: `officer@bank.com / bank123`. Returns `token`. |
+| POST   | `/login`                                        | —      | Body: `{email, password}`. Credentials come from `BANK_OFFICER_EMAIL` + `BANK_OFFICER_PASSWORD_HASH` in `.env`. Returns `token`. |
 | GET    | `/applications?status=PENDING_BANK_VERIFICATION` | officer | List applications + today's stats          |
 | GET    | `/applications/:application_no`                 | officer | Step 6A — full detail with OCR vs buyer CNIC mismatch warning |
 | GET    | `/applications/:application_no/document/:doc_id` | officer | Serve raw file from disk                    |
@@ -168,9 +168,7 @@ node seeds/seedBnplBanks.js       # creates HBL + MCB
 node seeds/seedAdminWallet.js     # creates admin_wallet_001 with PKR 10M balance
 ```
 
-## Bank officer test credentials
+## Bank officer credentials
 
-```
-email:    officer@bank.com
-password: bank123
-```
+Configured per developer in `.env` (never in source): `BANK_OFFICER_EMAIL` and
+`BANK_OFFICER_PASSWORD_HASH` (generate with `node scripts/hash-bank-officer-password.js`).

@@ -279,5 +279,7 @@ CLASS_NAMES_PATH           = os.path.join(MODEL_DIR, "class_names.json")
 TFIDF_PKL_PATH = os.path.join(DATA_DIR, "tfidf_vectorizer.pkl")
 
 # ── Flask Service ──────────────────────────────────────────────────────────
-FLASK_HOST = "0.0.0.0"
+# Localhost only: the browser loads images via localhost and all API traffic comes
+# from the Node backend on the same machine. Override with VISUAL_ML_HOST if needed.
+FLASK_HOST = os.environ.get("VISUAL_ML_HOST", "127.0.0.1")
 FLASK_PORT = 5002

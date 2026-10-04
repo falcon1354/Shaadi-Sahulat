@@ -1,14 +1,10 @@
 import React from 'react';
 import ProductUpload from './ProductUpload';
+import { useAuth } from '../../context/AuthContext';
 
 export default function SellerPage({ onLogin }) {
-  const seller = (() => {
-    const stored = localStorage.getItem('ss_seller');
-    if (stored) {
-      try { return JSON.parse(stored); } catch (_) {}
-    }
-    return null;
-  })();
+  // Server-verified session (no localStorage identity).
+  const { seller } = useAuth();
 
   return (
     <div className="max-w-4xl mx-auto">

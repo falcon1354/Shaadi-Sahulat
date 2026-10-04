@@ -2,12 +2,16 @@
  * seedAdmin.js — Run once from backend/
  *   node seeds/seedAdmin.js
  *
- * Creates default admin account + seeds AdminCategory collection
+ * Creates the admin account (credentials from ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD
+ * or an interactive prompt — never hardcoded) + seeds AdminCategory collection
  * with the 6 existing categories and their default price ranges.
  */
 require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
 const mongoose      = require("mongoose");
-const bcrypt        = require("bcryptjs");
+const crypto        = require("crypto");
+const Buyer         = require("../models/Buyer");
+const { hashPassword } = require("../lib/passwords");
+const { resolveAdminSeedCredentials } = require("../lib/seedCredentials");
 const Admin         = require("../models/Admin");
 const AdminCategory = require("../models/AdminCategory");
 const { isRetiredCategory } = require("../lib/retiredCategories");
@@ -113,21 +117,38 @@ const DEFAULT_CATEGORIES = [
 ];
 
 async function seed() {
+  // Credentials come from ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD or an interactive
+  // prompt — never from source. Resolved BEFORE touching the database (fail fast).
+  const { email, password, name } = await resolveAdminSeedCredentials();
+
   await mongoose.connect(MONGO_URI);
   console.log("Connected to MongoDB.\n");
 
-  // Create default admin
-  const exists = await Admin.findOne({ email: "admin@shaadisahulat.com" });
+  // Create the admin only if it does not exist (an existing admin is never modified;
+  // change its password through POST /api/auth/change-password).
+  const exists = await Admin.findOne({ email }).select("_id").lean();
   if (!exists) {
+    const [buyerClash, sellerClash] = await Promise.all([
+      Buyer.findOne({ email }).select("_id").lean(),
+      mongoose.connection.collection("sellers").findOne({ email }, { projection: { _id: 1 } }),
+    ]);
+    if (buyerClash || sellerClash) {
+      throw new Error("That email already belongs to a buyer or seller account (one email = one role). Choose another ADMIN_SEED_EMAIL.");
+    }
+    const adminId = (await Admin.findOne({ admin_id: "admin_001" }).select("_id").lean())
+      ? `admin_${crypto.randomBytes(6).toString("hex")}`
+      : "admin_001";
+    const now = new Date();
     await Admin.create({
-      admin_id:      "admin_001",
-      name:          "Super Admin",
-      email:         "admin@shaadisahulat.com",
-      password_hash: bcrypt.hashSync("Admin@1234", 10),
+      admin_id:      adminId,
+      name,
+      email,
+      password_hash: await hashPassword(password),
+      auth: { email_verified: true, token_version: 0, failed_logins: 0, password_changed_at: now },
     });
-    console.log("Created admin: admin@shaadisahulat.com / Admin@1234");
+    console.log(`Created admin: ${email} (${adminId})`);
   } else {
-    console.log("Admin already exists — skipped.");
+    console.log(`Admin ${email} already exists — skipped (password unchanged).`);
   }
 
   // Seed categories
@@ -155,4 +176,8 @@ async function seed() {
   console.log("\nDone.");
 }
 
-seed().catch(e => { console.error(e.message); process.exit(1); });
+seed().catch(async (e) => {
+  console.error(`[seedAdmin] ${e.message}`);
+  try { await mongoose.disconnect(); } catch {}
+  process.exit(1);
+});

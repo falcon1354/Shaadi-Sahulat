@@ -51,3 +51,6 @@ Uploads/.ocr-tmp/
 
 # Python packaging
 pip-wheel-metadata/
+
+# Local dev email outbox (EMAIL_TRANSPORT=console) — contains one-time links
+.mail-outbox/

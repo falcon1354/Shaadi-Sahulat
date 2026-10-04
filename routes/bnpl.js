@@ -31,8 +31,11 @@ const Order = require("../models/Order");
 const Notification = require("../models/Notification");
 
 const { requireBuyer } = require("../lib/auth");
+const { limits } = require("../lib/rateLimits");
 const { encrypt, decrypt, maskCnic, maskIban } = require("../lib/crypto");
-const { saveBnplUploadAsync, resolvePath, publicUrl, makeBnplUploadMiddleware, makeBnplOcrPreviewMiddleware, materializeLocal } = require("../lib/storage");
+const { saveBnplUploadAsync, resolvePath, makeBnplUploadMiddleware, makeBnplOcrPreviewMiddleware, materializeLocal } = require("../lib/storage");
+// CNIC / utility-bill files are private: clients only ever get short-lived signed links.
+const { signPrivateFileUrl } = require("../lib/privateFiles");
 const { runOcrPipeline, runOcrOnBuffer } = require("../lib/ocr");
 const { checkBnplEligibility } = require("../lib/eligibility");
 const {
@@ -49,7 +52,7 @@ const upload = makeBnplUploadMiddleware();
 const ocrPreviewUpload = makeBnplOcrPreviewMiddleware();
 
 // ---------- CNIC OCR preview (autofill CNIC number after front upload) ----------
-router.post("/ocr-preview", requireBuyer, ocrPreviewUpload, async (req, res) => {
+router.post("/ocr-preview", requireBuyer, limits.ocr, ocrPreviewUpload, async (req, res) => {
   try {
     const file = req.file;
     if (!file?.buffer) {
@@ -132,7 +135,7 @@ router.get("/profile", requireBuyer, async (req, res) => {
 });
 
 // ---------- Step 3: submit application ----------
-router.post("/applications", requireBuyer, upload, async (req, res) => {
+router.post("/applications", requireBuyer, limits.bnplSubmit, upload, async (req, res) => {
   try {
     const {
       order_id,
@@ -565,7 +568,7 @@ async function getApplicationForResponse(applicationNo, buyerId) {
           doc_type: type,
           original_name: b.original_name || "",
           mime_type: b.mime_type || "",
-          url: b.file_path ? publicUrl(b.file_path) : "",
+          url: b.file_path ? signPrivateFileUrl(b.file_path) : "",
           ocr_extracted_cnic: type === "cnic_front" ? (b.ocr_extracted_cnic || "") : "",
           ocr_confidence: b.ocr_confidence || 0,
           ocr_completed_at: bundle.ocr_completed_at || null,
@@ -579,7 +582,7 @@ async function getApplicationForResponse(applicationNo, buyerId) {
       doc_type: d.doc_type,
       original_name: d.original_name,
       mime_type: d.mime_type,
-      url: publicUrl(d.file_path),
+      url: signPrivateFileUrl(d.file_path),
       ocr_extracted_cnic: d.ocr_extracted_cnic,
       ocr_confidence: d.ocr_confidence,
       ocr_completed_at: d.ocr_completed_at,
@@ -624,7 +627,7 @@ async function getApplicationForResponse(applicationNo, buyerId) {
       doc_type: d.doc_type,
       original_name: d.original_name,
       mime_type: d.mime_type,
-      url: publicUrl(d.file_path),
+      url: d.url, // signed link built above (the mapped docs no longer carry file_path)
       ocr_extracted_cnic: d.ocr_extracted_cnic,
       ocr_confidence: d.ocr_confidence,
       ocr_completed_at: d.ocr_completed_at,

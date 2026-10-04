@@ -240,10 +240,8 @@ export default function DisputeChatPage({ user }) {
     return "bg-gray-100 text-gray-800";
   };
 
-  const evidenceUrl = (e) =>
-    /^https?:\/\//i.test(e.file_path || e.url || "")
-      ? e.file_path || e.url
-      : `http://localhost:5000/uploads/${e.file_path}`;
+  // Evidence is private: the API returns short-lived signed links (/api/files/private?...).
+  const evidenceUrl = (e) => (e.url ? `http://localhost:5000${e.url}` : "#");
 
   const tabs = [
     { id: "chat", label: "Chat" },
@@ -511,7 +509,7 @@ export default function DisputeChatPage({ user }) {
                     rel="noreferrer"
                     className="text-[#a37b3d] font-medium"
                   >
-                    {e.original_name || e.file_path}
+                    {e.original_name || "Evidence file"}
                   </a>
                   <p className="text-[11px] text-gray-500">
                     by {e.uploaded_by}

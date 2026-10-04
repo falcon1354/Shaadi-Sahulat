@@ -17,15 +17,18 @@
  * On APPROVE: offer letter generated with 3-day validity + installment schedule.
  * On REJECT:  reason recorded; order → CANCELLED.
  *
- * For the FYP demo we use a single hardcoded bank officer account that can
- * see ALL banks' applications. A real production system would have a
- * BnplBankOfficer collection with per-bank officer credentials.
+ * For the FYP demo there is a single bank officer account that can see ALL
+ * banks' applications. Its credentials come from the environment
+ * (BANK_OFFICER_EMAIL + BANK_OFFICER_PASSWORD_HASH, a bcrypt hash — see
+ * scripts/hash-bank-officer-password.js); nothing is hardcoded. A real production
+ * system would have a BnplBankOfficer collection with per-bank credentials.
  */
 const express = require("express");
 const fs = require("fs");
 const router = express.Router();
 
 const bcrypt = require("bcryptjs");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 
 const BnplBank = require("../models/BnplBank");
 const BnplUser = require("../models/BnplUser");
@@ -37,7 +40,7 @@ const Buyer = require("../models/Buyer");
 
 const { requireBankOfficer, issueOfficerToken } = require("../lib/auth");
 const { decrypt, maskCnic, maskIban } = require("../lib/crypto");
-const { resolvePath, publicUrl } = require("../lib/storage");
+const { signPrivateFileUrl, sendPrivateFile } = require("../lib/privateFiles");
 const {
   computePlan,
   buildInstallmentSchedule,
@@ -46,16 +49,40 @@ const {
 } = require("../lib/helpers");
 const { notifyBuyerAndAdmin } = require("../lib/notify");
 
-// ---------- Bank officer login (hardcoded for FYP demo) ----------
-const BANK_OFFICER_EMAIL = "officer@bank.com";
-const BANK_OFFICER_PASSWORD_HASH = bcrypt.hashSync("bank123", 10);
+// ---------- Bank officer login (credentials from the environment) ----------
+const BCRYPT_HASH_RE = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
+// Compared when the email is wrong or login is not configured, so every failure
+// costs one bcrypt check (no timing difference between "unknown email" and "bad password").
+const DUMMY_HASH = bcrypt.hashSync("dummy-password-for-timing", 10);
 
-router.post("/login", (req, res) => {
+function officerConfig() {
+  const email = String(process.env.BANK_OFFICER_EMAIL || "").trim().toLowerCase();
+  const hash = String(process.env.BANK_OFFICER_PASSWORD_HASH || "").trim();
+  return email && BCRYPT_HASH_RE.test(hash) ? { email, hash } : null;
+}
+
+const bankLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: (req) =>
+    `${ipKeyGenerator(req.ip || "")}|${String(req.body?.email || "").trim().toLowerCase().slice(0, 254)}`,
+  message: { success: false, code: "RATE_LIMITED", error: "Too many attempts. Please try again later." },
+});
+
+router.post("/login", bankLoginLimiter, async (req, res) => {
   const { email, password } = req.body || {};
-  if (
-    email !== BANK_OFFICER_EMAIL ||
-    !bcrypt.compareSync(password || "", BANK_OFFICER_PASSWORD_HASH)
-  ) {
+  const cfg = officerConfig();
+  const emailOk = Boolean(cfg) && typeof email === "string" && email.trim().toLowerCase() === cfg.email;
+  const passwordOk = await bcrypt.compare(
+    typeof password === "string" ? password.slice(0, 200) : "",
+    emailOk ? cfg.hash : DUMMY_HASH
+  );
+  if (!cfg) {
+    return res.status(503).json({ success: false, error: "Bank officer login is not configured." });
+  }
+  if (!emailOk || !passwordOk) {
     return res.status(401).json({ success: false, error: "Invalid bank officer credentials" });
   }
   const officer = {
@@ -64,13 +91,7 @@ router.post("/login", (req, res) => {
     name: "Bank Officer",
   };
   const token = issueOfficerToken(officer);
-  return res.json({
-    success: true,
-    token,
-    officer,
-    email: BANK_OFFICER_EMAIL,
-    default_password: "bank123",
-  });
+  return res.json({ success: true, token, officer, email: cfg.email });
 });
 
 // ---------- List applications ----------
@@ -237,7 +258,7 @@ router.get("/applications/:application_no", requireBankOfficer, async (req, res)
         doc_type: d.doc_type,
         original_name: d.original_name,
         mime_type: d.mime_type,
-        url: publicUrl(d.file_path),
+        url: signPrivateFileUrl(d.file_path),
         ocr_extracted_cnic: d.ocr_extracted_cnic,
         ocr_confidence: d.ocr_confidence,
         ocr_completed_at: d.ocr_completed_at,
@@ -284,14 +305,8 @@ router.get(
       }).lean();
       if (!doc) return res.status(404).json({ success: false, error: "Document not found" });
 
-      if (/^https?:\/\//i.test(doc.file_path || "")) {
-        return res.redirect(doc.file_path);
-      }
-
-      const abs = resolvePath(doc.file_path);
-      if (!fs.existsSync(abs)) return res.status(404).json({ success: false, error: "File missing on disk" });
-
-      return res.sendFile(abs);
+      // Streamed through Node: the storage location (disk path / Cloudinary URL) is never revealed.
+      return await sendPrivateFile(res, doc.file_path);
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
