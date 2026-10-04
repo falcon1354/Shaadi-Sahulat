@@ -177,6 +177,8 @@ const BC = bcrypt.hashSync(PW, 10);
 const OFFICER_PW = "Officer-Test-Passw0rd"; // dummy test password
 const OFFICER_HASH = bcrypt.hashSync(OFFICER_PW, 10);
 
+const DOC_ID = "64b7f0c2a1d3e4f5a6b7c8d9"; // realistic 24-hex Mongo ObjectId
+
 function seed() {
   for (const k of Object.keys(stores)) stores[k].length = 0;
   stores.Buyer.push(
@@ -219,7 +221,7 @@ function seed() {
     { _id: "ba2", application_no: "BNPL-B", buyer_id: "buyer_B", order_id: "ORD-B", bank_id: "HBL", status: "PENDING_BANK_VERIFICATION", amount: 100 },
   );
   stores.BnplDocument.push(
-    { _id: "doc1", application_id: "BNPL-A", buyer_id: "buyer_A", doc_type: "cnic_front", file_path: REL.cnic, original_name: "cnic.png", mime_type: "image/png" },
+    { _id: DOC_ID, application_id: "BNPL-A", buyer_id: "buyer_A", doc_type: "cnic_front", file_path: REL.cnic, original_name: "cnic.png", mime_type: "image/png" },
   );
   flaskCalls = [];
 }
@@ -476,11 +478,19 @@ test("UPLOADS: bank officer document endpoint streams the file (no redirect to t
   process.env.BANK_OFFICER_EMAIL = "officer@bank.test";
   process.env.BANK_OFFICER_PASSWORD_HASH = OFFICER_HASH;
   const login = await call("POST", "/api/bank/login", { body: { email: "officer@bank.test", password: OFFICER_PW } });
-  const r = await fetch(`${base}/api/bank/applications/BNPL-A/document/doc1`, { headers: { "x-officer-token": login.body.token }, redirect: "manual" });
-  assert.equal(r.status, 200);
-  assert.equal(await r.text(), "CNIC-FRONT-BYTES");
-  assert.equal((await fetch(`${base}/api/bank/applications/BNPL-A/document/doc1`)).status, 401, "no officer token");
-  assert.equal((await fetch(`${base}/api/bank/applications/BNPL-A/document/doc1`, { headers: { Authorization: `Bearer ${T.buyerA()}` } })).status, 401, "buyer JWT is not an officer token");
+  const officer = { "x-officer-token": login.body.token };
+  // by Mongo _id and by doc_type (both supported by the endpoint)
+  for (const key of [DOC_ID, "cnic_front"]) {
+    const r = await fetch(`${base}/api/bank/applications/BNPL-A/document/${key}`, { headers: officer, redirect: "manual" });
+    assert.equal(r.status, 200, key);
+    assert.equal(await r.text(), "CNIC-FRONT-BYTES");
+  }
+  // unknown document / wrong application → 404 (never a 500)
+  for (const p of ["BNPL-A/document/utility_bill", "BNPL-A/document/ffffffffffffffffffffffff", "BNPL-A/document/nope", `BNPL-B/document/${DOC_ID}`]) {
+    assert.equal((await fetch(`${base}/api/bank/applications/${p}`, { headers: officer })).status, 404, p);
+  }
+  assert.equal((await fetch(`${base}/api/bank/applications/BNPL-A/document/${DOC_ID}`)).status, 401, "no officer token");
+  assert.equal((await fetch(`${base}/api/bank/applications/BNPL-A/document/${DOC_ID}`, { headers: { Authorization: `Bearer ${T.buyerA()}` } })).status, 401, "buyer JWT is not an officer token");
 });
 
 test("UPLOADS: new private uploads get unguessable Cloudinary public_ids", () => {

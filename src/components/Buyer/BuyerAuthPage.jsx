@@ -87,7 +87,11 @@ export default function BuyerAuthPage({ onLogin }) {
               pending={pending}
               theme="gold"
               onVerified={(u) => onLogin?.(u)}
-              onBackToSignIn={() => { setPending(null); setMode('login'); setError(''); }}
+              onBackToSignIn={() => {
+                setPending(null);
+                setMode('login');
+                setError('');
+              }}
             />
           ) : (<>
           {/* Tab switcher */}
@@ -115,7 +119,6 @@ export default function BuyerAuthPage({ onLogin }) {
               {error}
             </div>
           )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
               <div>
@@ -151,16 +154,23 @@ export default function BuyerAuthPage({ onLogin }) {
                 onChange={e => update('password', e.target.value)}
                 placeholder="••••••••"
                 required
-                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#a37b3d] bg-gray-50/50"
+                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#a37b3d] bg-gray-50/50"
               />
+
               {mode === 'register' && (
-                <p className="text-[11px] text-gray-500 mt-1">At least 8 characters, with a letter and a number.</p>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  At least 8 characters, with a letter and a number.
+                </p>
               )}
+
               {mode === 'login' && (
                 <div className="text-right mt-1">
-                  <button type="button" onClick={() => navigate('/forgot-password?portal=buyer')}
-                    className="text-[11px] text-[#a37b3d] font-bold hover:underline cursor-pointer">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/forgot-password?portal=buyer')}
+                    className="text-[11px] text-[#a37b3d] font-bold hover:underline cursor-pointer"
+                  >
                     Forgot password?
                   </button>
                 </div>
@@ -211,7 +221,6 @@ export default function BuyerAuthPage({ onLogin }) {
             </button>
           </p>
           </>)}
-
         <div className="text-center mt-5">
           <button
             onClick={() => navigate('/')}

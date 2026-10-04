@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import adminExtApi from "../../api/adminExtApi";
+import OrderTimeline from "../Common/OrderTimeline";
 
 /**
  * OrdersPage — admin oversight of ALL orders.
@@ -306,15 +307,15 @@ export default function OrdersPage({ admin }) {
                             className="text-xs px-3 py-1 border border-gray-200 text-gray-700 rounded-lg font-semibold">
                             View
                           </button>
-                          {isOverdue && (
-                            <button
-                              onClick={() => releasePayment(o.order_id)}
-                              disabled={releasing}
-                              className="text-xs px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold disabled:opacity-50"
-                            >
-                              ⚠ Release Now
-                            </button>
-                          )}
+                          <button
+                            onClick={() => releasePayment(o.order_id)}
+                            disabled={releasing}
+                            className={`text-xs px-3 py-1 text-white rounded-lg font-bold disabled:opacity-50 ${
+                              isOverdue ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"
+                            }`}
+                          >
+                            {isOverdue ? "⚠ Release Now" : "Release Payment"}
+                          </button>
                         </td>
                       </tr>
                     );
@@ -383,26 +384,28 @@ export default function OrdersPage({ admin }) {
             )}
 
             <div className="mb-4">
-              <h3 className="text-xs font-semibold text-gray-600 mb-2">TIMELINE</h3>
-              <div className="space-y-1">
-                {(detail.order.timeline || []).map((t, i) => (
-                  <div key={i} className="text-xs">
-                    <span className="text-gray-400">{new Date(t.at).toLocaleString()}</span> —
-                    <b> {t.status}</b> by {t.by}
-                    {t.note && <span className="text-gray-600"> — {t.note}</span>}
-                  </div>
-                ))}
-              </div>
+              <OrderTimeline
+                timeline={detail.order.timeline || []}
+                title="Order Lifecycle Timeline"
+              />
             </div>
 
             {msg && <div className="bg-blue-50 text-blue-700 rounded-lg p-2 text-sm mb-3">{msg}</div>}
 
-            {/* Release payment */}
-            {["DELIVERED", "RESOLVED"].includes(detail.order.status) && !detail.payout && (
+            {/* Release payment — show for delivered/resolved (and completed-but-not-released edge cases) */}
+            {["DELIVERED", "RESOLVED", "COMPLETED"].includes(detail.order.status)
+              && !detail.payout
+              && detail.order.payment_status !== "RELEASED"
+              && !detail.order.payment_released_at && (
               <button onClick={() => releasePayment(detail.order.order_id)} disabled={releasing}
                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
                 {releasing ? "Releasing..." : "💰 RELEASE PAYMENT TO SELLER (Step 10)"}
               </button>
+            )}
+            {(detail.payout || detail.order.payment_status === "RELEASED" || detail.order.payment_released_at) && (
+              <div className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold text-center">
+                Payment already released
+              </div>
             )}
           </div>
         </div>

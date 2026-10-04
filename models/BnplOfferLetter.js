@@ -15,6 +15,14 @@ const installmentSchema = new mongoose.Schema({
   paid_at:     { type: Date,   default: null },
 }, { _id: false });
 
+const paymentHistorySchema = new mongoose.Schema({
+  amount:            { type: Number, required: true },
+  paid_at:           { type: Date,   default: Date.now },
+  note:              { type: String, default: "" },
+  recorded_by:       { type: String, default: "" },
+  recorded_by_role:  { type: String, default: "bank" }, // bank | admin | system
+}, { _id: false });
+
 const bnplOfferLetterSchema = new mongoose.Schema(
   {
     application_id:      { type: String, required: true, unique: true, index: true },
@@ -33,6 +41,16 @@ const bnplOfferLetterSchema = new mongoose.Schema(
       default: "PENDING",
     },
     installments:        { type: [installmentSchema], default: [] },
+    // Repayment tracking (post-approval)
+    amount_paid:         { type: Number, default: 0 },
+    amount_remaining:    { type: Number, default: null },
+    repayment_status:    {
+      type: String,
+      enum: ["ACTIVE", "COMPLETED", "DEFAULTED"],
+      default: "ACTIVE",
+      index: true,
+    },
+    payment_history:     { type: [paymentHistorySchema], default: [] },
     pdf_path:            { type: String, default: "" },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }

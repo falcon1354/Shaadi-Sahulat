@@ -112,6 +112,9 @@ const orderSchema = new mongoose.Schema(
     // When payment was released to the seller (null = still pending).
     payment_released_at:     { type: Date,   default: null },
 
+    // Set when Admin resolves dispute as "Seller Wins". Buyer has 2 days to confirm before auto-complete.
+    seller_win_confirm_deadline: { type: Date, default: null },
+
     // Seller-facing hashed token for the order-detail URL.
     // Allows /orders/ORD-2026-31207?t=<token> style URLs so a buyer
     // cannot guess a seller's order-detail view.
@@ -119,6 +122,13 @@ const orderSchema = new mongoose.Schema(
 
     // Seller who needs to fulfill (single-seller order; multi-seller uses packages)
     primary_seller_id:   { type: String, default: "" },
+
+    // Multi-seller checkout grouping — same session_id + color for sibling sub-orders
+    checkout_session_id: { type: String, default: "", index: true },
+    checkout_group_color: { type: String, default: "" },
+    // Parent combined BNPL order that was split into per-seller orders after approval
+    split_from_order_id: { type: String, default: "", index: true },
+    superseded:          { type: Boolean, default: false },
 
     // Timeline events — every status transition appends here so the admin
     // can see "complete information of each and every thing".

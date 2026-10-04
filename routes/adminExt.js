@@ -26,7 +26,10 @@ const DisputeMessage = require("../models/DisputeMessage");
 const SellerPayout = require("../models/SellerPayout");
 const AdminWallet = require("../models/AdminWallet");
 const BnplApplication = require("../models/BnplApplication");
+const BnplBatchRelease = require("../models/BnplBatchRelease");
 const Notification = require("../models/Notification");
+const Buyer = require("../models/Buyer");
+const Seller = require("../models/Seller");
 
 const VISUAL_ML_URL = process.env.VISUAL_ML_URL || "http://localhost:5002";
 
@@ -34,10 +37,12 @@ const VISUAL_ML_URL = process.env.VISUAL_ML_URL || "http://localhost:5002";
 // BNPL rejection notification depends on this — admin should see which orders
 // have completed delivery but haven't been paid out yet.
 function _hasPendingRelease(o) {
-  return (
-    ["DELIVERED", "RESOLVED"].includes(o.status) &&
-    !o.payment_released_at
-  );
+  if (!o) return false;
+  if (o.payment_released_at || o.payment_status === "RELEASED") return false;
+  // Ready for admin payout: delivered / dispute resolved in seller's favor.
+  // COMPLETED alone is not enough — that may already mean payout done.
+  if (["DELIVERED", "RESOLVED"].includes(o.status)) return true;
+  return false;
 }
 
 const { requireAdmin } = require("../lib/auth");
@@ -76,18 +81,19 @@ router.get("/orders", async (req, res) => {
 
 // ---------- Task 1b: orders awaiting payment release ----------
 // Returns all orders where status is DELIVERED or RESOLVED AND
-// payment_released_at is null. Includes release_due_at = delivered_at + 24h
-// and overdue flag.
+// payment_released_at is null, or BNPL completed orders awaiting payout release.
 // IMPORTANT: registered BEFORE /orders/:order_id so the parameter route
 // does not capture "pending-release" as an order_id.
 router.get("/orders/pending-release", async (req, res) => {
   try {
     const now = new Date();
+    // Only truly awaiting release — exclude already RELEASED / payment_released_at set
     const orders = await Order.find({
       status: { $in: ["DELIVERED", "RESOLVED"] },
       payment_released_at: null,
+      payment_status: { $ne: "RELEASED" },
     })
-      .sort({ delivered_at: 1 })
+      .sort({ delivered_at: 1, created_at: -1 })
       .lean();
 
     const enriched = (orders || []).map((o) => {
@@ -151,34 +157,88 @@ router.get("/disputes", async (req, res) => {
   }
 });
 
-// ---------- Step 10: release payment to seller ----------
+// ---------- Step 10: release payment to seller (BNPL & completion) ----------
 router.post("/orders/:order_id/release-payment", async (req, res) => {
   try {
     const order = await Order.findOne({ order_id: req.params.order_id });
     if (!order) return res.status(404).json({ success: false, error: "Order not found" });
-    if (order.status === "COMPLETED") {
-      return res.status(400).json({ success: false, error: "Order already completed" });
+    if (order.status === "COMPLETED" && order.payment_status === "RELEASED") {
+      return res.status(400).json({ success: false, error: "Order already completed and payment released" });
     }
-    if (!["DELIVERED", "RESOLVED"].includes(order.status)) {
+    if (!["DELIVERED", "RESOLVED", "COMPLETED"].includes(order.status)) {
       return res.status(400).json({
         success: false,
         error: `Order must be DELIVERED or RESOLVED before payment release (current: ${order.status})`,
       });
     }
 
-    // Already paid out?
+    const isCod = order.payment_method === "COD";
+
+    let wallet = await AdminWallet.findOne({ wallet_id: "admin_wallet_001" });
+    if (!wallet) {
+      wallet = await AdminWallet.create({ wallet_id: "admin_wallet_001", balance: 10_000_000 });
+    }
+
+    const breakdown = computeSellerPayout(order.total_amount, order.shipping_total || 0);
+    const txnId = generateTransactionId();
+    const payoutId = generatePayoutId();
+
+    if (isCod) {
+      // COD Orders: Platform never holds product cash.
+      // Admin Wallet only logs the 5% platform fee (+) as CREDIT in green.
+      const commission = Math.round((order.subtotal || order.total_amount) * 0.05);
+      
+      // Check if commission was already credited
+      const alreadyCredited = (wallet.ledger || []).some(
+        (e) => e.ref_order_id === order.order_id && e.type === "CREDIT"
+      );
+
+      if (!alreadyCredited) {
+        wallet.balance = (wallet.balance || 0) + commission;
+        wallet.ledger.push({
+          type: "CREDIT",
+          amount: commission,
+          description: `Platform commission (5%) for COD order ${order.order_id}`,
+          ref_order_id: order.order_id,
+          at: new Date(),
+          by_admin_id: req.user.id,
+        });
+        await wallet.save();
+      }
+
+      order.status = "COMPLETED";
+      order.payment_status = "RELEASED";
+      order.payment_released_at = new Date();
+      order.timeline.push({
+        status: "COMPLETED",
+        at: new Date(),
+        by: "admin",
+        by_id: req.user.id,
+        note: `COD order completed. Seller collected cash on delivery. Platform earned 5% commission: PKR ${commission.toLocaleString()}.`,
+      });
+      await order.save();
+
+      await Package.updateMany(
+        { order_id: order.order_id },
+        { $set: { status: "COMPLETED", payout_released: true, payout_released_at: new Date() } }
+      );
+
+      return res.json({
+        success: true,
+        message: "COD order completed. Platform fee recorded in Admin Wallet.",
+        is_cod: true,
+        commission,
+        order_status: order.status,
+        payment_status: order.payment_status,
+        wallet_balance: wallet.balance,
+      });
+    }
+
+    // BNPL Orders: Banker pays Admin first. Admin manually releases to seller.
     const existing = await SellerPayout.findOne({ order_id: order.order_id });
     if (existing) {
       return res.status(400).json({ success: false, error: "Payment already released for this order.", payout: existing });
     }
-
-    // Compute payout breakdown per spec Step 10:
-    //   - Platform commission = 5% of order_total
-    //   - Shipping deduction = shipping_total (paid to courier)
-    //   - Net to seller = order_total - commission - shipping
-    const breakdown = computeSellerPayout(order.total_amount, order.shipping_total || 0);
-    const txnId = generateTransactionId();
-    const payoutId = generatePayoutId();
 
     const payout = await SellerPayout.create({
       payout_id: payoutId,
@@ -195,10 +255,18 @@ router.post("/orders/:order_id/release-payment", async (req, res) => {
       payout_method: "BANK_TRANSFER",
       released_by: req.user.id,
       released_at: new Date(),
-      notes: "Payment released by admin after order completion.",
+      notes: "Payment released by admin for BNPL order.",
     });
 
-    // Update all packages of this order to COMPLETED + record payout
+    // Credit seller's wallet balance
+    if (order.primary_seller_id) {
+      await Seller.updateOne(
+        { seller_id: order.primary_seller_id },
+        { $inc: { wallet_balance: breakdown.net_to_seller } }
+      );
+    }
+
+    // Update all packages of this order to COMPLETED
     await Package.updateMany(
       { order_id: order.order_id },
       {
@@ -213,40 +281,24 @@ router.post("/orders/:order_id/release-payment", async (req, res) => {
       }
     );
 
-    // Step 11: order → COMPLETED + record payment release timestamp
     order.status = "COMPLETED";
+    order.payment_status = "RELEASED";
     order.payment_released_at = new Date();
     order.timeline.push({
       status: "COMPLETED",
       at: new Date(),
       by: "admin",
       by_id: req.user.id,
-      note: `Payment released to seller. TXN ${txnId}. Net to seller: PKR ${breakdown.net_to_seller.toLocaleString()} (after 5% commission PKR ${breakdown.commission.toLocaleString()} + shipping PKR ${breakdown.shipping.toLocaleString()}).`,
+      note: `BNPL payment released to seller. TXN ${txnId}. Net to seller: PKR ${breakdown.net_to_seller.toLocaleString()} (after 5% commission PKR ${breakdown.commission.toLocaleString()} + shipping PKR ${breakdown.shipping.toLocaleString()}).`,
     });
     await order.save();
 
-    // Update AdminWallet ledger
-    let wallet = await AdminWallet.findOne({ wallet_id: "admin_wallet_001" });
-    if (!wallet) {
-      wallet = await AdminWallet.create({ wallet_id: "admin_wallet_001", balance: 10_000_000 });
-    }
-    // DEBIT the net_to_seller from admin wallet (admin pays seller)
+    // DEBIT the net_to_seller from admin wallet
     wallet.balance = (wallet.balance || 0) - breakdown.net_to_seller;
     wallet.ledger.push({
       type: "DEBIT",
       amount: breakdown.net_to_seller,
-      description: `Seller payout for order ${order.order_id} (TXN ${txnId})`,
-      ref_order_id: order.order_id,
-      ref_payout_id: payoutId,
-      at: new Date(),
-      by_admin_id: req.user.id,
-    });
-    // CREDIT the platform commission back to admin wallet (admin earns commission)
-    wallet.balance = (wallet.balance || 0) + breakdown.commission;
-    wallet.ledger.push({
-      type: "CREDIT",
-      amount: breakdown.commission,
-      description: `Platform commission for order ${order.order_id}`,
+      description: `Seller payout for BNPL order ${order.order_id} (TXN ${txnId})`,
       ref_order_id: order.order_id,
       ref_payout_id: payoutId,
       at: new Date(),
@@ -254,26 +306,18 @@ router.post("/orders/:order_id/release-payment", async (req, res) => {
     });
     await wallet.save();
 
-    // Notify buyer + seller + admin
+    // Notify seller
     await notifySellerAndAdmin({
       seller_id: order.primary_seller_id,
-      title: "Payment Released to Seller",
+      title: "BNPL Payment Released to Seller",
       message: `Payment of PKR ${breakdown.net_to_seller.toLocaleString()} (TXN ${txnId}) has been transferred to your account for order ${order.order_id}. Order COMPLETED.`,
       type: "payout",
-      ref_id: order.order_id,
-    });
-    await pushNotification({
-      recipient_id: order.buyer_id,
-      recipient_role: "buyer",
-      title: "Order Completed",
-      message: `Your order ${order.order_id} is now COMPLETE. Thank you for shopping!`,
-      type: "order",
       ref_id: order.order_id,
     });
 
     return res.json({
       success: true,
-      message: "Payment released. Order marked as COMPLETED.",
+      message: "BNPL payment released. Order marked as COMPLETED.",
       payout,
       breakdown,
       wallet_balance: wallet.balance,
@@ -317,6 +361,97 @@ router.get("/wallet", async (req, res) => {
         byOrder[oid].last_at = entry.at;
       }
     }
+
+    // History by Order: only COMPLETED (incl. seller-favor dispute resolves → COMPLETED/RESOLVED with release)
+    const completedOrders = await Order.find({
+      status: { $in: ["COMPLETED"] },
+      superseded: { $ne: true },
+    }).sort({ updated_at: -1, created_at: -1 }).limit(200).lean();
+
+    // Seed groups from completed orders only (drop pending BNPL / in-flight)
+    const completedIds = new Set(completedOrders.map((o) => o.order_id));
+    for (const oid of Object.keys(byOrder)) {
+      if (!completedIds.has(oid)) delete byOrder[oid];
+    }
+    for (const o of completedOrders) {
+      if (!byOrder[o.order_id]) {
+        byOrder[o.order_id] = {
+          order_id: o.order_id,
+          entries: [],
+          credit_total: 0,
+          debit_total: 0,
+          last_at: o.updated_at || o.created_at || new Date(),
+        };
+      }
+    }
+
+    const orderIds = Object.keys(byOrder);
+    const orderMap = {};
+    const buyerIds = [];
+    const sellerIdsSet = new Set();
+    for (const o of completedOrders) {
+      if (!completedIds.has(o.order_id) && !orderIds.includes(o.order_id)) continue;
+      orderMap[o.order_id] = o;
+      if (o.buyer_id) buyerIds.push(o.buyer_id);
+      (o.items || []).forEach(it => { if (it.seller_id) sellerIdsSet.add(it.seller_id); });
+    }
+
+    const [packages, buyers, sellers] = await Promise.all([
+      Package.find({ order_id: { $in: orderIds } }).lean(),
+      Buyer.find({ buyer_id: { $in: buyerIds } }).lean(),
+      Seller.find({ seller_id: { $in: Array.from(sellerIdsSet) } }).lean(),
+    ]);
+
+    const buyerMap = {};
+    for (const b of buyers) buyerMap[b.buyer_id] = b.name;
+    const sellerMap = {};
+    for (const s of sellers) sellerMap[s.seller_id] = s.name || s.business_name;
+
+    const packageMap = {};
+    for (const p of packages) {
+      if (!packageMap[p.order_id]) packageMap[p.order_id] = [];
+      packageMap[p.order_id].push(p);
+    }
+
+    for (const oid of orderIds) {
+      const o = orderMap[oid];
+      const pkgs = packageMap[oid] || [];
+      if (o) {
+        const itemTitles = (o.items || []).map(it => it.title).filter(Boolean);
+        const orderName = itemTitles.length > 0 
+          ? (itemTitles.length === 1 ? itemTitles[0] : `${itemTitles[0]} + ${itemTitles.length - 1} more`)
+          : `Order ${oid}`;
+        const sellerIds = Array.from(new Set((o.items || []).map(it => it.seller_id).filter(Boolean)));
+        const sellerNames = sellerIds.map(sid => sellerMap[sid] || sid);
+        const buyerName = o.buyer_name || buyerMap[o.buyer_id] || o.buyer_id || "Customer";
+
+        byOrder[oid].order_name = orderName;
+        byOrder[oid].buyer_name = buyerName;
+        byOrder[oid].buyer_email = o.buyer_email || "";
+        byOrder[oid].buyer_phone = o.buyer_phone || "";
+        byOrder[oid].seller_ids = sellerIds;
+        byOrder[oid].seller_names = sellerNames;
+        byOrder[oid].items_count = o.items_count || (o.items || []).length;
+        byOrder[oid].items = o.items || [];
+        byOrder[oid].total_amount = o.total_amount || 0;
+        byOrder[oid].status = o.status;
+        byOrder[oid].packages = pkgs.map(p => ({
+          package_id: p.package_id,
+          seller_id: p.seller_id,
+          seller_name: sellerMap[p.seller_id] || p.seller_id,
+          status: p.status,
+          total: p.total,
+        }));
+      } else {
+        byOrder[oid].order_name = `Order ${oid}`;
+        byOrder[oid].buyer_name = "Customer";
+        byOrder[oid].seller_ids = [];
+        byOrder[oid].seller_names = [];
+        byOrder[oid].items = [];
+        byOrder[oid].packages = [];
+      }
+    }
+
     const order_groups = Object.values(byOrder).sort(
       (a, b) => new Date(b.last_at) - new Date(a.last_at)
     );
@@ -352,6 +487,9 @@ router.get("/wallet/orders/:order_id", async (req, res) => {
       .filter((e) => (e.ref_order_id || "") === orderId)
       .sort((a, b) => new Date(a.at) - new Date(b.at));
     const payout = await SellerPayout.findOne({ order_id: orderId }).lean();
+    const order = await Order.findOne({ order_id: orderId }).lean();
+    const packages = await Package.find({ order_id: orderId }).lean();
+
     const credit_total = entries.filter((e) => e.type === "CREDIT").reduce((s, e) => s + (e.amount || 0), 0);
     const debit_total = entries.filter((e) => e.type === "DEBIT").reduce((s, e) => s + (e.amount || 0), 0);
     return res.json({
@@ -362,6 +500,8 @@ router.get("/wallet/orders/:order_id", async (req, res) => {
       debit_total,
       net: credit_total - debit_total,
       payout: payout || null,
+      order: order || null,
+      packages: packages || [],
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -589,6 +729,76 @@ router.get("/breakdown", async (req, res) => {
       categories: categoryAgg,
       top_products: topProductsAgg,
     });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ---------- BNPL Receipts from Bank (day-wise batch history) ----------
+router.get("/bnpl-receipts", async (req, res) => {
+  try {
+    const batches = await BnplBatchRelease.find().sort({ released_at: -1 }).lean();
+    const totalReceived = batches.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+    const totalOrders = batches.reduce((sum, b) => sum + (b.order_count || 0), 0);
+
+    // Group day-wise
+    const dayWiseMap = {};
+    for (const b of batches) {
+      const dayKey = new Date(b.release_date || b.released_at).toISOString().slice(0, 10);
+      if (!dayWiseMap[dayKey]) {
+        dayWiseMap[dayKey] = {
+          date: dayKey,
+          total_amount: 0,
+          order_count: 0,
+          batches: [],
+        };
+      }
+      dayWiseMap[dayKey].total_amount += b.total_amount || 0;
+      dayWiseMap[dayKey].order_count += b.order_count || 0;
+      dayWiseMap[dayKey].batches.push(b);
+    }
+
+    const dayWise = Object.values(dayWiseMap).sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    );
+
+    return res.json({
+      success: true,
+      total_received: totalReceived,
+      total_orders: totalOrders,
+      batch_count: batches.length,
+      day_wise: dayWise,
+      batches,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── BNPL Repayments (platform-wide, view-only) ──────────────────────────────
+const {
+  listRepayments: listBnplRepayments,
+  getRepaymentDetail: getBnplRepaymentDetail,
+} = require("../lib/bnplRepayment");
+
+router.get("/bnpl-repayments", async (req, res) => {
+  try {
+    const { bank_id, buyer_id } = req.query || {};
+    const data = await listBnplRepayments({
+      bank_id: bank_id || undefined,
+      buyer_id: buyer_id || undefined,
+    });
+    return res.json({ success: true, ...data });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/bnpl-repayments/:application_no", async (req, res) => {
+  try {
+    const detail = await getBnplRepaymentDetail(req.params.application_no);
+    if (!detail) return res.status(404).json({ success: false, error: "Repayment not found" });
+    return res.json({ success: true, repayment: detail });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

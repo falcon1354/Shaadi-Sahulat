@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import bnplApi from "../../api/bnplApi";
 import orderApi from "../../api/orderApi";
+import { resolveMediaUrl } from "../../lib/openDoc";
 
 const APPROVAL_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 5;
@@ -11,8 +12,7 @@ const PAGE_SIZE = 5;
 const FILTER_TABS = [
   { id: 'all',            label: 'All',             statuses: null },
   { id: 'pending',        label: 'Pending',         statuses: ['PENDING_BANK_VERIFICATION', 'PENDING_BNPL_APPROVAL'] },
-  { id: 'approved',       label: 'Approved',        statuses: ['APPROVED'] },
-  { id: 'offer_accepted', label: 'Offer Accepted',  statuses: ['OFFER_ACCEPTED'] },
+  { id: 'approved',       label: 'Approved',        statuses: ['OFFER_ACCEPTED', 'APPROVED'] },
   { id: 'rejected',       label: 'Rejected',        statuses: ['REJECTED'] },
   { id: 'cancelled',      label: 'Cancelled',       statuses: ['CANCELLED', 'OFFER_DECLINED', 'OFFER_EXPIRED'] },
 ];
@@ -78,6 +78,7 @@ export default function BNPLStatusPage({ buyer }) {
   const navigate = useNavigate();
   const [apps, setApps] = useState([]);
   const [orders, setOrders] = useState([]); // buyer orders — cross-ref for subtotal/items/delivery
+  const [repayments, setRepayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -93,8 +94,12 @@ export default function BNPLStatusPage({ buyer }) {
   const load = async () => {
     if (!buyer?.buyer_id) return;
     setLoading(true);
-    const r = await bnplApi.listMyApplications(buyer.buyer_id);
+    const [r, repayRes] = await Promise.all([
+      bnplApi.listMyApplications(buyer.buyer_id),
+      bnplApi.listMyRepayments(buyer.buyer_id).catch(() => ({ success: false })),
+    ]);
     setApps(r.success ? r.applications : []);
+    setRepayments(repayRes.success ? (repayRes.rows || []) : []);
     // Fetch buyer orders so we can show subtotal / item count / product /
     // delivery type on each BNPL card (the BNPL app itself only carries
     // amount + plan_months).
@@ -111,31 +116,7 @@ export default function BNPLStatusPage({ buyer }) {
     if (r.success) setSelected(r.application);
   };
 
-  const accept = async (appNo) => {
-    setActionLoading(true);
-    await bnplApi.acceptOffer(buyer.buyer_id, appNo);
-    await open(appNo);
-    await load();
-    setActionLoading(false);
-  };
-  const decline = async (appNo, silent = false) => {
-    if (!silent && !window.confirm("Decline this offer? Order will be cancelled.")) return;
-    setActionLoading(true);
-    await bnplApi.declineOffer(buyer.buyer_id, appNo);
-    if (!silent) await open(appNo);
-    await load();
-    setActionLoading(false);
-  };
-
-  // Auto-reject expired approvals
-  useEffect(() => {
-    for (const app of apps) {
-      if (app.status !== "APPROVED") continue;
-      const dl = offerDeadlineMs(app);
-      if (dl && now > dl) decline(app.application_no, true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apps, now]);
+  // Buyer offer-accept removed — bank/auto approval finalizes BNPL.
 
   const statusColor = (s) => ({
     PENDING_BNPL_APPROVAL: "bg-amber-100 text-amber-800",
@@ -168,12 +149,93 @@ export default function BNPLStatusPage({ buyer }) {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const repaySummary = useMemo(() => {
+    return repayments.reduce(
+      (acc, r) => {
+        acc.total += Number(r.total_amount) || 0;
+        acc.paid += Number(r.amount_paid) || 0;
+        acc.remaining += Number(r.amount_remaining) || 0;
+        return acc;
+      },
+      { total: 0, paid: 0, remaining: 0 }
+    );
+  }, [repayments]);
+
   return (
     <div className="max-w-5xl mx-auto p-6">
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl font-bold text-gray-800">My BNPL Applications</h1>
+        <h1 className="text-2xl font-bold text-gray-800">My BNPL</h1>
         <button onClick={load} className="text-sm text-[#a37b3d]">↻ Refresh</button>
       </div>
+      <p className="text-xs text-gray-500 mb-4">
+        Applications and repayment status for your financed orders
+      </p>
+
+      {/* Repayment overview */}
+      {repayments.length > 0 && (
+        <div className="bg-white rounded-2xl border border-[#FBEFF1] shadow-sm p-5 mb-6 space-y-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-lg font-bold text-gray-900">Repayment Status</h2>
+            <span className="text-xs text-gray-500">{repayments.length} active plan(s)</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+              <p className="text-[11px] text-gray-400 uppercase font-semibold">Total financed</p>
+              <p className="text-lg font-extrabold text-gray-900">PKR {repaySummary.total.toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
+              <p className="text-[11px] text-emerald-700/70 uppercase font-semibold">Paid so far</p>
+              <p className="text-lg font-extrabold text-emerald-700">PKR {repaySummary.paid.toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl bg-amber-50 border border-amber-100 p-3">
+              <p className="text-[11px] text-amber-700/70 uppercase font-semibold">Outstanding</p>
+              <p className="text-lg font-extrabold text-amber-700">PKR {repaySummary.remaining.toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {repayments.map((r) => (
+              <div key={r.application_no} className="rounded-xl border border-gray-100 bg-gray-50/70 p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{r.application_no}</p>
+                    <p className="text-[11px] text-gray-500 font-mono">{r.order_id}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    r.repayment_status === "COMPLETED"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-amber-100 text-amber-800"
+                  }`}>{r.repayment_status}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-gray-400">Monthly</p>
+                    <p className="font-bold">PKR {(r.monthly_installment || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Remaining</p>
+                    <p className="font-bold text-amber-700">PKR {(r.amount_remaining || 0).toLocaleString()}</p>
+                  </div>
+                </div>
+                {r.next_due_date && r.repayment_status === "ACTIVE" && (
+                  <p className="text-[11px] text-blue-700">
+                    Next due: <b>{new Date(r.next_due_date).toLocaleDateString()}</b>
+                  </p>
+                )}
+                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full"
+                    style={{
+                      width: `${r.total_amount > 0 ? Math.min(100, Math.round(((r.amount_paid || 0) / r.total_amount) * 100)) : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <h2 className="text-lg font-bold text-gray-800 mb-2">Applications</h2>
       <p className="text-xs text-gray-500 mb-4">
         Total applications: <b>{totalCount}</b>
         {totalCount > PAGE_SIZE && ` · Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalCount)}`}
@@ -297,32 +359,6 @@ export default function BNPLStatusPage({ buyer }) {
               {selected.decision_at && <p><b>Decision At:</b> {new Date(selected.decision_at).toLocaleString()}</p>}
             </div>
 
-            {/* Prominent countdown card */}
-            {selected.status === "APPROVED" && (() => {
-              const dl = offerDeadlineMs(selected);
-              if (!dl) return null;
-              const remaining = dl - now;
-              const total = APPROVAL_WINDOW_MS;
-              const colors = remaining > 0 ? countdownColor(remaining, total) : countdownColor(0, total);
-              return (
-                <div className={`mt-6 p-6 rounded-2xl border-2 text-center ${colors.bg}`}>
-                  <h3 className="text-sm font-bold mb-4">⏳ Offer Accept/Reject Countdown</h3>
-                  {remaining > 0 ? (
-                    <div className="flex justify-center">
-                      <CountdownRing remaining={remaining} total={total} color={colors.ring} />
-                    </div>
-                  ) : (
-                    <div className="text-2xl font-black text-red-600 animate-pulse">
-                      ⛔ EXPIRED
-                    </div>
-                  )}
-                  {remaining > 0 && remaining < 86400000 && (
-                    <p className="text-xs text-red-600 font-bold mt-2 animate-pulse">⚠ Less than 24 hours — act now!</p>
-                  )}
-                </div>
-              );
-            })()}
-
             {selected.offer && (
               <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <h3 className="font-semibold text-amber-800 mb-2">Offer Letter</h3>
@@ -330,6 +366,12 @@ export default function BNPLStatusPage({ buyer }) {
                 <p className="text-sm">Processing Fee (2%): <b>PKR {selected.offer.processing_fee.toLocaleString()}</b></p>
                 <p className="text-sm">Monthly Installment: <b>PKR {selected.offer.monthly_installment.toLocaleString()}</b></p>
                 <p className="text-sm">Total Payable: <b>PKR {selected.offer.total_payable.toLocaleString()}</b></p>
+                {(selected.offer.amount_paid != null || selected.status === "OFFER_ACCEPTED") && (
+                  <>
+                    <p className="text-sm mt-2">Paid so far: <b className="text-emerald-700">PKR {(selected.offer.amount_paid || 0).toLocaleString()}</b></p>
+                    <p className="text-sm">Outstanding: <b className="text-amber-700">PKR {(selected.offer.amount_remaining ?? Math.max(0, (selected.offer.total_payable || 0) - (selected.offer.amount_paid || 0))).toLocaleString()}</b></p>
+                  </>
+                )}
               </div>
             )}
 
@@ -338,26 +380,25 @@ export default function BNPLStatusPage({ buyer }) {
                 <h3 className="font-semibold text-gray-700 mb-2">Uploaded Documents</h3>
                 <ul className="space-y-1">
                   {selected.documents.map(d => (
-                    <li key={d._id} className="text-xs flex justify-between border border-gray-100 rounded p-2">
+                    <li key={d._id || d.doc_type} className="text-xs flex justify-between border border-gray-100 rounded p-2">
                       <span>{d.doc_type} — {d.original_name}</span>
-                      <a href={`http://localhost:5000${d.url}`} target="_blank" rel="noreferrer"
-                        className="text-[#a37b3d]">View</a>
+                      <button
+                        type="button"
+                        className="text-[#a37b3d] font-semibold"
+                        onClick={() => {
+                          // d.url is a short-lived signed link issued to the signed-in owner.
+                          if (d.url) window.open(resolveMediaUrl(d.url), "_blank", "noopener,noreferrer");
+                        }}
+                      >View</button>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {selected.status === "APPROVED" && (
-              <div className="mt-6 flex gap-2">
-                <button onClick={() => decline(selected.application_no)} disabled={actionLoading}
-                  className="flex-1 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-semibold">
-                  Decline Offer
-                </button>
-                <button onClick={() => accept(selected.application_no)} disabled={actionLoading}
-                  className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold">
-                  {actionLoading ? "..." : "Accept Offer"}
-                </button>
+            {selected.status === "OFFER_ACCEPTED" && (
+              <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800">
+                BNPL approved. Your order is confirmed and with the seller for fulfillment — no offer acceptance is required.
               </div>
             )}
           </div>

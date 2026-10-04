@@ -92,7 +92,11 @@ export default function SellerAuthPage({ onLogin }) {
               pending={pending}
               theme="indigo"
               onVerified={(u) => onLogin?.(u)}
-              onBackToSignIn={() => { setPending(null); setMode('login'); setError(''); }}
+              onBackToSignIn={() => {
+                setPending(null);
+                setMode('login');
+                setError('');
+              }}
             />
           ) : (<>
           {/* Tab switcher */}
@@ -129,7 +133,9 @@ export default function SellerAuthPage({ onLogin }) {
             {/* Register-only fields */}
             {mode === 'register' && (
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Business / Full Name</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Business / Full Name
+                </label>
                 <input
                   type="text"
                   value={form.name}
@@ -163,20 +169,28 @@ export default function SellerAuthPage({ onLogin }) {
                 onChange={e => update('password', e.target.value)}
                 placeholder="••••••••"
                 required
-                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50/50"
+                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50/50"
               />
+
               {mode === 'register' && (
-                <p className="text-[11px] text-gray-500 mt-1">At least 8 characters, with a letter and a number.</p>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  At least 8 characters, with a letter and a number.
+                </p>
               )}
+
               {mode === 'login' && (
                 <div className="text-right mt-1">
-                  <button type="button" onClick={() => navigate('/forgot-password?portal=seller')}
-                    className="text-[11px] text-indigo-600 font-bold hover:underline cursor-pointer">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/forgot-password?portal=seller')}
+                    className="text-[11px] text-indigo-600 font-bold hover:underline cursor-pointer"
+                  >
                     Forgot password?
                   </button>
                 </div>
               )}
+
             </div>
 
             {/* Register-only: phone, city, seller type */}
@@ -249,7 +263,6 @@ export default function SellerAuthPage({ onLogin }) {
           </p>
 
           </>)}
-
         <div className="text-center mt-5">
           <button
             onClick={() => navigate('/')}

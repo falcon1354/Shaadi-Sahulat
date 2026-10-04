@@ -63,10 +63,11 @@ export default function FinancialDashboard({ admin }) {
         <p className="text-sm text-gray-500 mt-1">Platform overview and product analytics</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Sellers',    value: stats?.seller_count     || 0, icon: '🏪', color: 'from-[#a37b3d] to-[#ECD4A8]'   },
           { label: 'Total Buyers',     value: stats?.buyer_count      || 0, icon: '👰', color: 'from-blue-500 to-cyan-500'     },
+          { label: 'Live Orders',      value: stats?.order_count      || 0, icon: '🧾', color: 'from-violet-500 to-purple-500' },
           { label: 'Products Listed',  value: stats?.product_count    || 0, icon: '📦', color: 'from-orange-500 to-red-500'    },
         ].map(card => (
           <div key={card.label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
@@ -81,9 +82,11 @@ export default function FinancialDashboard({ admin }) {
 
       <div className="bg-gradient-to-tr from-[#1a0a1e] via-[#2d2d44] to-[#3d3455] rounded-2xl p-6 text-white border border-white/10 relative overflow-hidden">
         <div className="absolute right-0 bottom-0 translate-y-8 translate-x-8 w-40 h-40 bg-slate-400/10 rounded-full blur-2xl pointer-events-none" />
-        <p className="text-slate-400 text-sm font-medium relative z-10">Simulated Total Revenue</p>
-        <h3 className="text-3xl font-bold mt-1 bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent relative z-10">PKR {(stats?.revenue_simulated || 0).toLocaleString()}</h3>
-        <p className="text-slate-400 text-xs mt-2 relative z-10">Based on listed product prices × available inventory</p>
+        <p className="text-slate-400 text-sm font-medium relative z-10">Completed Order Revenue (live)</p>
+        <h3 className="text-3xl font-bold mt-1 bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent relative z-10">PKR {(stats?.revenue_completed || stats?.revenue_simulated || 0).toLocaleString()}</h3>
+        <p className="text-slate-400 text-xs mt-2 relative z-10">
+          From Orders module · {stats?.order_count || 0} active orders · {stats?.completed_orders || 0} completed
+        </p>
       </div>
 
       {/* Dual charts: Orders + Revenue (past 30 days, zero-filled) */}

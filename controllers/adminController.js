@@ -132,13 +132,38 @@ async function getAllBuyers(req, res) {
 
 async function getFinancialStats(req, res) {
   try {
-    const [buyerCount, estCount] = await Promise.all([
+    const Order = require("../models/Order");
+    const [buyerCount, estCount, orderAgg] = await Promise.all([
       Buyer.countDocuments(),
       DowryEstimation.countDocuments(),
+      Order.aggregate([
+        { $match: { superseded: { $ne: true }, status: { $nin: ["CANCELLED"] } } },
+        {
+          $group: {
+            _id: null,
+            order_count: { $sum: 1 },
+            // Live GMV from real orders (not ML-simulated)
+            revenue: { $sum: { $ifNull: ["$total_amount", 0] } },
+            completed_revenue: {
+              $sum: {
+                $cond: [
+                  { $in: ["$status", ["COMPLETED", "DELIVERED", "RESOLVED"]] },
+                  { $ifNull: ["$total_amount", 0] },
+                  0,
+                ],
+              },
+            },
+            completed_orders: {
+              $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, 1, 0] },
+            },
+          },
+        },
+      ]),
     ]);
 
     // Get product/seller stats from ML service
     const statsData = await mlFetch("/seller/stats");
+    const agg = orderAgg[0] || {};
 
     return res.json({
       success:         true,
@@ -147,7 +172,12 @@ async function getFinancialStats(req, res) {
       seller_count:    statsData?.seller_count    || 0,
       product_count:   statsData?.product_count   || 0,
       category_stats:  statsData?.category_stats  || [],
-      revenue_simulated: statsData?.revenue_simulated || 0,
+      // Prefer live Order-module totals (same source as Admin Orders)
+      order_count:     agg.order_count || 0,
+      completed_orders: agg.completed_orders || 0,
+      revenue_simulated: agg.completed_revenue || agg.revenue || 0,
+      revenue_gmv:     agg.revenue || 0,
+      revenue_completed: agg.completed_revenue || 0,
     });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
@@ -313,6 +343,21 @@ async function updateSubcategoryPrices(req, res) {
   }
 }
 
+async function deleteSubcategory(req, res) {
+  try {
+    const { category_id, subcategory_id } = req.params;
+    const cat = await AdminCategory.findOneAndUpdate(
+      { category_id },
+      { $pull: { subcategories: { id: subcategory_id } } },
+      { new: true }
+    );
+    if (!cat) return res.status(404).json({ success: false, error: "Category not found" });
+    return res.json({ success: true, message: "Subcategory deleted", category: cat });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+}
+
 module.exports = {
   getAllSellers,
   getSellerProducts,
@@ -325,6 +370,7 @@ module.exports = {
   getCategories,
   addCategory,
   addSubcategory,
+  deleteSubcategory,
   updateCategoryPrices,
   addCustomField,
   removeCustomField,

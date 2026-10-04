@@ -48,6 +48,8 @@ const {
   generateOfferNo,
 } = require("../lib/helpers");
 const { notifyBuyerAndAdmin } = require("../lib/notify");
+const { finalizeBnplApproval } = require("../lib/bnplFulfillment");
+const BnplDocumentBundle = require("../models/BnplDocumentBundle");
 
 // ---------- Bank officer login (credentials from the environment) ----------
 const BCRYPT_HASH_RE = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
@@ -293,20 +295,38 @@ router.get("/applications/:application_no", requireBankOfficer, async (req, res)
   }
 });
 
-// ---------- Serve raw document file ----------
+// ---------- Serve raw document file (by Mongo _id OR doc_type) ----------
 router.get(
   "/applications/:application_no/document/:doc_id",
   requireBankOfficer,
   async (req, res) => {
     try {
-      const doc = await BnplDocument.findOne({
+      const key = req.params.doc_id;
+      let filePath = "";
+
+      // Lookup order: document by doc_type, then by Mongo _id, then the document bundle slot.
+      let doc = await BnplDocument.findOne({
         application_id: req.params.application_no,
-        _id: req.params.doc_id,
+        doc_type: key,
       }).lean();
-      if (!doc) return res.status(404).json({ success: false, error: "Document not found" });
+      if (!doc && /^[a-fA-F0-9]{24}$/.test(key)) {
+        doc = await BnplDocument.findOne({
+          application_id: req.params.application_no,
+          _id: key,
+        }).lean();
+      }
+      if (doc) {
+        filePath = doc.file_path || "";
+      } else if (["cnic_front", "cnic_back", "utility_bill"].includes(key)) {
+        const bundle = await BnplDocumentBundle.findOne({
+          application_id: req.params.application_no,
+        }).lean();
+        filePath = bundle?.[key]?.file_path || "";
+      }
+      if (!filePath) return res.status(404).json({ success: false, error: "Document not found" });
 
       // Streamed through Node: the storage location (disk path / Cloudinary URL) is never revealed.
-      return await sendPrivateFile(res, doc.file_path);
+      return await sendPrivateFile(res, filePath);
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
@@ -395,95 +415,21 @@ router.post(
       }
 
       if (decision === "APPROVE") {
-        const planCalc = computePlan(app.amount, plan);
-        const expires = offerExpiry();
-        app.status = "APPROVED";
-        app.officer_comment = comment || "Approved by bank officer.";
-        app.decision_at = new Date();
-        app.offer_expires_at = expires;
-        app.plan_months = plan;
-        await app.save();
-
-        await BnplOfferLetter.create({
-          application_id: app.application_no,
-          offer_no: generateOfferNo(),
-          buyer_id: app.buyer_id,
-          approved_amount: planCalc.approved_amount,
-          plan_months: plan,
-          processing_fee: planCalc.processing_fee,
-          monthly_installment: planCalc.monthly_installment,
-          total_payable: planCalc.total_payable,
-          valid_until: expires,
-          status: "PENDING",
-          installments: buildInstallmentSchedule(planCalc.monthly_installment, plan),
+        // Approval finalizes BNPL immediately (no buyer offer-accept step).
+        // Creates packages so sellers see the order; payment_status stays PENDING
+        // until admin releases funds to the seller.
+        await finalizeBnplApproval({
+          applicationNo: app.application_no,
+          planMonths: plan,
+          comment: comment || "Approved by bank officer.",
+          by: "bank",
+          byId: req.officer.officer_id,
         });
-
-        // ── Move the linked order from PENDING_BNPL_APPROVAL → CONFIRMED ──
-        // Per Big-Task-Batch2 §6 Note: only NOW (post-approval) should the
-        // order appear in the seller's "Orders to Fulfill" list and have a
-        // package created.  Before approval the order sat in
-        // PENDING_BNPL_APPROVAL with NO packages.
-        const linkedOrder = await Order.findOne({ order_id: app.order_id });
-        if (linkedOrder && linkedOrder.status === "PENDING_BNPL_APPROVAL") {
-          linkedOrder.status = "CONFIRMED";
-          linkedOrder.payment_status = "PAID";
-          linkedOrder.timeline.push({
-            status: "CONFIRMED",
-            at: new Date(),
-            by: "bank",
-            by_id: req.officer.officer_id,
-            note: `BNPL application ${app.application_no} approved by bank officer. Order released for fulfillment.`,
-          });
-          await linkedOrder.save();
-
-          // ── NOW create the packages that were deferred at order-create time ──
-          const Package = require("../models/Package");
-          const { generatePackageId } = require("../lib/helpers");
-          const { notifySellerAndAdmin } = require("../lib/notify");
-          const bySeller = new Map();
-          for (const it of linkedOrder.items) {
-            if (!bySeller.has(it.seller_id)) bySeller.set(it.seller_id, []);
-            bySeller.get(it.seller_id).push(it);
-          }
-          for (const [sellerId, sellerItems] of bySeller.entries()) {
-            const pkgSubtotal = sellerItems.reduce((n, i) => n + i.subtotal, 0);
-            // PEND- placeholder; real PKG- generated when seller clicks
-            // "Mark Preparing" (per Big-Task-Batch2 §Seller Orders #4).
-            const pkg = await Package.create({
-              package_id: `PEND-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-              order_id: linkedOrder.order_id,
-              seller_id: sellerId,
-              seller_name: sellerItems[0].seller_name || "",
-              items: sellerItems.map(i => ({
-                product_id: i.product_id,
-                title: i.title,
-                price: i.price,
-                qty: i.qty,
-                subtotal: i.subtotal,
-              })),
-              items_count: sellerItems.reduce((n, i) => n + i.qty, 0),
-              subtotal: pkgSubtotal,
-              shipping_method: linkedOrder.delivery_method || "standard",
-              shipping_cost: 0,
-              distance_km: 0,
-              status: "PENDING",
-              admin_notified: true,
-            });
-
-            await notifySellerAndAdmin({
-              seller_id: sellerId,
-              title: "New Order Received (BNPL Approved)",
-              message: `You have received a new order ${linkedOrder.order_id} (package ${pkg.package_id}). ${sellerItems.length} item(s), PKR ${pkgSubtotal.toLocaleString()}.`,
-              type: "order",
-              ref_id: linkedOrder.order_id,
-            });
-          }
-        }
 
         await notifyBuyerAndAdmin({
           buyer_id: app.buyer_id,
           title: "BNPL Application APPROVED",
-          message: `Your BNPL application ${app.application_no} has been APPROVED. Offer valid for 3 days. Log in to accept.`,
+          message: `Your BNPL application ${app.application_no} has been APPROVED. Your order is confirmed and sellers will fulfill it.`,
           type: "bnpl",
           ref_id: app.application_no,
         });
@@ -549,7 +495,7 @@ router.post(
         success: true,
         message:
           decision === "APPROVE"
-            ? "Application approved. Offer letter generated."
+            ? "Application approved. BNPL finalized and order released for fulfillment."
             : "Application rejected. Order cancelled.",
         application_no: app.application_no,
         status: app.status,
@@ -595,5 +541,123 @@ router.post(
     }
   }
 );
+
+// ---------- Banker Batch Releases ----------
+const BnplBatchRelease = require("../models/BnplBatchRelease");
+const { runBnplBatchRelease } = require("../services/bnplBatchService");
+
+// GET /api/bank/batches — list of batch releases from bank to admin + all approved BNPL orders
+router.get("/batches", requireBankOfficer, async (req, res) => {
+  try {
+    const batches = await BnplBatchRelease.find().sort({ released_at: -1 }).lean();
+    const totalReleased = batches.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+    const totalOrders = batches.reduce((sum, b) => sum + (b.order_count || 0), 0);
+
+    // Find all BNPL applications that are APPROVED, OFFER_ACCEPTED, or already batched
+    const apps = await BnplApplication.find({
+      $or: [
+        { status: { $in: ["APPROVED", "OFFER_ACCEPTED"] } },
+        { batch_id: { $exists: true, $nin: [null, ""] } },
+      ],
+    })
+      .sort({ created_at: -1 })
+      .lean();
+
+    const orderIds = apps.map((a) => a.order_id).filter(Boolean);
+    const buyerIds = apps.map((a) => a.buyer_id).filter(Boolean);
+
+    const [orders, buyers] = await Promise.all([
+      Order.find({ order_id: { $in: orderIds } }).lean(),
+      Buyer.find({ buyer_id: { $in: buyerIds } }).lean(),
+    ]);
+
+    const orderMap = Object.fromEntries(orders.map((o) => [o.order_id, o]));
+    const buyerMap = Object.fromEntries(buyers.map((b) => [b.buyer_id, b.name]));
+
+    const approved_orders = apps.map((a) => {
+      const ord = orderMap[a.order_id];
+      const isBatched = Boolean(a.batch_id);
+      return {
+        application_no: a.application_no,
+        order_id: a.order_id,
+        buyer_id: a.buyer_id,
+        buyer_name: ord?.buyer_name || buyerMap[a.buyer_id] || "Customer",
+        amount: ord?.total_amount || a.amount || 0,
+        plan_months: a.plan_months,
+        status: a.status,
+        batch_id: a.batch_id || null,
+        is_transferred: isBatched,
+        created_at: a.created_at,
+        decision_at: a.decision_at || a.updatedAt || a.created_at,
+      };
+    });
+
+    return res.json({
+      success: true,
+      count: batches.length,
+      total_amount_released: totalReleased,
+      total_orders_batched: totalOrders,
+      batches,
+      approved_orders,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/bank/trigger-batch — manually execute batch release
+router.post("/trigger-batch", requireBankOfficer, async (req, res) => {
+  try {
+    const result = await runBnplBatchRelease();
+    return res.json(result);
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── BNPL Repayments (installment tracking) ──────────────────────────────────
+const {
+  listRepayments,
+  getRepaymentDetail,
+  recordPayment,
+} = require("../lib/bnplRepayment");
+
+// GET /api/bank/repayments — summary + list for banker
+router.get("/repayments", requireBankOfficer, async (req, res) => {
+  try {
+    const data = await listRepayments({});
+    return res.json({ success: true, ...data });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/bank/repayments/:application_no
+router.get("/repayments/:application_no", requireBankOfficer, async (req, res) => {
+  try {
+    const detail = await getRepaymentDetail(req.params.application_no);
+    if (!detail) return res.status(404).json({ success: false, error: "Repayment not found" });
+    return res.json({ success: true, repayment: detail });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/bank/repayments/:application_no/payments — record a repayment
+router.post("/repayments/:application_no/payments", requireBankOfficer, async (req, res) => {
+  try {
+    const { amount, paid_at, note } = req.body || {};
+    const repayment = await recordPayment(req.params.application_no, {
+      amount,
+      paid_at,
+      note,
+      recorded_by: req.officer?.officer_id || req.officer?.name || "bank_officer",
+      recorded_by_role: "bank",
+    });
+    return res.json({ success: true, message: "Payment recorded", repayment });
+  } catch (err) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
 
 module.exports = router;

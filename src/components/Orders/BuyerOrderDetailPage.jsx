@@ -4,6 +4,7 @@ import orderApi from "../../api/orderApi";
 import ReviewForm from "../Reviews/ReviewForm";
 import NotificationBell from "../Common/NotificationBell";
 import SlaCountdown from "../Common/SlaCountdown";
+import OrderTimeline from "../Common/OrderTimeline";
 
 /**
  * BuyerOrderDetailPage — confirmation (3 buttons) + 7-day auto-complete SLA.
@@ -212,6 +213,10 @@ export default function BuyerOrderDetailPage({ buyer }) {
         </div>
       )}
 
+      {order.timeline && order.timeline.length > 0 && (
+        <OrderTimeline timeline={order.timeline} className="mb-4" />
+      )}
+
       {disputes && disputes.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-4">
           <h2 className="text-lg font-semibold text-red-800 mb-2">Disputes</h2>
@@ -231,36 +236,47 @@ export default function BuyerOrderDetailPage({ buyer }) {
         <div className="bg-white rounded-2xl shadow p-6 mb-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold mb-1">Confirm Reception</h2>
-              <p className="text-sm text-gray-600">Has your order arrived?</p>
+              <h2 className="text-lg font-bold mb-1">
+                {order.seller_win_confirm_deadline ? "Confirm Order Completion" : "Confirm Reception"}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {order.seller_win_confirm_deadline
+                  ? "The dispute was resolved in the seller's favor. Please confirm reception within 2 days."
+                  : "Has your order arrived?"}
+              </p>
             </div>
             <SlaCountdown
-              deadline={sla?.auto_complete_deadline || order.auto_complete_at}
-              label={`Auto-completes in ${timers?.auto_complete_days || 7} days if no action`}
+              deadline={order.seller_win_confirm_deadline || sla?.auto_complete_deadline || order.auto_complete_at}
+              label={order.seller_win_confirm_deadline ? "Auto-completes in 2 days" : `Auto-completes in ${timers?.auto_complete_days || 7} days`}
               className="min-w-[180px]"
             />
           </div>
-          <p className="text-xs text-gray-500">
-            Day 3: reminder · Day 6: final warning · Day 7: auto-complete and release payment (unless a dispute is open).
-          </p>
+
           <div className="grid gap-2">
             <button onClick={confirmReceived} disabled={submitting}
               className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold">
               Yes, I received it — Order Complete
             </button>
-            <button onClick={confirmNotReceived} disabled={submitting}
-              className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold">
-              No, I did not receive it
-            </button>
-            <button onClick={() => setShowProblem(true)} disabled={submitting}
-              title="Select issue and upload photo"
-              className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold">
-              Item received, but there&apos;s a problem
-            </button>
+
+            {!order.seller_win_confirm_deadline && (
+              <>
+                <button onClick={confirmNotReceived} disabled={submitting}
+                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold">
+                  No, I did not receive it
+                </button>
+                <button onClick={() => setShowProblem(true)} disabled={submitting}
+                  title="Select issue and upload photo"
+                  className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold">
+                  Item received, but there&apos;s a problem
+                </button>
+              </>
+            )}
           </div>
-          <p className="text-[11px] text-gray-500">
-            Opening a dispute puts payment ON HOLD and starts the seller&apos;s 48-hour response window.
-          </p>
+          {!order.seller_win_confirm_deadline && (
+            <p className="text-[11px] text-gray-500">
+              Opening a dispute puts payment ON HOLD and starts the seller&apos;s 48-hour response window.
+            </p>
+          )}
         </div>
       )}
 

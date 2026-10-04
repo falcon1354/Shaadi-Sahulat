@@ -1,28 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import bankApi from "../../api/bankApi";
+import { resolveMediaUrl } from "../../lib/openDoc";
+import BankRepaymentsPage from "./BankRepaymentsPage";
 
 /**
- * BankDashboardPage — bank officer verification workbench.
- *
- * Per spec:
- *   - Filters "Past 7 Days" and "Past 24 Hours"
- *   - No duplicate entries per application
- *   - Applications grouped by buyer (one row per buyer, expand to see all)
- *   - Verification Workbench: explicit CNIC Approved + Bank Verified checks
- *   - Approve button disabled until BOTH checks are ticked
- *   - Risk Score REMOVED entirely
- *
- * Updates (Big-Task-Batch2 §Banker):
- *   1. Approval fix — frontend now sends `verification_checks` in the
- *      decision POST body, mapping the two UI checkboxes to the four
- *      backend fields:
- *        cnic_approved → cnic_match + identity_confirmed
- *        bank_verified → iban_valid + documents_complete
- *   2. Stat cards show all-time totals (stats.total / pending / approved /
- *      rejected) instead of "today" counts.
- *   3. Status filter lives in a left-side vertical sidebar instead of an
- *      inline horizontal button row.
+ * BankDashboardPage — bank officer verification workbench and 24h batch releases to platform.
  */
 export default function BankDashboardPage() {
   const navigate = useNavigate();
@@ -37,6 +20,9 @@ export default function BankDashboardPage() {
   const [expanded, setExpanded] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState("");
+  const [batchesData, setBatchesData] = useState(null);
+  const [triggeringBatch, setTriggeringBatch] = useState(false);
+  const [batchMsg, setBatchMsg] = useState("");
 
   useEffect(() => {
     const o = bankApi.getOfficerFromStorage();
@@ -46,8 +32,14 @@ export default function BankDashboardPage() {
 
   const load = async () => {
     if (!officer) return;
-    const r = await bankApi.listApplications(officer.token, filter);
-    if (r.success) { setApps(r.applications); setStats(r.stats); }
+    if (filter === "REPAYMENTS") return; // BankRepaymentsPage loads its own data
+    if (filter === "BATCH_RELEASES") {
+      const bResp = await bankApi.listBatches(officer.token);
+      if (bResp.success) setBatchesData(bResp);
+    } else {
+      const r = await bankApi.listApplications(officer.token, filter);
+      if (r.success) { setApps(r.applications); setStats(r.stats); }
+    }
   };
   useEffect(() => { load(); }, [officer, filter]);
 
@@ -60,10 +52,6 @@ export default function BankDashboardPage() {
 
   const submitDecision = async () => {
     setSubmitting(true); setMsg("");
-    // REQ E1 fix: send verification_checks in the POST body so the backend
-    // persists them BEFORE running the all-checks-passed gate.
-    //   cnic_approved → cnic_match + identity_confirmed
-    //   bank_verified → iban_valid + documents_complete
     const payload = {
       ...decision,
       verification_checks: {
@@ -81,6 +69,20 @@ export default function BankDashboardPage() {
     load();
   };
 
+  const handleTriggerBatch = async () => {
+    setTriggeringBatch(true);
+    setBatchMsg("");
+    const r = await bankApi.triggerBatch(officer.token);
+    setTriggeringBatch(false);
+    if (r.success) {
+      setBatchMsg(`✓ ${r.message}`);
+      const bResp = await bankApi.listBatches(officer.token);
+      if (bResp.success) setBatchesData(bResp);
+    } else {
+      setBatchMsg(r.error || "Batch execution failed.");
+    }
+  };
+
   const statusColor = (s) => ({
     PENDING_BANK_VERIFICATION: "bg-amber-100 text-amber-800",
     APPROVED: "bg-green-100 text-green-800",
@@ -90,7 +92,6 @@ export default function BankDashboardPage() {
     CANCELLED: "bg-red-100 text-red-800",
   }[s] || "bg-gray-100");
 
-  // Time-based filter + dedup by application_no
   const filteredApps = useMemo(() => {
     const seen = new Set();
     const unique = [];
@@ -102,7 +103,6 @@ export default function BankDashboardPage() {
     return unique.filter(a => new Date(a.created_at).getTime() >= cutoff);
   }, [apps, timeFilter]);
 
-  // Group by buyer
   const grouped = useMemo(() => {
     const map = {};
     for (const a of filteredApps) {
@@ -124,7 +124,6 @@ export default function BankDashboardPage() {
 
   const canApprove = decision.decision === "REJECT" || (checks.cnic_approved && checks.bank_verified);
 
-  // REQ E3: status filter items shown in the left-side vertical sidebar.
   const FILTERS = [
     { id: "",                          label: "All Applications" },
     { id: "PENDING_BANK_VERIFICATION", label: "Pending Verification" },
@@ -132,13 +131,15 @@ export default function BankDashboardPage() {
     { id: "OFFER_ACCEPTED",            label: "Offer Accepted" },
     { id: "REJECTED",                  label: "Rejected" },
     { id: "CANCELLED",                 label: "Cancelled" },
+    { id: "BATCH_RELEASES",            label: "📦 24h Batch Releases" },
+    { id: "REPAYMENTS",                label: "💳 BNPL Repayments" },
   ];
 
   if (!officer) return <div className="p-8 text-center text-gray-500">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between">
+      <div className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
           <span className="text-2xl">🏦</span>
           <div>
@@ -152,20 +153,19 @@ export default function BankDashboardPage() {
         </button>
       </div>
 
-      {/* REQ E3: layout = left sidebar (status filter) + main content */}
       <div className="max-w-6xl mx-auto p-6 flex gap-6">
         {/* Left sidebar — vertical status filter */}
-        <aside className="w-48 shrink-0 space-y-2">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</p>
+        <aside className="w-52 shrink-0 space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Navigation</p>
           {FILTERS.map(f => {
             const isActive = filter === f.id;
             return (
               <button
                 key={f.id || "ALL"}
                 onClick={() => setFilter(f.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${
                   isActive
-                    ? "bg-blue-600 text-white border-blue-600"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                     : "bg-white border-gray-200 text-gray-600 hover:border-blue-300"
                 }`}
               >
@@ -174,91 +174,284 @@ export default function BankDashboardPage() {
             );
           })}
 
-          <button onClick={load} className="w-full text-xs text-blue-600 mt-3 hover:underline">
-            ↻ Refresh
+          <button onClick={load} className="w-full text-xs text-blue-600 mt-3 font-semibold hover:underline">
+            ↻ Refresh View
           </button>
         </aside>
 
         {/* Main content */}
         <main className="flex-1 space-y-4 min-w-0">
-          {/* REQ E2: stat cards show ALL-TIME totals (stats.total / pending /
-              approved / rejected). The backend still returns *_today fields
-              for the optional "Today" filter chip but the cards no longer use them. */}
-          {stats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl shadow p-4">
-                <p className="text-xs text-gray-500">Total Active</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.total ?? 0}</p>
-              </div>
-              <div className="bg-white rounded-xl shadow p-4">
-                <p className="text-xs text-gray-500">Total Pending</p>
-                <p className="text-2xl font-bold text-amber-600">{stats.pending ?? 0}</p>
-              </div>
-              <div className="bg-white rounded-xl shadow p-4">
-                <p className="text-xs text-gray-500">Total Approved</p>
-                <p className="text-2xl font-bold text-green-600">{stats.approved ?? 0}</p>
-              </div>
-              <div className="bg-white rounded-xl shadow p-4">
-                <p className="text-xs text-gray-500">Total Rejected</p>
-                <p className="text-2xl font-bold text-red-600">{stats.rejected ?? 0}</p>
-              </div>
-            </div>
-          )}
+          {filter === "REPAYMENTS" ? (
+            <BankRepaymentsPage officer={officer} onBack={() => setFilter("PENDING_BANK_VERIFICATION")} />
+          ) : filter === "BATCH_RELEASES" ? (
+            /* ────────────────── 24H BATCH RELEASES VIEW ────────────────── */
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-2xl p-6 shadow-md flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-blue-300">Total Funds Transferred to Platform</span>
+                  <h2 className="text-3xl font-black mt-1">
+                    PKR {(batchesData?.total_amount_released || 0).toLocaleString()}
+                  </h2>
+                  <p className="text-xs text-blue-200/80 mt-1">
+                    {batchesData?.total_orders_batched || 0} accepted BNPL orders batched &amp; transferred to Admin Escrow
+                  </p>
+                </div>
 
-          {/* Time filter */}
-          <div className="flex gap-2 flex-wrap items-center">
-            <span className="text-xs text-gray-500">Time range:</span>
-            {[{ id: "ALL", l: "All Time" }, { id: "24H", l: "Past 24 Hours" }, { id: "7D", l: "Past 7 Days" }].map(t => (
-              <button key={t.id} onClick={() => setTimeFilter(t.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${timeFilter === t.id ? "bg-blue-600 text-white" : "bg-white border border-gray-200 text-gray-600"}`}>
-                {t.l}
-              </button>
-            ))}
-          </div>
+                <button
+                  type="button"
+                  onClick={handleTriggerBatch}
+                  disabled={triggeringBatch}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2"
+                >
+                  <span>⚡</span>
+                  {triggeringBatch ? "Processing Batch Transfer..." : "Trigger Batch Release Now"}
+                </button>
+              </div>
 
-          {/* Grouped-by-buyer list */}
-          <div className="grid gap-3">
-            {grouped.length === 0 ? (
-              <div className="bg-white rounded-xl shadow p-12 text-center text-gray-500">No applications.</div>
-            ) : grouped.map(g => {
-              const key = g.buyer_id || g.buyer_name;
-              const isOpen = expanded[key];
-              return (
-                <div key={key} className="bg-white rounded-xl shadow">
-                  <div className="p-4 flex items-center justify-between cursor-pointer"
-                       onClick={() => setExpanded(s => ({ ...s, [key]: !s[key] }))}>
-                    <div>
-                      <p className="font-semibold text-gray-800">👤 {g.buyer_name || g.buyer_id}</p>
-                      <p className="text-xs text-gray-500">
-                        {g.counts.total} application(s) · 🟡 {g.counts.pending} pending · ✅ {g.counts.approved} approved · ❌ {g.counts.rejected} rejected
-                      </p>
-                    </div>
-                    <span className="text-gray-400">{isOpen ? "▲" : "▼"}</span>
+              {batchMsg && (
+                <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-xs font-semibold">
+                  {batchMsg}
+                </div>
+              )}
+
+              {/* ── Day-wise Approved BNPL Orders (Default View) ── */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">BNPL Approved Orders (Day-Wise)</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">All customer-accepted installment orders scheduled for batch escrow transfer</p>
                   </div>
-                  {isOpen && (
-                    <div className="border-t border-gray-100 p-3 space-y-2">
-                      {g.items.map(a => (
-                        <div key={a.application_no} className="border border-gray-100 rounded-lg p-3 flex items-center justify-between">
-                          <div>
-                            <p className="font-semibold text-gray-800 text-sm">{a.application_no}</p>
-                            <p className="text-xs text-gray-500">{a.bank_name} • PKR {a.amount.toLocaleString()} • {a.plan_months} months • CNIC: {a.cnic_masked || "—"}</p>
-                            <p className="text-xs text-gray-400">Submitted: {new Date(a.created_at).toLocaleString()}</p>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
+                    {batchesData?.approved_orders?.length || 0} Total Orders
+                  </span>
+                </div>
+
+                {(!batchesData?.approved_orders || batchesData.approved_orders.length === 0) ? (
+                  <p className="text-xs text-gray-400 py-6 text-center">No approved BNPL orders found yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {(() => {
+                      const map = {};
+                      for (const ord of (batchesData?.approved_orders || [])) {
+                        const dStr = new Date(ord.created_at || ord.decision_at || Date.now()).toLocaleDateString([], {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        });
+                        if (!map[dStr]) {
+                          map[dStr] = {
+                            dateStr: dStr,
+                            rawDate: new Date(ord.created_at || ord.decision_at || Date.now()),
+                            orders: [],
+                          };
+                        }
+                        map[dStr].orders.push(ord);
+                      }
+                      const dayGroups = Object.values(map).sort((a, b) => b.rawDate - a.rawDate);
+
+                      return dayGroups.map((day) => {
+                        const allDone = day.orders.length > 0 && day.orders.every((o) => o.is_transferred || o.batch_id);
+                        const dayTotal = day.orders.reduce((sum, o) => sum + (o.amount || 0), 0);
+
+                        return (
+                          <div key={day.dateStr} className="border border-gray-200 rounded-2xl overflow-hidden bg-gray-50/40">
+                            {/* Day Card Header with Checkmark when all are transferred */}
+                            <div className="p-4 bg-white border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-base">📅</span>
+                                <div>
+                                  <h4 className="font-bold text-sm text-gray-900">{day.dateStr}</h4>
+                                  <p className="text-[11px] text-gray-500">{day.orders.length} order(s) · PKR {dayTotal.toLocaleString()}</p>
+                                </div>
+                              </div>
+
+                              <div>
+                                {allDone ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    <span>✓</span> All Transferred
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                    <span>⏳</span> {day.orders.filter((o) => !o.is_transferred).length} Pending Release
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Transfer Style Cards for Orders */}
+                            <div className="p-3 grid gap-2 sm:grid-cols-2">
+                              {day.orders.map((ord, i) => (
+                                <div
+                                  key={ord.application_no || i}
+                                  className="bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-xs hover:border-blue-300 transition-all space-y-2"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                      <p className="font-bold text-xs text-gray-900">{ord.buyer_name || "Customer"}</p>
+                                      <p className="font-mono text-[10px] text-gray-500 font-medium">Order: {ord.order_id}</p>
+                                      <p className="text-[10px] text-gray-400">App: {ord.application_no} · {ord.plan_months}m Plan</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-xs font-black text-emerald-700 font-mono block">
+                                        PKR {(ord.amount || 0).toLocaleString()}
+                                      </span>
+                                      <span className="text-[10px] text-gray-400">
+                                        {new Date(ord.created_at || ord.decision_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                                    <span className="text-[10px] text-gray-500">Transfer Status:</span>
+                                    {ord.is_transferred || ord.batch_id ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 font-mono">
+                                        ✓ Transferred · {ord.batch_id}
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-semibold border border-amber-200">
+                                        ⏳ Queued for Batch
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${statusColor(a.status)}`}>{a.status}</span>
-                            <button onClick={(e) => { e.stopPropagation(); openApp(a.application_no); }}
-                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-semibold">
-                              Verify Now
-                            </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Executed Batch Releases List ── */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-3">
+                <h3 className="text-sm font-bold text-gray-900">Executed Batch Transfers (Bank → Platform)</h3>
+                {(!batchesData?.batches || batchesData.batches.length === 0) ? (
+                  <p className="text-xs text-gray-400 py-6 text-center">No batches released yet. Click the trigger button above to process pending accepted applications.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {batchesData.batches.map((b) => (
+                      <div key={b.batch_id} className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 hover:bg-white transition-all">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2 mb-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-blue-900">{b.batch_id}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
+                                ✓ Transferred
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-500 mt-0.5">
+                              Date &amp; Time: <strong>{new Date(b.released_at).toLocaleString()}</strong>
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-black text-emerald-700 font-mono">
+                              PKR {(b.total_amount || 0).toLocaleString()}
+                            </span>
+                            <p className="text-[10px] text-gray-500">{b.order_count || (b.orders || []).length} order(s) included</p>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+
+                        <div className="grid gap-1.5 sm:grid-cols-2 mt-2">
+                          {(b.orders || []).map((ord, idx) => (
+                            <div key={idx} className="bg-white p-2.5 rounded-lg border border-gray-100 text-xs flex justify-between items-center">
+                              <div>
+                                <p className="font-semibold text-gray-800">{ord.buyer_name || "Customer"}</p>
+                                <p className="font-mono text-[10px] text-gray-400">{ord.order_id}</p>
+                              </div>
+                              <span className="font-bold text-emerald-700 font-mono">
+                                PKR {(ord.amount || 0).toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* ────────────────── APPLICATIONS VERIFICATION VIEW ────────────────── */
+            <>
+              {stats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl shadow p-4">
+                    <p className="text-xs text-gray-500">Total Active</p>
+                    <p className="text-2xl font-bold text-blue-600">{stats.total ?? 0}</p>
+                  </div>
+                  <div className="bg-white rounded-xl shadow p-4">
+                    <p className="text-xs text-gray-500">Total Pending</p>
+                    <p className="text-2xl font-bold text-amber-600">{stats.pending ?? 0}</p>
+                  </div>
+                  <div className="bg-white rounded-xl shadow p-4">
+                    <p className="text-xs text-gray-500">Total Approved</p>
+                    <p className="text-2xl font-bold text-green-600">{stats.approved ?? 0}</p>
+                  </div>
+                  <div className="bg-white rounded-xl shadow p-4">
+                    <p className="text-xs text-gray-500">Total Rejected</p>
+                    <p className="text-2xl font-bold text-red-600">{stats.rejected ?? 0}</p>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              )}
+
+              {/* Time filter */}
+              <div className="flex gap-2 flex-wrap items-center">
+                <span className="text-xs text-gray-500">Time range:</span>
+                {[{ id: "ALL", l: "All Time" }, { id: "24H", l: "Past 24 Hours" }, { id: "7D", l: "Past 7 Days" }].map(t => (
+                  <button key={t.id} onClick={() => setTimeFilter(t.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${timeFilter === t.id ? "bg-blue-600 text-white" : "bg-white border border-gray-200 text-gray-600"}`}>
+                    {t.l}
+                  </button>
+                ))}
+              </div>
+
+              {/* Grouped-by-buyer list */}
+              <div className="grid gap-3">
+                {grouped.length === 0 ? (
+                  <div className="bg-white rounded-xl shadow p-12 text-center text-gray-500">No applications.</div>
+                ) : grouped.map(g => {
+                  const key = g.buyer_id || g.buyer_name;
+                  const isOpen = expanded[key];
+                  return (
+                    <div key={key} className="bg-white rounded-xl shadow">
+                      <div className="p-4 flex items-center justify-between cursor-pointer"
+                           onClick={() => setExpanded(s => ({ ...s, [key]: !s[key] }))}>
+                        <div>
+                          <p className="font-semibold text-gray-800">👤 {g.buyer_name || g.buyer_id}</p>
+                          <p className="text-xs text-gray-500">
+                            {g.counts.total} application(s) · 🟡 {g.counts.pending} pending · ✅ {g.counts.approved} approved · ❌ {g.counts.rejected} rejected
+                          </p>
+                        </div>
+                        <span className="text-gray-400">{isOpen ? "▲" : "▼"}</span>
+                      </div>
+                      {isOpen && (
+                        <div className="border-t border-gray-100 p-3 space-y-2">
+                          {g.items.map(a => (
+                            <div key={a.application_no} className="border border-gray-100 rounded-lg p-3 flex items-center justify-between">
+                              <div>
+                                <p className="font-semibold text-gray-800 text-sm">{a.application_no}</p>
+                                <p className="text-xs text-gray-500">{a.bank_name} • PKR {a.amount.toLocaleString()} • {a.plan_months} months • CNIC: {a.cnic_masked || "—"}</p>
+                                <p className="text-xs text-gray-400">Submitted: {new Date(a.created_at).toLocaleString()}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs px-2 py-1 rounded-full font-semibold ${statusColor(a.status)}`}>{a.status}</span>
+                                <button onClick={(e) => { e.stopPropagation(); openApp(a.application_no); }}
+                                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-semibold">
+                                  Verify Now
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </main>
       </div>
 
@@ -309,13 +502,21 @@ export default function BankDashboardPage() {
                       {d.ocr_extracted_cnic && <p className="text-xs text-gray-500">OCR CNIC: <span className="font-mono">{d.ocr_extracted_cnic}</span> ({Math.round((d.ocr_confidence || 0) * 100)}%)</p>}
                       {d.ocr_error && <p className="text-xs text-amber-700">OCR error: {d.ocr_error}</p>}
                     </div>
-                    <a href={`http://localhost:5000${d.url}`} target="_blank" rel="noreferrer"
-                      className="px-2 py-1 bg-blue-600 text-white text-xs rounded">View</a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const stored = JSON.parse(localStorage.getItem("ss_bank_officer") || "null");
+                        let url = d.url || "";
+                        if (url.startsWith("/api/") && stored?.token) {
+                          url = `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(stored.token)}`;
+                        }
+                        window.open(resolveMediaUrl(url), "_blank", "noopener,noreferrer");
+                      }}
+                      className="px-2 py-1 bg-blue-600 text-white text-xs rounded">View</button>
                   </div>
                 ))}
               </div>
 
-              {/* Explicit approvals — MUST be ticked to Approve */}
               {active.status === "PENDING_BANK_VERIFICATION" && (
                 <div className="mt-3 space-y-2 bg-blue-50 border border-blue-200 rounded-xl p-3">
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -335,11 +536,6 @@ export default function BankDashboardPage() {
                   {!canApprove && decision.decision === "APPROVE" && (
                     <p className="text-xs text-red-600">⚠ Both checks required before Approve is enabled.</p>
                   )}
-                  <p className="text-[11px] text-gray-500">
-                    On Approve, these checks are sent to the backend as <code>cnic_match</code>+
-                    <code>identity_confirmed</code> (CNIC) and <code>iban_valid</code>+
-                    <code>documents_complete</code> (Bank).
-                  </p>
                 </div>
               )}
             </div>
