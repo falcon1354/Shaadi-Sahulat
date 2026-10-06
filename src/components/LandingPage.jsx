@@ -19,8 +19,9 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
           <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
             <img src={logo} alt="ShaadiSahulat Logo" className="w-full h-full object-contain drop-shadow-lg" />
           </div>
-          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-black text-[#f2bc66] tracking-tight drop-shadow-lg">
-            ShaadiSahulat
+          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-black tracking-tight drop-shadow-lg">
+            <span className="text-[#d43558]">Shaadi</span>
+            <span className="text-[#f2bc66]">Sahulat</span>
           </h1>
           <p className="text-lg sm:text-xl text-[#f051b0] font-bold mt-2 drop-shadow-md">
             Your Complete Wedding Planning Platform

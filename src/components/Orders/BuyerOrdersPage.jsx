@@ -57,6 +57,7 @@ export default function BuyerOrdersPage({ buyer }) {
 
   const sorted = useMemo(
     () => [...orders]
+      .filter(o => !o.superseded)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .filter(o => !activeTabDef.statuses || activeTabDef.statuses.includes(o.status)),
     [orders, activeTabDef]
@@ -72,6 +73,9 @@ export default function BuyerOrdersPage({ buyer }) {
     const map = new Map();
     for (const a of bnplApps) {
       if (a?.order_id) map.set(a.order_id, a);
+      for (const id of a?.linked_order_ids || []) {
+        if (id) map.set(id, a);
+      }
     }
     return map;
   }, [bnplApps]);
@@ -155,16 +159,30 @@ export default function BuyerOrdersPage({ buyer }) {
             const productLabel = (o.items?.[0]?.title || 'Bridal Order') +
               (o.items && o.items.length > 1 ? ` + ${o.items.length - 1} more` : '');
 
+            const groupColor = o.checkout_group_color || "";
+
             return (
               <div
                 key={o.order_id}
-                className="bg-white rounded-2xl border border-[#EADBCC] p-5 hover:border-[#9B7036]/50 shadow-xs hover:shadow-card-hover transition-all duration-200 cursor-pointer group"
+                className="bg-white rounded-2xl border border-[#EADBCC] p-5 hover:border-[#9B7036]/50 shadow-xs hover:shadow-card-hover transition-all duration-200 cursor-pointer group relative overflow-hidden"
                 onClick={() => navigate(`/buyer/orders/${o.order_id}`)}
               >
+                {groupColor && (
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1.5"
+                    style={{ backgroundColor: groupColor }}
+                    title="Same checkout group"
+                  />
+                )}
                 {/* Header row */}
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-[#EFEAE4]">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#FAF7F2] border border-[#EFEAE4] flex items-center justify-center text-[#9B7036]">
+                    <div
+                      className="w-9 h-9 rounded-xl border flex items-center justify-center"
+                      style={groupColor
+                        ? { backgroundColor: `${groupColor}22`, borderColor: `${groupColor}66`, color: groupColor }
+                        : { backgroundColor: "#FAF7F2", borderColor: "#EFEAE4", color: "#9B7036" }}
+                    >
                       <Package size={18} />
                     </div>
                     <div>

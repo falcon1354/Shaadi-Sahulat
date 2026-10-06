@@ -46,7 +46,7 @@ const bnplOfferLetterSchema = new mongoose.Schema(
     amount_remaining:    { type: Number, default: null },
     repayment_status:    {
       type: String,
-      enum: ["ACTIVE", "COMPLETED", "DEFAULTED"],
+      enum: ["ACTIVE", "COMPLETED", "DEFAULTED", "CANCELLED"],
       default: "ACTIVE",
       index: true,
     },

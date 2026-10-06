@@ -722,6 +722,30 @@ export default function MarketplacePage({
 
   // §11.4 Budget check before adding to cart
   const handleAddToCart = (product, onSuccess) => {
+    const tryAdd = () => {
+      const result = addItem(product);
+      if (result?.ok === false) {
+        setShiftToast(result.reason || 'Could not add this item to cart.');
+        setTimeout(() => setShiftToast(''), 3500);
+        return false;
+      }
+      onSuccess?.();
+      return true;
+    };
+
+    if (!product?.product_id) {
+      setShiftToast('This item cannot be added right now.');
+      setTimeout(() => setShiftToast(''), 3500);
+      return;
+    }
+
+    const stock = Number(product.stock_quantity ?? product.stock_qty);
+    if (Number.isFinite(stock) && stock <= 0) {
+      setShiftToast('This item is out of stock.');
+      setTimeout(() => setShiftToast(''), 3500);
+      return;
+    }
+
     const price     = product.discount_price || product.price || 0;
     const cat       = product.major_category;
     const budget    = (!isAdminView && cat) ? getBudgetForCategory(cat, buyerId) : null;
@@ -729,22 +753,21 @@ export default function MarketplacePage({
     const overshoot = remaining !== null ? price - remaining : -1;
 
     if (overshoot <= 0 || remaining === null) {
-      addItem(product);
-      onSuccess?.();
+      tryAdd();
       return;
     }
 
     // Scenario B: small category, small overshoot → subtle toast then add
     if (SMALL_CATS.includes(cat) && overshoot <= 5000) {
-      addItem(product);
-      onSuccess?.();
-      setShiftToast(`This item slightly exceeds your ${cat.replace(/_/g, ' ')} budget by PKR ${overshoot.toLocaleString()}.`);
-      setTimeout(() => setShiftToast(''), 3500);
+      if (tryAdd()) {
+        setShiftToast(`This item slightly exceeds your ${cat.replace(/_/g, ' ')} budget by PKR ${overshoot.toLocaleString()}.`);
+        setTimeout(() => setShiftToast(''), 3500);
+      }
       return;
     }
 
     // Scenario C or D → show overshoot modal
-    setPendingCallback(() => () => { addItem(product); onSuccess?.(); });
+    setPendingCallback(() => () => { tryAdd(); });
     setOvershootState({
       product,
       overshoot,

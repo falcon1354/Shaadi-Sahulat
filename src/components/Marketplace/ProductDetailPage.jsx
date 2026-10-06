@@ -85,6 +85,7 @@ export default function ProductDetailPage({
   const [product, setProduct]     = useState(initialProduct || null);
   const [loading, setLoading]     = useState(!initialProduct);
   const [toastVisible, setToast]  = useState(false);
+  const [toastMessage, setToastMessage] = useState('Added to cart!');
   const [wishlist, setWishlist]   = useState(() => readWishlist(buyerId));
 
   // Reviews state
@@ -205,8 +206,21 @@ export default function ProductDetailPage({
   );
 
   const handleAddToCart = () => {
-    if (!product || availableStock <= 0) return;
-    addItem(product, selectedQty);
+    if (!product) return;
+    if (availableStock <= 0) {
+      setToastMessage('This item is out of stock.');
+      setToast(true);
+      setTimeout(() => setToast(false), 2200);
+      return;
+    }
+    const result = addItem(product, selectedQty);
+    if (result?.ok === false) {
+      setToastMessage(result.reason || 'Could not add this item to cart.');
+      setToast(true);
+      setTimeout(() => setToast(false), 2200);
+      return;
+    }
+    setToastMessage('Added to cart!');
     setToast(true);
     setTimeout(() => setToast(false), 2000);
   };
@@ -677,7 +691,7 @@ export default function ProductDetailPage({
         )}
       </div>
 
-      <Toast message="Added to cart!" visible={toastVisible} />
+      <Toast message={toastMessage} visible={toastVisible} />
     </div>
   );
 }

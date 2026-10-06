@@ -229,7 +229,7 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
 
   const subtotal = items.reduce((s, it) => s + (it.discount_price || it.price) * it.qty, 0);
   const shippingCost = DELIVERY_OPTIONS.find(o => o.id === deliveryMethod)?.price || 0;
-  const processingFee = paymentMethod === 'BNPL' ? subtotal * 0.04 : 0;
+  const processingFee = paymentMethod === 'BNPL' ? Math.round(subtotal * 0.02) : 0;
   const grandTotal = subtotal + shippingCost + processingFee;
 
   const handlePlaceOrder = async () => {
@@ -341,7 +341,7 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
         </div>
         {processingFee > 0 && (
           <div className="flex justify-between text-sm text-amber-700">
-            <span>Bank Processing Fee (4%)</span>
+            <span>Bank Processing Fee (2%)</span>
             <span>PKR {processingFee.toLocaleString()}</span>
           </div>
         )}
@@ -494,7 +494,7 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
             className="mr-2"
           />
           <span className="font-semibold text-gray-800">Bank Installment Plan (BNPL)</span>
-          <span className="text-xs text-gray-500 ml-2">Get approved in minutes. 3 or 6 month plan. 4% processing fee.</span>
+          <span className="text-xs text-gray-500 ml-2">Get approved in minutes. 3 or 6 month plan. 2% processing fee.</span>
         </label>
       </div>
 

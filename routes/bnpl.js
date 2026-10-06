@@ -177,13 +177,12 @@ router.post("/applications", requireBuyer, limits.bnplSubmit, upload, async (req
     if (!bank) return res.status(400).json({ success: false, error: "Invalid or inactive bank" });
 
     const ibanUpper = iban.toUpperCase();
-    // Prefix validation removed for testing.
-    // if (!ibanUpper.startsWith(bank.iban_prefix)) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     error: `IBAN prefix does not match ${bank.name}. Expected prefix: ${bank.iban_prefix}`,
-    //   });
-    // }
+    if (bank.iban_prefix && !ibanUpper.startsWith(String(bank.iban_prefix).toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        error: `IBAN does not match ${bank.name}. Please use an account from this bank.`,
+      });
+    }
 
     // --- eligibility ---
     const elig = await checkBnplEligibility(req.user.id, order.total_amount);
@@ -377,7 +376,8 @@ router.post("/applications", requireBuyer, limits.bnplSubmit, upload, async (req
         ? "BNPL application auto-approved. Order released for fulfillment."
         : "BNPL application submitted. Pending bank verification.",
       application: populated,
-      ocr: { extracted_cnic: ocrCnic, confidence: ocrConfidence },
+      // Keep scan result for client-side CNIC match only — no confidence % for visitors
+      ocr: ocrCnic ? { extracted_cnic: ocrCnic } : null,
     });
   } catch (err) {
     console.error("[bnpl] application error:", err);

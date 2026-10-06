@@ -211,8 +211,7 @@ def evaluate_fit(
             reasons.append("Could not map product size to a chart; showing neutral fit.")
     else:
         reasons.append(
-            "Size info incomplete — showing a standard fit preview. "
-            "Add your size for a size-aware result."
+            "Select your size above for a more accurate fit preview."
         )
         confidence = 0.4
 

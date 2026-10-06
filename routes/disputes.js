@@ -12,8 +12,8 @@ const Package = require("../models/Package");
 const Buyer = require("../models/Buyer");
 const Seller = require("../models/Seller");
 const AdminWallet = require("../models/AdminWallet");
-const BnplApplication = require("../models/BnplApplication");
 const { restoreStock } = require("../services/stockService");
+const { adjustBnplAfterOrderCancel } = require("../lib/bnplFinanceAdjust");
 
 const { requireAdmin, requireBuyer, requireSeller, authenticate } = require("../lib/auth");
 const { forbid } = require("../lib/authorize");
@@ -612,7 +612,8 @@ router.post("/:dispute_id/admin-decision", requireAdmin, async (req, res) => {
       // Restore stock for all items
       await restoreStock(order.order_id);
 
-      // If BNPL, debit AdminWallet and cancel application
+      // If BNPL: reverse this order's financed slice on AdminWallet, then
+      // shrink or void the bank facility (partial multi-seller safe).
       if (order.payment_method === "BNPL") {
         let wallet = await AdminWallet.findOne({ wallet_id: "admin_wallet_001" });
         if (wallet) {
@@ -629,10 +630,12 @@ router.post("/:dispute_id/admin-decision", requireAdmin, async (req, res) => {
           await wallet.save();
         }
         if (order.bnpl_application_id) {
-          await BnplApplication.updateOne(
-            { application_no: order.bnpl_application_id },
-            { $set: { status: "CANCELLED" } }
-          );
+          await adjustBnplAfterOrderCancel({
+            applicationNo: order.bnpl_application_id,
+            cancelledOrderId: order.order_id,
+            byId: req.user.id,
+            reason: `Dispute ${dispute.dispute_id} buyer win`,
+          });
         }
       }
 
@@ -641,7 +644,9 @@ router.post("/:dispute_id/admin-decision", requireAdmin, async (req, res) => {
         at: now,
         by: "admin",
         by_id: req.user.id,
-        note: `Dispute ${dispute.dispute_id} resolved in Buyer's favor. Order cancelled and marked as Cash Refund. Stock restored.`,
+        note: order.payment_method === "BNPL"
+          ? `Dispute ${dispute.dispute_id} resolved in Buyer's favor. Order cancelled, stock restored, BNPL facility updated for bank.`
+          : `Dispute ${dispute.dispute_id} resolved in Buyer's favor. Order cancelled and stock restored.`,
       });
     }
     await order.save();

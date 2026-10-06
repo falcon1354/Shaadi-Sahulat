@@ -484,9 +484,9 @@ export default function BankDashboardPage() {
             </div>
 
             <div className={`rounded-xl p-3 mb-4 ${active.ocr_vs_buyer?.mismatch ? "bg-red-50 border border-red-200" : "bg-green-50 border border-green-200"}`}>
-              <h3 className="text-xs font-semibold mb-1">OCR vs BUYER CNIC</h3>
-              <p className="text-xs">Buyer-entered: <span className="font-mono">{active.ocr_vs_buyer?.buyer_entered_cnic || "—"}</span></p>
-              <p className="text-xs">OCR-extracted: <span className="font-mono">{active.ocr_vs_buyer?.ocr_extracted_cnic || "—"}</span></p>
+              <h3 className="text-xs font-semibold mb-1">CNIC CHECK</h3>
+              <p className="text-xs">Buyer entered: <span className="font-mono">{active.ocr_vs_buyer?.buyer_entered_cnic || "—"}</span></p>
+              <p className="text-xs">From card scan: <span className="font-mono">{active.ocr_vs_buyer?.ocr_extracted_cnic || "—"}</span></p>
               <p className={`text-xs mt-1 font-semibold ${active.ocr_vs_buyer?.mismatch ? "text-red-700" : "text-green-700"}`}>
                 {active.ocr_vs_buyer?.note}
               </p>
@@ -498,9 +498,18 @@ export default function BankDashboardPage() {
                 {active.documents?.map(d => (
                   <div key={d._id} className="border border-gray-200 rounded-lg p-2 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium">{d.doc_type} — {d.original_name}</p>
-                      {d.ocr_extracted_cnic && <p className="text-xs text-gray-500">OCR CNIC: <span className="font-mono">{d.ocr_extracted_cnic}</span> ({Math.round((d.ocr_confidence || 0) * 100)}%)</p>}
-                      {d.ocr_error && <p className="text-xs text-amber-700">OCR error: {d.ocr_error}</p>}
+                      <p className="text-sm font-medium">
+                        {(d.doc_type || "").replace(/_/g, " ")}
+                        {d.original_name ? ` — ${d.original_name}` : ""}
+                      </p>
+                      {d.ocr_extracted_cnic && (
+                        <p className="text-xs text-gray-500">
+                          CNIC from card: <span className="font-mono">{d.ocr_extracted_cnic}</span>
+                        </p>
+                      )}
+                      {d.ocr_error && (
+                        <p className="text-xs text-amber-700">Could not read CNIC from this document</p>
+                      )}
                     </div>
                     <button
                       type="button"

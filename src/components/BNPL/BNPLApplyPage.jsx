@@ -92,17 +92,17 @@ export default function BNPLApplyPage({ buyer }) {
     if (key !== "cnic_front" || !file || !buyer?.buyer_id) return;
 
     setOcrBusy(true);
-    setOcrHint("Scanning CNIC text via OCR…");
+    setOcrHint("Reading your CNIC…");
     try {
       const r = await bnplApi.previewCnicOcr(buyer.buyer_id, file);
       if (r?.found && r.extracted_cnic) {
         setForm((prev) => ({ ...prev, cnicNumber: formatCnic(r.extracted_cnic) }));
-        setOcrHint(`CNIC recognized: ${formatCnic(r.extracted_cnic)}`);
+        setOcrHint(`CNIC detected: ${formatCnic(r.extracted_cnic)}`);
       } else {
-        setOcrHint("Automatic scan inconclusive — please confirm your CNIC manually below.");
+        setOcrHint("Could not read the card automatically — please enter your CNIC below.");
       }
     } catch {
-      setOcrHint("Automatic scan inconclusive — please confirm your CNIC manually below.");
+      setOcrHint("Could not read the card automatically — please enter your CNIC below.");
     } finally {
       setOcrBusy(false);
     }
@@ -130,13 +130,15 @@ export default function BNPLApplyPage({ buyer }) {
         const ocr = r.ocr.extracted_cnic.replace(/[^0-9]/g, "");
         const entered = form.cnicNumber.replace(/[^0-9]/g, "");
         if (ocr && entered && ocr !== entered) {
-          setError(`CNIC entered (${form.cnicNumber}) does not match uploaded card (${r.ocr.extracted_cnic}).`);
+          setError(`The CNIC you entered does not match the number on your uploaded card. Please check and try again.`);
           setLoading(false);
           setStep(2);
           return;
         }
       }
-      setResult(r); setStep(4);
+      // Never surface scan/technical details on the success screen
+      setResult({ ...r, ocr: undefined });
+      setStep(4);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   };

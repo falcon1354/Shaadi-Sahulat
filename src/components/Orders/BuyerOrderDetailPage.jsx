@@ -215,11 +215,17 @@ export default function BuyerOrderDetailPage({ buyer }) {
             <span className="font-mono font-medium">PKR {(order.subtotal || 0).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-gray-600">
-            <span>White-Glove Shipping & Handling</span>
+            <span>Shipping & Handling</span>
             <span className="font-mono font-medium">PKR {(order.shipping_total || 0).toLocaleString()}</span>
           </div>
+          {(order.bank_processing_fee > 0) && (
+            <div className="flex justify-between text-gray-600">
+              <span>Bank Processing Fee (2%)</span>
+              <span className="font-mono font-medium">PKR {(order.bank_processing_fee || 0).toLocaleString()}</span>
+            </div>
+          )}
           <div className="flex justify-between border-t border-[#EFEAE4] pt-2 text-sm font-bold text-gray-900">
-            <span className="font-serif text-base">Total Order Value</span>
+            <span className="font-serif text-base">Grand Total</span>
             <span className="font-serif text-base font-bold text-[#9B7036]">
               PKR {(order.total_amount || 0).toLocaleString()}
             </span>

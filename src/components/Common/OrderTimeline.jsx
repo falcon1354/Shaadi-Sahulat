@@ -124,7 +124,10 @@ export default function OrderTimeline({ timeline = [], title = "Order Lifecycle 
           const actorKey = String(event.by || "system").toLowerCase();
           const actor = ACTOR_ICONS[actorKey] || ACTOR_ICONS.system;
           const isExpanded = expandedIndex === idx;
-          const displayNote = event.note || cfg.defaultNote;
+          // Hide internal PEND- placeholders from buyers (real PKG- id is enough)
+          const displayNote = String(event.note || cfg.defaultNote || "")
+            .replace(/\s*\(was PEND-[A-Z0-9-]+\)\.?/gi, ".")
+            .replace(/\bPEND-[A-Z0-9-]+\b/g, "your package");
           const isLast = idx === timeline.length - 1;
 
           return (

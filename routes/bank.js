@@ -272,7 +272,7 @@ router.get("/applications/:application_no", requireBankOfficer, async (req, res)
         ocr_extracted_cnic: ocrCnic,
         mismatch: !!mismatch,
         note: mismatch
-          ? "WARNING: CNIC extracted from upload does NOT match the CNIC on buyer profile."
+          ? "WARNING: CNIC from the uploaded card does NOT match the buyer profile CNIC."
           : "CNIC values match.",
       },
       offer: offer

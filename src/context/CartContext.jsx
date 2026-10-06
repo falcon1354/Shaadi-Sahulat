@@ -6,6 +6,13 @@ function storageKey(buyerId) {
   return buyerId ? `ss_cart_${buyerId}` : 'ss_cart_guest';
 }
 
+function resolveStock(product) {
+  const raw = product?.stock_quantity ?? product?.stock_qty;
+  if (raw === undefined || raw === null || raw === '') return Infinity;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : Infinity;
+}
+
 export function CartProvider({ children }) {
   const [buyerId, setBuyerIdState] = useState(null);
   const key = storageKey(buyerId);
@@ -48,21 +55,44 @@ export function CartProvider({ children }) {
     setBuyerIdState(id || null);
   }, []);
 
-  const addItem = (product) => {
-    const stock = product.stock_quantity || Infinity;
-    if (stock === 0) return; // Don't add if out of stock
+  /**
+   * @returns {{ ok: boolean, reason?: string, qty?: number }}
+   */
+  const addItem = (product, qty = 1) => {
+    if (!product?.product_id) {
+      return { ok: false, reason: 'This item cannot be added right now.' };
+    }
+    const stock = resolveStock(product);
+    if (stock <= 0) {
+      return { ok: false, reason: 'This item is out of stock.' };
+    }
+    const addQty = Math.max(1, Math.min(Number(qty) || 1, stock));
+    let result = { ok: true, qty: addQty };
+
     setItems(prev => {
       const existing = prev.find(i => i.product_id === product.product_id);
       if (existing) {
-        const newQty = Math.min(existing.qty + 1, stock);
+        if (existing.qty >= stock) {
+          result = { ok: false, reason: `Only ${stock} in stock.` };
+          return prev;
+        }
+        const newQty = Math.min(existing.qty + addQty, stock);
+        result = { ok: true, qty: newQty };
         return prev.map(i =>
           i.product_id === product.product_id
-            ? { ...i, qty: newQty }
+            ? { ...i, qty: newQty, stock_quantity: stock }
             : i
         );
       }
-      return [...prev, { ...product, qty: 1, stock_quantity: stock, seller_id: product.seller_id }];
+      return [...prev, {
+        ...product,
+        qty: addQty,
+        stock_quantity: Number.isFinite(stock) ? stock : product.stock_quantity,
+        seller_id: product.seller_id,
+      }];
     });
+
+    return result;
   };
 
   const removeItem = (productId) => {
@@ -74,7 +104,7 @@ export function CartProvider({ children }) {
     setItems(prev =>
       prev.map(i => {
         if (i.product_id !== productId) return i;
-        const stock = i.stock_quantity || Infinity;
+        const stock = resolveStock(i);
         const cappedQty = Math.min(qty, stock);
         return { ...i, qty: cappedQty };
       })

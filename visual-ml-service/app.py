@@ -5,7 +5,11 @@ REST API for the hybrid image+text recommendation pipeline.
 """
 
 import os
+import sys
 from pathlib import Path
+
+# Ensure this directory is in sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # Load root .env (TRYON_PROVIDER, KLING_API_KEY, MONGODB_URI, …)
 try:

@@ -32,6 +32,8 @@ const bnplApplicationSchema = new mongoose.Schema(
     account_title:    { type: String, default: "" },
     plan_months:      { type: Number, enum: [3, 6], default: 3 },
     amount:           { type: Number, required: true },
+    // Per-seller split children after multi-seller BNPL approval
+    linked_order_ids: { type: [String], default: [] },
     status: {
       type: String,
       enum: [

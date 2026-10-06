@@ -275,11 +275,23 @@ export default function BNPLStatusPage({ buyer }) {
             const total = APPROVAL_WINDOW_MS;
             const colors = dl && remaining > 0 ? countdownColor(remaining, total) : null;
             const urgent = remaining > 0 && remaining < 86400000;
-            const order = ordersByOrderId.get(app.order_id);
-            const productLabel = (order?.items?.[0]?.title || 'Bridal Order') +
-              (order?.items && order.items.length > 1 ? ` + ${order.items.length - 1} more` : '');
-            const subtotal = order?.subtotal ?? app.amount ?? 0;
-            const itemCount = order?.items_count ?? (order?.items?.length || 0);
+            const linkedIds = [
+              app.order_id,
+              ...(Array.isArray(app.linked_order_ids) ? app.linked_order_ids : []),
+            ].filter(Boolean);
+            const linkedOrders = linkedIds
+              .map((id) => ordersByOrderId.get(id))
+              .filter(Boolean);
+            const order = linkedOrders[0] || ordersByOrderId.get(app.order_id);
+            const allItems = linkedOrders.flatMap((o) => o.items || []);
+            const productLabel = (allItems[0]?.title || order?.items?.[0]?.title || 'Bridal Order') +
+              (allItems.length > 1 ? ` + ${allItems.length - 1} more` : '');
+            // Prefer financed application amount (full cart), not a single split order subtotal
+            const displayAmount = app.amount ?? order?.total_amount ?? order?.subtotal ?? 0;
+            const itemCount = allItems.length
+              || linkedOrders.reduce((n, o) => n + (o.items_count || o.items?.length || 0), 0)
+              || order?.items_count
+              || (order?.items?.length || 0);
 
             return (
               <div
@@ -316,7 +328,7 @@ export default function BNPLStatusPage({ buyer }) {
                 <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-[#EFEAE4]">
                   <div className="text-left sm:text-right">
                     <p className="text-base font-serif font-bold text-gray-900 font-mono">
-                      PKR {Number(subtotal).toLocaleString()}
+                      PKR {Number(displayAmount).toLocaleString()}
                     </p>
                     <p className="text-[11px] text-gray-400 font-medium">{itemCount} {itemCount === 1 ? 'item' : 'items'}</p>
                   </div>

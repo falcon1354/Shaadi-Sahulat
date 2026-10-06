@@ -186,12 +186,11 @@ export default function SizeAwareTryOnModal({ open, onClose, product }) {
                   <VerdictIcon size={16} />
                   {fit.label}
                 </div>
-                <p className="text-xs opacity-90">
-                  Confidence {Math.round((fit.confidence || 0) * 100)}%
-                  {fit.product_size && fit.buyer_size
-                    ? ` · You ${fit.buyer_size} vs Dress ${fit.product_size}`
-                    : ''}
-                </p>
+                {fit.product_size && fit.buyer_size && (
+                  <p className="text-xs opacity-90">
+                    Your size {fit.buyer_size} · Dress size {fit.product_size}
+                  </p>
+                )}
                 {Array.isArray(fit.reasons) && fit.reasons[0] && (
                   <p className="text-xs mt-2 opacity-90">{fit.reasons[0]}</p>
                 )}
@@ -249,7 +248,7 @@ export default function SizeAwareTryOnModal({ open, onClose, product }) {
                   ? 'text-amber-800 bg-amber-50 border-amber-200'
                   : 'text-rose-700 bg-rose-50 border-rose-100'
               }`}>
-                {result ? `Kling unavailable — showing local preview. ${error}` : error}
+                {result ? `Showing a quick local preview. ${error}` : error}
               </div>
             )}
           </div>
@@ -264,10 +263,10 @@ export default function SizeAwareTryOnModal({ open, onClose, product }) {
                   className="w-full rounded-2xl shadow-md object-contain max-h-[520px] mx-auto bg-white"
                 />
                 <div className="text-center text-[11px] text-gray-500">
-                  Provider: <span className="font-semibold">{result.provider}</span>
-                  {result.fit?.verdict === 'TOO_SMALL' && ' · Dress appears too small for your size'}
-                  {result.fit?.verdict === 'TOO_LARGE' && ' · Dress appears too large for your size'}
-                  {result.fit?.verdict === 'FIT' && ' · Dress appears to fit your size'}
+                  {result.fit?.verdict === 'TOO_SMALL' && 'Dress appears too small for your size'}
+                  {result.fit?.verdict === 'TOO_LARGE' && 'Dress appears too large for your size'}
+                  {result.fit?.verdict === 'FIT' && 'Dress appears to fit your size'}
+                  {!result.fit?.verdict && 'Your try-on preview'}
                 </div>
               </div>
             ) : (

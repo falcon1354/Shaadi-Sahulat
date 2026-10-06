@@ -388,9 +388,10 @@ router.get("/", authenticate, async (req, res) => {
       const limit = parseInt(req.query.limit, 10) || 10;
       const skip  = (page - 1) * limit;
 
+      const buyerFilter = { buyer_id, superseded: { $ne: true } };
       const [orders, total_count] = await Promise.all([
-        Order.find({ buyer_id }).sort({ created_at: -1 }).skip(skip).limit(limit).lean(),
-        Order.countDocuments({ buyer_id }),
+        Order.find(buyerFilter).sort({ created_at: -1 }).skip(skip).limit(limit).lean(),
+        Order.countDocuments(buyerFilter),
       ]);
       const has_more = skip + orders.length < total_count;
       return res.json({ success: true, orders, total_count, page, has_more });
@@ -542,7 +543,7 @@ router.post("/packages/:package_id/preparing", requireSeller, async (req, res) =
             at: new Date(),
             by: "seller",
             by_id: req.user.id,
-            note: `Seller started preparing package ${realPkgId} (was ${oldPkgId}).`,
+            note: `Seller started preparing package ${realPkgId}.`,
           },
         },
       }
