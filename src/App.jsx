@@ -386,7 +386,7 @@ function BuyerLayout() {
   return (
     <div className="min-h-screen bg-[#FCFBFB] flex">
       {/* Sidebar */}
-      <aside className="fixed md:static w-64 h-screen bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-y-auto z-40">
+      <aside className="fixed md:sticky md:top-0 w-64 h-screen shrink-0 bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-y-auto z-40">
         <div className="p-5 border-b border-gray-100/50">
           <div className="flex items-center gap-3 mb-4">
             <img src={logo} alt="ShaadiSahulat" className="w-10 h-10 object-contain flex-shrink-0" />
@@ -945,12 +945,20 @@ function Landing() {
         onSelectBuyer={() => navigate(buyer ? '/buyer/dashboard' : '/buyer/login')}
         onSelectSeller={() => navigate(seller ? '/seller/dashboard' : '/seller/login')}
       />
-      <button
-        onClick={() => navigate('/admin/login')}
-        className="fixed bottom-4 right-4 text-xs text-gray-400 hover:text-gray-600 bg-white/80 border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm transition-colors"
-      >
-        Admin Portal
-      </button>
+      <div className="fixed bottom-4 right-4 flex items-center gap-2 z-50">
+        <button
+          onClick={() => navigate('/bank/login')}
+          className="text-xs text-gray-400 hover:text-gray-600 bg-white/80 border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm transition-colors"
+        >
+          Bank Login
+        </button>
+        <button
+          onClick={() => navigate('/admin/login')}
+          className="text-xs text-gray-400 hover:text-gray-600 bg-white/80 border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm transition-colors"
+        >
+          Admin Portal
+        </button>
+      </div>
     </div>
   );
 }

@@ -23,8 +23,10 @@ export default function LandingPage({ onSelectBuyer, onSelectSeller }) {
             <span className="text-[#d43558]">Shaadi</span>
             <span className="text-[#f2bc66]">Sahulat</span>
           </h1>
-          <p className="text-lg sm:text-xl text-[#f051b0] font-bold mt-2 drop-shadow-md">
-            Your Complete Wedding Planning Platform
+          <p className="text-lg sm:text-xl font-bold mt-2 drop-shadow-md tracking-wide">
+            <span className="text-[#d43558]">Plan Smart, Spend Smart,</span>
+            {' '}
+            <span className="text-[#f2bc66]">Celebrate Big.</span>
           </p>
         </div>
 

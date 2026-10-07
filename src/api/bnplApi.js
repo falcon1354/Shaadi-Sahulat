@@ -89,14 +89,12 @@ export async function declineOffer(buyerId, applicationNo) {
 }
 
 export async function listMyRepayments(buyerId) {
-  const res = await fetch(`${BASE}/repayments`, { headers: _headers(buyerId) });
+  const res = await authFetch(`${BASE}/repayments`);
   return res.json();
 }
 
 export async function getMyRepayment(buyerId, applicationNo) {
-  const res = await fetch(`${BASE}/repayments/${encodeURIComponent(applicationNo)}`, {
-    headers: _headers(buyerId),
-  });
+  const res = await authFetch(`${BASE}/repayments/${encodeURIComponent(applicationNo)}`);
   return res.json();
 }
 

@@ -439,7 +439,7 @@ export default function BankDashboardPage() {
                                 <span className={`text-xs px-2 py-1 rounded-full font-semibold ${statusColor(a.status)}`}>{a.status}</span>
                                 <button onClick={(e) => { e.stopPropagation(); openApp(a.application_no); }}
                                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-semibold">
-                                  Verify Now
+                                  {a.status === "OFFER_ACCEPTED" || filter === "OFFER_ACCEPTED" ? "View Details" : "Verify Now"}
                                 </button>
                               </div>
                             </div>

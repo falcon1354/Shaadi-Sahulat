@@ -22,23 +22,38 @@ export default function AdminWalletPage({ admin }) {
   const [hoveredOrder, setHoveredOrder] = useState(null);
   const [expandedBatchId, setExpandedBatchId] = useState(null);
 
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
   const adminId = admin?.admin_id || admin?._id || "admin_001";
 
   const load = async () => {
     const adminIdInner = admin?.admin_id || admin?._id || "admin_001";
-    const [walletResp, sellersResp, bnplResp] = await Promise.all([
-      adminExtApi.getWallet(adminIdInner),
-      adminApi.getAllSellers(),
-      adminExtApi.getBnplReceipts(adminIdInner),
-    ]);
-    if (walletResp.success) {
-      setData(walletResp);
-      if (walletResp.order_groups?.length > 0 && !selectedOrderId) {
-        openOrder(walletResp.order_groups[0].order_id);
+    setLoading(true);
+    setLoadError("");
+    try {
+      const [walletResp, sellersResp, bnplResp] = await Promise.all([
+        adminExtApi.getWallet(adminIdInner),
+        adminApi.getAllSellers(),
+        adminExtApi.getBnplReceipts(adminIdInner).catch(() => ({ success: false })),
+      ]);
+      if (walletResp.success) {
+        setData(walletResp);
+        if (walletResp.order_groups?.length > 0 && !selectedOrderId) {
+          openOrder(walletResp.order_groups[0].order_id);
+        }
+      } else {
+        setLoadError(walletResp.error || "Failed to load wallet.");
+        setData({ success: false, wallet: { balance: 0, currency: "PKR", ledger: [] }, order_groups: [], other_entries: [], recent_payouts: [] });
       }
+      if (sellersResp.sellers) setSellers(sellersResp.sellers);
+      if (bnplResp.success) setBnplData(bnplResp);
+    } catch (err) {
+      setLoadError(err.message || "Failed to load wallet.");
+      setData({ success: false, wallet: { balance: 0, currency: "PKR", ledger: [] }, order_groups: [], other_entries: [], recent_payouts: [] });
+    } finally {
+      setLoading(false);
     }
-    if (sellersResp.sellers) setSellers(sellersResp.sellers);
-    if (bnplResp.success) setBnplData(bnplResp);
   };
 
   useEffect(() => { load(); }, [admin]);
@@ -81,11 +96,20 @@ export default function AdminWalletPage({ admin }) {
     return map;
   }, [sellers]);
 
-  if (!data) {
+  if (loading && !data) {
     return (
       <div className="flex flex-col items-center justify-center h-80 space-y-3">
         <div className="w-10 h-10 border-4 border-[#a37b3d] border-t-transparent rounded-full animate-spin"></div>
         <p className="text-sm font-medium text-gray-500">Loading wallet ledger &amp; receipts...</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-80 space-y-3">
+        <p className="text-sm font-medium text-rose-600">{loadError || "Could not load wallet."}</p>
+        <button onClick={load} className="px-3 py-1.5 text-xs font-semibold border rounded-lg">Retry</button>
       </div>
     );
   }
@@ -99,6 +123,9 @@ export default function AdminWalletPage({ admin }) {
           <p className="text-xs text-gray-500 mt-1">
             Real-time balance, commission ledger, BNPL batch receipts from bank, and seller settlements
           </p>
+          {loadError && (
+            <p className="text-xs text-amber-700 mt-1">{loadError}</p>
+          )}
         </div>
         <button
           onClick={load}

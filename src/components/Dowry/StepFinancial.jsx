@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ShieldCheck, DollarSign, Wallet, Gift } from 'lucide-react';
+import { Sparkles, DollarSign, Wallet, Gift } from 'lucide-react';
 
 function StepFinancial({ formData, updateForm }) {
   const handleChange = (field) => (e) => {
@@ -81,28 +81,6 @@ function StepFinancial({ formData, updateForm }) {
           <p className="text-[11px] text-gray-400 font-medium">
             Additional financial gifts or family support expected (does not count against household safety caps).
           </p>
-        </div>
-      </div>
-
-      {/* Safety Limit Box */}
-      <div className="bg-gradient-to-br from-[#FAF7F2] to-[#F5ECE0] border border-[#EADBCC] rounded-2xl p-6 relative overflow-hidden">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-[#9B7036]/10 flex items-center justify-center text-[#9B7036]">
-            <ShieldCheck size={16} />
-          </div>
-          <h4 className="text-xs font-bold text-[#4A3B2C] uppercase tracking-wider">
-            Safety & Financial Prudence Standards
-          </h4>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-700 font-medium leading-relaxed">
-          <div className="bg-white/70 backdrop-blur-xs p-3 rounded-xl border border-[#EFEAE4]">
-            <span className="font-bold text-gray-900 block mb-0.5">Income Cap (40%)</span>
-            Maximum 40% of cumulative annual earnings allocated to preserve ongoing life quality.
-          </div>
-          <div className="bg-white/70 backdrop-blur-xs p-3 rounded-xl border border-[#EFEAE4]">
-            <span className="font-bold text-gray-900 block mb-0.5">Savings Cap (80%)</span>
-            At least 20% of your savings buffer is permanently safeguarded for emergency reserves.
-          </div>
         </div>
       </div>
     </div>

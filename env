@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────
+#  ShaadiSahulat Backend — Environment Variables
+#  Place this file inside the /backend folder
+# ─────────────────────────────────────────────
+
+# Server
+PORT=5000
+NODE_ENV=development
+
+# MongoDB
+MONGODB_URI=mongodb+srv://Ahmad:1GhCTKOfd2k9QVvQ@cluster0.p2qcckk.mongodb.net/shaadi-sahulat?appName=Cluster0
+
+# ML Services
+ML_SERVICE_URL=http://localhost:5001
+VISUAL_ML_URL=http://localhost:5002
+BNPL_CRYPTO_KEY=bce3c13f96d2a611cfbe23f4b9f89fcfd52ef320be2151bc787a6846d9311062
+
+
+
+
+
+# ──────────────────────────────────────────────────────────────
+# v3.2 — AI Review & Rating Module (Groq)
+# ──────────────────────────────────────────────────────────────
+# Get a free API key at https://console.groq.com/keys
+# When set, the AI rating suggestion + review generation will use
+# Groq's LLM (llama-3.3-70b-versatile by default). When NOT set,
+# the backend falls back to the Python VADER / template engine in
+# visual-ml-service/review_ai.py.
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
+
+# ──────────────────────────────────────────────────────────────
+# Cloudinary media storage (products, categories, BNPL, disputes)
+# ──────────────────────────────────────────────────────────────
+CLOUDINARY_CLOUD_NAME=yy2mgbpv
+CLOUDINARY_API_KEY=454185835755212
+CLOUDINARY_API_SECRET=erFtiionmj9FLR-MaPG4AdCrdaU
+
+# ──────────────────────────────────────────────────────────────
+# Size-Aware Virtual Try-On
+# ──────────────────────────────────────────────────────────────
+# local      = offline size-aware generator (fallback)
+# kling_omni = Kling Omni/multi-image (uses Image Generation package) ← recommended
+# kling_vton = Kling Kolors dedicated try-on (separate billing)
+# fal        = legacy fal.ai
+TRYON_PROVIDER=kling_omni
+KLING_API_KEY=api-key-kling-zhJEJEEDggg-8YN-4IW8OdzsSZqnpYY8hSs-ihjPGOo
+# Optional official JWT pair instead of KLING_API_KEY:
+# KLING_ACCESS_KEY=
+# KLING_SECRET_KEY=
+KLING_API_BASE=https://api.klingai.com
+KLING_OMNI_MODEL=kling-image-o1
+# omni | multi  (multi falls back automatically if omni fails)
+KLING_IMAGE_MODE=omni
+# Optional override for the fixed try-on prompt:
+# KLING_TRYON_PROMPT=
+# Legacy dedicated VTON (only if TRYON_PROVIDER=kling_vton):
+KLING_VTON_MODEL=kolors-virtual-try-on-v1-5
+FAL_KEY=3bd201a7-6cb4-4172-aaf4-60194f1260c1:fb3ce0c82247a3ea29a5ecf0c309eb58
+
+TONE_VOICE_URL=http://127.0.0.1:8000
+REVIEW_TTS_ENABLED=true
+
+# Authentication (JWT) - generated locally
+JWT_ACCESS_SECRET=i6NCXF8dKNFzG44BzgiA9g-tbpfsP2hc-Naqz5YOv98nHrdz10tgv_K7XaAcMd0h
+INTERNAL_API_SECRET=IGRkac0qB9IYfU-lw7g-tUBg0-6WdrVqpo54Tq3-s7fUoCW1CYnT6ytVyHKQJskH
+FRONTEND_ORIGIN=http://localhost:3000
+JWT_ACCESS_TTL=15m
+REFRESH_TTL_DAYS=7
+REFRESH_ABSOLUTE_DAYS=30
+BCRYPT_ROUNDS=12
+EMAIL_TRANSPORT=smtp
+EMAIL_VERIFICATION_REQUIRED=false
+# Bank officer portal (moved out of source in Phase 2I; rotate the demo password with scripts/hash-bank-officer-password.js)
+BANK_OFFICER_EMAIL=officer@bank.com
+BANK_OFFICER_PASSWORD_HASH=$2a$12$2fOvUj78eFn/II6mAfb/Z.CtxcN4iAuOS7NCchEHwoNme1USnk03u
+
+# ── Real email delivery (Gmail SMTP) ──
+# 1) Fill SMTP_USER, SMTP_PASSWORD (16-letter Google App Password — NOT your normal Gmail
+#    password) and SMTP_FROM (same Gmail address).  2) Set EMAIL_TRANSPORT=smtp above.
+# 3) Restart the backend and run: node scripts/send-test-email.js <recipient>
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=ahsan.iftikhar.7953@gmail.com
+SMTP_PASSWORD=ktafmmnxfgahsdav
+SMTP_FROM=ahsan.iftikhar.7953@gmail.com

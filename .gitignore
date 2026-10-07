@@ -16,6 +16,7 @@ __pycache__/
 # Environment / secrets — never commit
 .env
 .env.*
+env
 !.env.example
 tone-voice/.env
 **/credentials*.json

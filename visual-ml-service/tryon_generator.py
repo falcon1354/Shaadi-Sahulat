@@ -67,14 +67,20 @@ KLING_POLL_TIMEOUT_SEC = float(os.environ.get("KLING_POLL_TIMEOUT_SEC") or "180"
 DEFAULT_TRYON_PROMPT = (
     "Virtual try-on: keep the exact same person from <<<image_1>>> "
     "(same face, body, skin tone, hair, and pose). "
-    "Dress them in the wedding garment from <<<image_2>>> "
-    "(preserve fabric, color, embroidery, and silhouette). "
+    "Dress them ONLY in the wedding garment cutout from <<<image_2>>> "
+    "(the dress is already isolated — ignore any leftover background; "
+    "preserve fabric, color, embroidery, and silhouette). "
+    "Do not copy studio walls, floors, hangers, or mannequins from the dress image. "
     "Realistic full-body bridal photo, natural lighting, photorealistic, "
     "no watermark, no text overlay."
 )
 KLING_TRYON_PROMPT = (os.environ.get("KLING_TRYON_PROMPT") or DEFAULT_TRYON_PROMPT).strip()
 # Backward-compat alias used by older VTON path
 KLING_MODEL = KLING_VTON_MODEL
+
+# rembg session cache (lazy)
+_REMBG_SESSION = None
+_REMBG_FAILED = False
 
 
 def kling_configured() -> bool:
@@ -85,6 +91,171 @@ def _open_rgb(data: bytes) -> Image.Image:
     img = Image.open(io.BytesIO(data))
     img = ImageOps.exif_transpose(img)
     return img.convert("RGBA")
+
+
+def _rgba_to_png_bytes(im: Image.Image, *, max_side: int = 1536) -> bytes:
+    im = im.convert("RGBA")
+    w, h = im.size
+    if max(w, h) > max_side:
+        scale = max_side / float(max(w, h))
+        im = im.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.Resampling.LANCZOS)
+    # Kling / uploads prefer min edge >= 300
+    w, h = im.size
+    if min(w, h) < 300:
+        scale = 300 / float(min(w, h))
+        im = im.resize((max(300, int(w * scale)), max(300, int(h * scale))), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+def _has_useful_alpha(im: Image.Image) -> bool:
+    """True when the image already looks like a cutout (transparent + opaque regions)."""
+    if im.mode != "RGBA":
+        return False
+    alpha = np.asarray(im.split()[-1])
+    transparent_ratio = float((alpha < 40).mean())
+    opaque_ratio = float((alpha > 200).mean())
+    return transparent_ratio >= 0.08 and opaque_ratio >= 0.12
+
+
+def _largest_blob_mask(mask: np.ndarray) -> np.ndarray:
+    """Keep the largest connected True region (4-connected)."""
+    h, w = mask.shape
+    visited = np.zeros_like(mask, dtype=bool)
+    best = None
+    best_size = 0
+    ys, xs = np.where(mask)
+    for y0, x0 in zip(ys.tolist(), xs.tolist()):
+        if visited[y0, x0]:
+            continue
+        stack = [(y0, x0)]
+        visited[y0, x0] = True
+        cells = []
+        while stack:
+            y, x = stack.pop()
+            cells.append((y, x))
+            for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not visited[ny, nx]:
+                    visited[ny, nx] = True
+                    stack.append((ny, nx))
+        if len(cells) > best_size:
+            best_size = len(cells)
+            best = cells
+    out = np.zeros_like(mask, dtype=bool)
+    if best:
+        for y, x in best:
+            out[y, x] = True
+    return out
+
+
+def _isolate_garment_heuristic(im: Image.Image) -> Image.Image:
+    """
+    Studio-background cutout without rembg:
+      - Estimate background from edge pixels
+      - Soft-threshold by color distance + low saturation
+      - Keep the largest foreground blob
+    """
+    rgba = im.convert("RGBA")
+    arr = np.asarray(rgba).astype(np.float32)
+    rgb = arr[:, :, :3]
+    h, w = rgb.shape[:2]
+
+    # Edge samples (frame border) → background color estimate
+    border = max(2, min(h, w) // 40)
+    edge_chunks = [
+        rgb[:border, :, :],
+        rgb[-border:, :, :],
+        rgb[:, :border, :],
+        rgb[:, -border:, :],
+    ]
+    edge = np.concatenate([c.reshape(-1, 3) for c in edge_chunks], axis=0)
+    bg = np.median(edge, axis=0)
+
+    dist = np.linalg.norm(rgb - bg[None, None, :], axis=2)
+    sat = rgb.max(axis=2) - rgb.min(axis=2)
+    lum = rgb.mean(axis=2)
+
+    # Background-like: close to edge color AND not vividly colored
+    # (protects white / cream dresses somewhat via saturation OR mid-frame bias)
+    bg_like = (dist < 38) & (sat < 28)
+    # Also treat near-white flat studio floors/walls
+    near_white_flat = (lum > 232) & (sat < 18)
+    bg_mask = bg_like | near_white_flat
+
+    # Prefer keeping the central subject if edge wipe is aggressive
+    yy, xx = np.mgrid[0:h, 0:w]
+    cy, cx = h / 2.0, w / 2.0
+    radial = np.sqrt(((yy - cy) / max(h, 1)) ** 2 + ((xx - cx) / max(w, 1)) ** 2)
+    # Softly protect center: don't classify as BG if saturated and central
+    protect = (sat > 22) & (radial < 0.42)
+    fg = (~bg_mask) | protect
+
+    # Morphological cleanup (box open/close via convolution-ish min/max)
+    from PIL import Image as _PILImage
+
+    fg_img = _PILImage.fromarray((fg.astype(np.uint8) * 255), mode="L")
+    fg_img = fg_img.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(5))
+    fg_img = fg_img.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.MinFilter(3))
+    fg = np.asarray(fg_img) > 127
+    fg = _largest_blob_mask(fg)
+    if fg.sum() < (h * w * 0.02):
+        # Fallback: center oval keep
+        fg = radial < 0.48
+
+    alpha = np.where(fg, 255.0, 0.0).astype(np.float32)
+    # Feather
+    a_img = _PILImage.fromarray(alpha.astype(np.uint8), mode="L").filter(ImageFilter.GaussianBlur(1.6))
+    alpha = np.asarray(a_img).astype(np.float32)
+    out = arr.copy()
+    out[:, :, 3] = alpha
+    return Image.fromarray(out.astype(np.uint8), "RGBA")
+
+
+def _isolate_garment_rembg(im: Image.Image) -> Optional[Image.Image]:
+    global _REMBG_SESSION, _REMBG_FAILED
+    if _REMBG_FAILED:
+        return None
+    try:
+        from rembg import new_session, remove
+
+        if _REMBG_SESSION is None:
+            # u2netp is lighter/faster; good enough for apparel cutouts
+            model = (os.environ.get("TRYON_REMBG_MODEL") or "u2netp").strip()
+            _REMBG_SESSION = new_session(model)
+            print(f"[tryon] rembg session ready ({model})")
+        cut = remove(im.convert("RGBA"), session=_REMBG_SESSION)
+        if not isinstance(cut, Image.Image):
+            cut = Image.open(io.BytesIO(cut)).convert("RGBA")
+        else:
+            cut = cut.convert("RGBA")
+        if _has_useful_alpha(cut):
+            return cut
+        return None
+    except Exception as exc:
+        _REMBG_FAILED = True
+        print(f"[tryon] rembg unavailable, using heuristic cutout: {exc}")
+        return None
+
+
+def isolate_garment_bytes(garment_bytes: bytes) -> bytes:
+    """
+    Return PNG bytes of the dress with background removed.
+    Marketplace photos usually have studio/hanger backgrounds that confuse try-on;
+    transparent cutouts map cleanly onto the person photo.
+    """
+    im = _open_rgb(garment_bytes)
+    if _has_useful_alpha(im):
+        print("[tryon] garment already has transparency — skipping cutout")
+        return _rgba_to_png_bytes(im)
+
+    cut = _isolate_garment_rembg(im)
+    method = "rembg"
+    if cut is None:
+        cut = _isolate_garment_heuristic(im)
+        method = "heuristic"
+    print(f"[tryon] garment background removed via {method}")
+    return _rgba_to_png_bytes(cut)
 
 
 def _estimate_person_box(person: Image.Image) -> tuple[int, int, int, int]:
@@ -121,23 +292,40 @@ def _estimate_person_box(person: Image.Image) -> tuple[int, int, int, int]:
 
 
 def _prepare_garment(garment: Image.Image, target_w: int, target_h: int) -> Image.Image:
-    """Resize garment into an RGBA cutout-ish plate (soft alpha edges)."""
+    """Resize garment cutout into an RGBA plate (soft alpha edges)."""
     g = garment.convert("RGBA")
+    # Tight-crop to opaque content so placement is dress-centric
+    alpha = np.asarray(g.split()[-1])
+    ys, xs = np.where(alpha > 24)
+    if len(xs) > 50:
+        x0, x1 = int(xs.min()), int(xs.max()) + 1
+        y0, y1 = int(ys.min()), int(ys.max()) + 1
+        pad = 4
+        g = g.crop((
+            max(0, x0 - pad),
+            max(0, y0 - pad),
+            min(g.size[0], x1 + pad),
+            min(g.size[1], y1 + pad),
+        ))
+
     g.thumbnail((target_w, target_h), Image.Resampling.LANCZOS)
 
-    # Soften edges: boost alpha near non-white pixels
+    # If alpha is already a good cutout, only feather slightly
+    if _has_useful_alpha(g):
+        a = g.split()[-1].filter(ImageFilter.GaussianBlur(0.8))
+        g.putalpha(a)
+        return g
+
+    # Legacy soft studio wipe for non-cutout inputs
     arr = np.asarray(g).astype(np.float32)
     rgb = arr[:, :, :3]
-    # Treat near-white / near-gray studio backgrounds as transparent-ish
     near_white = (rgb > 235).all(axis=2)
     low_sat = (rgb.max(axis=2) - rgb.min(axis=2)) < 12
     alpha = arr[:, :, 3]
     alpha[near_white & low_sat] = alpha[near_white & low_sat] * 0.15
-    # Keep garment body opaque
     alpha = np.clip(alpha, 0, 255)
     arr[:, :, 3] = alpha
     out = Image.fromarray(arr.astype(np.uint8), "RGBA")
-    # Feather
     a = out.split()[-1].filter(ImageFilter.GaussianBlur(1.2))
     out.putalpha(a)
     return out
@@ -255,27 +443,36 @@ def _to_jpg_bytes(data: bytes, *, max_side: int = 1536, quality: int = 90) -> by
     return out
 
 
-def _kling_image_payload(data: bytes) -> str:
+def _kling_image_payload(data: bytes, *, prefer_png: bool = False) -> str:
     """
     Prefer a public HTTPS URL (Cloudinary) so Kling can fetch the image;
     otherwise send raw base64 (no data: prefix).
+
+    prefer_png=True keeps garment alpha (cutouts) instead of baking a JPEG background.
     """
-    jpg = _to_jpg_bytes(data)
+    if prefer_png:
+        # Keep alpha so Kling sees a dress cutout, not a studio scene
+        payload_bytes = _rgba_to_png_bytes(_open_rgb(data))
+        filename = f"kling_{uuid.uuid4().hex[:10]}.png"
+    else:
+        payload_bytes = _to_jpg_bytes(data)
+        filename = f"kling_{uuid.uuid4().hex[:10]}.jpg"
+
     try:
         from cloudinary_storage import is_configured, upload_bytes
 
         if is_configured():
             result = upload_bytes(
-                jpg,
+                payload_bytes,
                 folder="tryon/inputs",
-                filename=f"kling_{uuid.uuid4().hex[:10]}.jpg",
+                filename=filename,
             )
             url = result.get("secure_url") or result.get("url")
             if url:
                 return url
     except Exception as exc:
         print(f"[tryon] kling input upload skipped: {exc}")
-    return base64.b64encode(jpg).decode("ascii")
+    return base64.b64encode(payload_bytes).decode("ascii")
 
 
 def _kling_extract_image_url(task_data: dict) -> Optional[str]:
@@ -444,7 +641,7 @@ def _try_kling_omni_tryon(
         }
         print("[tryon] kling_omni: preparing person + dress images…")
         person_ref = _kling_image_payload(person_bytes)
-        dress_ref = _kling_image_payload(garment_bytes)
+        dress_ref = _kling_image_payload(garment_bytes, prefer_png=True)
         prompt = _kling_build_tryon_prompt(fit)
 
         mode = KLING_IMAGE_MODE
@@ -483,8 +680,10 @@ def _try_kling_omni_tryon(
                     "model_name": os.environ.get("KLING_MULTI_MODEL") or "kling-v2-1",
                     "prompt": (
                         "Virtual try-on: keep the person from the first subject image and "
-                        "dress them in the wedding garment from the second subject image. "
-                        "Photorealistic bridal photo, preserve face and outfit details."
+                        "dress them ONLY in the isolated wedding garment cutout from the "
+                        "second subject image (ignore any leftover background, hangers, "
+                        "or studio walls). Photorealistic bridal photo, preserve face "
+                        "and outfit details."
                     ),
                     "subject_image_list": [
                         {"subject_image": person_ref},
@@ -537,7 +736,7 @@ def _try_kling_vton_tryon(
         payload = {
             "model_name": KLING_VTON_MODEL,
             "human_image": _kling_image_payload(person_bytes),
-            "cloth_image": _kling_image_payload(garment_bytes),
+            "cloth_image": _kling_image_payload(garment_bytes, prefer_png=True),
         }
         img_bytes, err = _kling_create_and_poll(
             create_path="/v1/images/kolors-virtual-try-on",
@@ -569,7 +768,12 @@ def _try_fal_tryon(person_bytes: bytes, garment_bytes: bytes, fit: dict) -> Opti
             return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
 
         person_uri = b64_uri(_to_jpg_bytes(person_bytes))
-        garment_uri = b64_uri(_to_jpg_bytes(garment_bytes))
+        # Prefer PNG cutout when garment already has alpha
+        g_im = _open_rgb(garment_bytes)
+        if _has_useful_alpha(g_im):
+            garment_uri = b64_uri(_rgba_to_png_bytes(g_im), mime="image/png")
+        else:
+            garment_uri = b64_uri(_to_jpg_bytes(garment_bytes))
 
         prompt_hint = {
             "FIT": "natural fitting wedding attire, correct length",
@@ -648,6 +852,14 @@ def run_tryon(
         hip_cm=hip_cm,
         category=category,
     )
+
+    # Marketplace dress photos usually include studio/hanger backgrounds.
+    # Isolating the garment first (transparent PNG) makes try-on map the dress,
+    # not the whole product photo — matches what works with manual cutouts.
+    try:
+        garment_bytes = isolate_garment_bytes(garment_bytes)
+    except Exception as exc:
+        print(f"[tryon] garment isolation failed, using original: {exc}")
 
     provider_used = "local"
     fallback_reason = None
