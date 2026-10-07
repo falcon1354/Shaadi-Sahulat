@@ -78,9 +78,28 @@ const PORT = process.env.PORT || 5000;
 const httpServer = http.createServer(app);
 
 // ── Middleware ──────────────────────────────────────────────────────────────
-// Only the configured frontend may call the API from a browser (no wildcard CORS).
-// (An allow-list reflects only a matching Origin; any other origin gets no CORS headers.)
-app.use(cors({ origin: [getAuthConfig().frontendOrigin.replace(/\/$/, "")] }));
+// Allow configured frontend origin as well as local development origins (port 3000, 3001, etc.)
+const configuredOrigin = (getAuthConfig().frontendOrigin || "").replace(/\/$/, "");
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  const clean = origin.replace(/\/$/, "");
+  if (configuredOrigin && clean === configuredOrigin) return true;
+  if (process.env.NODE_ENV !== "production") {
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(clean)) return true;
+  }
+  return false;
+};
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, origin || true);
+    } else {
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../../api/http';
 import sellerApi, { resolveImageUrl } from '../../api/sellerApi';
+import SellerPageHero from '../Common/SellerPageHero';
 
 const BASE = 'http://localhost:5000/api/banners';
 
@@ -139,100 +140,140 @@ export default function SellerBannerOffer({ seller }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">🎯 Promotional Offers</h1>
-          <p className="text-sm text-gray-500 mt-1">Create banner offers for your products — admin will review and approve</p>
-        </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-bold text-sm rounded-xl hover:shadow-lg transition-all"
-        >
-          {showForm ? 'Cancel' : '+ New Offer'}
-        </button>
-      </div>
+    <div className="space-y-6 animate-fade-in pb-12 max-w-7xl mx-auto">
+      {/* Page Hero */}
+      <SellerPageHero
+        badge="Promotions & Visibility"
+        title="Promotional Banners & Offers"
+        subtitle="Feature your bridal collection on marketplace carousels. Submit custom promotions for administrative review and curated placement."
+        imageKey="campaigns"
+        rightSlot={
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-5 py-2.5 bg-gradient-to-r from-[#9B7036] to-[#7d5624] hover:opacity-95 text-white font-semibold text-xs rounded-xl shadow-md shadow-[#9B7036]/20 transition-all flex items-center gap-2"
+          >
+            <span>{showForm ? '✕' : '+'}</span>
+            <span>{showForm ? 'Cancel Form' : 'Create New Offer'}</span>
+          </button>
+        }
+      />
 
       {message && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium px-4 py-3 rounded-xl">
-          {message}
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-4 py-3 rounded-2xl flex items-center gap-2">
+          <span>✓</span> {message}
         </div>
       )}
 
       {/* Create Offer Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-900">Create Promotional Offer</h2>
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-[#EFEAE4] p-7 space-y-6 shadow-luxury">
+          <div className="border-b border-[#FAF7F2] pb-3">
+            <h2 className="font-serif text-xl font-bold text-stone-900">Create Promotional Campaign</h2>
+            <p className="text-xs text-stone-500 mt-0.5">Submit high-resolution visuals and offer details for admin approval</p>
+          </div>
 
           {/* Banner Image */}
           <div>
-            <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Banner Image *</label>
-            <input type="file" accept="image/*" onChange={handleImageChange}
-              className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
-            {imagePreview && (
-              <img src={imagePreview} alt="Preview" className="mt-2 w-full h-40 object-cover rounded-xl border border-gray-200" />
-            )}
+            <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-2">
+              Banner Artwork / Creative *
+            </label>
+            <div className="border-2 border-dashed border-[#EADBCC] hover:border-[#9B7036] rounded-2xl p-6 text-center bg-[#FAF7F2]/40 transition-colors">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="w-full text-xs text-stone-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#FAF3E8] file:text-[#9B7036] hover:file:bg-[#ECD4A8]/60 cursor-pointer"
+              />
+              {imagePreview && (
+                <div className="mt-4 rounded-xl overflow-hidden border border-[#EADBCC] shadow-sm max-h-52">
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Title + Offer Text */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Title *</label>
-              <input type="text" value={title} onChange={e => setTitle(e.target.value)}
-                placeholder="e.g. Summer Sale 50% Off"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-emerald-500 outline-none" />
+              <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">Campaign Headline *</label>
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="e.g. Royal Bridal Heritage Collection — 20% Off"
+                className="w-full px-4 py-2.5 bg-[#FAF7F2] border border-[#EADBCC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036]/30 text-stone-800"
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Offer Text</label>
-              <input type="text" value={offerText} onChange={e => setOfferText(e.target.value)}
-                placeholder="e.g. Buy 2 Get 1 Free"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-emerald-500 outline-none" />
+              <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">Tagline / Subtext</label>
+              <input
+                type="text"
+                value={offerText}
+                onChange={e => setOfferText(e.target.value)}
+                placeholder="e.g. Handcrafted Zardozi Lehengas &amp; Sherwanis"
+                className="w-full px-4 py-2.5 bg-[#FAF7F2] border border-[#EADBCC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036]/30 text-stone-800"
+              />
             </div>
           </div>
 
           {/* Storefront + Category */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Storefront</label>
-              <select value={storefront} onChange={e => setStorefront(e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-emerald-500 outline-none">
-                <option value="new">New Marketplace</option>
-                <option value="thrift">Thrift Marketplace</option>
-                <option value="both">Both</option>
+              <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">Target Storefront</label>
+              <select
+                value={storefront}
+                onChange={e => setStorefront(e.target.value)}
+                className="w-full px-4 py-2.5 bg-[#FAF7F2] border border-[#EADBCC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036]/30 text-stone-800"
+              >
+                <option value="new">Boutique / Brand New</option>
+                <option value="thrift">Pre-Loved / Thrift Collection</option>
+                <option value="both">Both Marketplaces</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Target Category (optional)</label>
-              <input type="text" value={categoryId} onChange={e => setCategoryId(e.target.value)}
-                placeholder="e.g. wedding_dress"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-emerald-500 outline-none" />
+              <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">Target Category (Optional)</label>
+              <input
+                type="text"
+                value={categoryId}
+                onChange={e => setCategoryId(e.target.value)}
+                placeholder="e.g. bridal_dresses, jewelry"
+                className="w-full px-4 py-2.5 bg-[#FAF7F2] border border-[#EADBCC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036]/30 text-stone-800"
+              />
             </div>
           </div>
 
           {/* Schedule */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Start Date/Time *</label>
-              <input type="datetime-local" value={startAt} onChange={e => setStartAt(e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-emerald-500 outline-none" />
+              <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">Launch Date &amp; Time *</label>
+              <input
+                type="datetime-local"
+                value={startAt}
+                onChange={e => setStartAt(e.target.value)}
+                className="w-full px-4 py-2.5 bg-[#FAF7F2] border border-[#EADBCC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036]/30 text-stone-800"
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">End Date/Time *</label>
-              <input type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-emerald-500 outline-none" />
+              <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">Expiry Date &amp; Time *</label>
+              <input
+                type="datetime-local"
+                value={endAt}
+                onChange={e => setEndAt(e.target.value)}
+                className="w-full px-4 py-2.5 bg-[#FAF7F2] border border-[#EADBCC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036]/30 text-stone-800"
+              />
             </div>
           </div>
-          <p className="text-xs text-gray-400">Maximum duration: 3 days. Schedule must be in the future.</p>
+          <p className="text-xs text-stone-500 italic">Notice: Maximum campaign duration is 72 hours (3 days). Scheduled time must be in the future.</p>
 
-          {/* Product Picker — visual selection of seller's own products */}
+          {/* Product Picker */}
           <div>
-            <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">
-              Select Products to Include ({selectedProducts.length} selected)
+            <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-2">
+              Attach Boutique Products ({selectedProducts.length} Selected)
             </label>
             {products.length === 0 ? (
-              <p className="text-xs text-gray-400">No products found. Upload products first.</p>
+              <p className="text-xs text-stone-400">No active products found. Upload products to link them to this campaign.</p>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 max-h-60 overflow-y-auto p-2 border border-gray-200 rounded-xl bg-gray-50">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 max-h-64 overflow-y-auto p-3 border border-[#EFEAE4] rounded-2xl bg-[#FAF7F2]/40">
                 {products.map(p => {
                   const isSelected = selectedProducts.includes(p.product_id);
                   const img = resolveImageUrl(p.primary_image_url);
@@ -241,25 +282,27 @@ export default function SellerBannerOffer({ seller }) {
                       key={p.product_id}
                       type="button"
                       onClick={() => toggleProduct(p.product_id)}
-                      className={`relative rounded-xl border-2 overflow-hidden transition-all ${
+                      className={`relative rounded-2xl border-2 overflow-hidden transition-all text-left bg-white ${
                         isSelected
-                          ? 'border-emerald-500 ring-2 ring-emerald-200 shadow-lg'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-[#9B7036] ring-2 ring-[#ECD4A8] shadow-md'
+                          : 'border-[#EFEAE4] hover:border-[#ECD4A8]'
                       }`}
                     >
-                      <div className="aspect-square bg-gray-100">
+                      <div className="aspect-square bg-stone-100">
                         {img ? (
                           <img src={img} alt={p.title} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300 text-xl">📦</div>
+                          <div className="w-full h-full flex items-center justify-center text-stone-300 text-xl">📦</div>
                         )}
                       </div>
-                      <div className="p-1.5">
-                        <p className="text-[10px] font-bold text-gray-800 truncate">{p.title}</p>
-                        <p className="text-[9px] text-gray-500">PKR {p.price?.toLocaleString()}</p>
+                      <div className="p-2">
+                        <p className="text-[11px] font-bold text-stone-800 truncate">{p.title}</p>
+                        <p className="text-[10px] font-serif text-[#9B7036] font-bold mt-0.5">PKR {p.price?.toLocaleString()}</p>
                       </div>
                       {isSelected && (
-                        <div className="absolute top-1 right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xs font-bold">✓</div>
+                        <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-[#9B7036] rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
+                          ✓
+                        </div>
                       )}
                     </button>
                   );
@@ -268,55 +311,63 @@ export default function SellerBannerOffer({ seller }) {
             )}
           </div>
 
-          {/* Submit */}
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white rounded-xl text-sm font-bold hover:shadow-lg disabled:opacity-50 transition-all"
+            className="w-full py-3.5 bg-gradient-to-r from-[#9B7036] to-[#7d5624] hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-[#9B7036]/20 disabled:opacity-50"
           >
-            {submitting ? 'Submitting...' : 'Submit Offer for Admin Review'}
+            {submitting ? 'Submitting Campaign...' : 'Submit Campaign for Administrative Approval'}
           </button>
         </form>
       )}
 
       {/* My Existing Offers */}
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-3">My Offers</h2>
+      <div className="space-y-4">
+        <h2 className="font-serif text-lg font-bold text-stone-900">Campaign History &amp; Submissions</h2>
         {myOffers.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
-            <p className="text-3xl mb-2">🎯</p>
-            <p className="text-sm text-gray-500">No promotional offers yet. Create one above!</p>
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-[#EFEAE4] p-12 text-center shadow-luxury">
+            <div className="w-14 h-14 rounded-2xl bg-[#FAF3E8] border border-[#ECD4A8] text-[#9B7036] flex items-center justify-center text-2xl mx-auto mb-3">
+              🎯
+            </div>
+            <h3 className="font-serif text-base font-bold text-stone-800 mb-1">No Active Campaigns</h3>
+            <p className="text-xs text-stone-500 max-w-sm mx-auto">
+              Create a promotional campaign banner above to boost your brand exposure across ShaadiSahulat.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {myOffers.map(offer => (
-              <div key={offer.banner_id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                <div className="h-32 bg-gray-100">
-                  {offer.image_url && (
+              <div key={offer.banner_id} className="bg-white rounded-3xl border border-[#EFEAE4] overflow-hidden shadow-luxury">
+                <div className="h-36 bg-stone-100 relative">
+                  {offer.image_url ? (
                     <img src={offer.image_url} alt={offer.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-stone-300">No Image</div>
                   )}
                 </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-gray-800">{offer.title}</h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(offer.start_at).toLocaleDateString()} → {new Date(offer.end_at).toLocaleDateString()}
+                <div className="p-5">
+                  <h3 className="font-serif font-bold text-base text-stone-900">{offer.title}</h3>
+                  <p className="text-xs text-stone-500 mt-1 flex items-center gap-1.5">
+                    <span>📅</span>
+                    <span>{new Date(offer.start_at).toLocaleDateString()} → {new Date(offer.end_at).toLocaleDateString()}</span>
                   </p>
-                  <div className="mt-2">
-                    <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${
-                      offer.seller_offer_status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                      offer.seller_offer_status === 'approved' ? 'bg-green-50 text-green-700' :
-                      'bg-red-50 text-red-700'
+                  <div className="mt-3 pt-3 border-t border-[#FAF7F2] flex items-center justify-between">
+                    <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${
+                      offer.seller_offer_status === 'pending' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                      offer.seller_offer_status === 'approved' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                      'bg-rose-50 text-rose-800 border-rose-200'
                     }`}>
-                      {offer.seller_offer_status === 'pending' ? '⏳ Pending Review' :
-                       offer.seller_offer_status === 'approved' ? '✓ Approved' : '✗ Rejected'}
+                      {offer.seller_offer_status === 'pending' ? '⏳ Under Review' :
+                       offer.seller_offer_status === 'approved' ? '✓ Approved &amp; Live' : '✗ Declined'}
                     </span>
                     {offer.suggested_price && (
-                      <p className="text-xs text-blue-600 mt-1">Admin suggested price: PKR {offer.suggested_price.toLocaleString()}</p>
-                    )}
-                    {offer.admin_rejection_reason && (
-                      <p className="text-xs text-red-600 mt-1">Reason: {offer.admin_rejection_reason}</p>
+                      <p className="text-xs font-serif font-bold text-[#9B7036]">Admin Price: PKR {offer.suggested_price.toLocaleString()}</p>
                     )}
                   </div>
+                  {offer.admin_rejection_reason && (
+                    <p className="text-xs text-rose-600 mt-2 p-2 bg-rose-50 rounded-xl">Reason: {offer.admin_rejection_reason}</p>
+                  )}
                 </div>
               </div>
             ))}

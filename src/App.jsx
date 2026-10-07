@@ -231,65 +231,86 @@ function SellerAccountView({ seller }) {
   const maxListings = seller?.max_listings ?? (seller?.seller_type === 'company' ? '∞' : 5);
 
   return (
-    <div className="animate-fade-in max-w-lg mx-auto space-y-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
-        <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
-            {seller?.name?.[0]?.toUpperCase() || '?'}
+    <div className="animate-fade-in max-w-3xl mx-auto space-y-6">
+      <BuyerPageHero
+        badge={<><User size={13} /> Merchant Profile</>}
+        title="Seller Profile & Storefront"
+        subtitle="Manage your merchant credentials, verify business tier, and monitor seller level progression."
+        image={accountHeroImg}
+        imageAlt="Luxury boutique atelier seller"
+      />
+
+      {/* Profile Card */}
+      <div className="bg-white rounded-3xl shadow-xs border border-[#EADBCC] p-6 sm:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pb-6 border-b border-[#EFEAE4]">
+          <div className="w-20 h-20 bg-gradient-to-br from-[#1C1814] to-[#362A1F] border-2 border-[#9B7036] rounded-2xl flex items-center justify-center text-[#ECD4A8] text-3xl font-serif font-bold shrink-0 shadow-luxury overflow-hidden relative">
+            <span className="relative z-10">{seller?.name?.[0]?.toUpperCase() || 'S'}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-gray-800 truncate">{seller?.name}</h2>
-            <p className="text-sm text-gray-400 truncate">{seller?.email}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-2xl font-serif font-bold text-stone-900 truncate">{seller?.name}</h2>
+              <LevelBadge level={levelInfo.level} label={levelInfo.label} colorClass={levelInfo.color} />
+            </div>
+            <p className="text-xs sm:text-sm text-stone-500 font-sans mt-0.5">{seller?.email}</p>
             {seller?.seller_id && (
-              <p className="text-[10px] text-gray-400 font-mono mt-0.5">{seller.seller_id}</p>
+              <p className="text-[11px] text-stone-400 font-mono mt-1">Merchant ID: {seller.seller_id}</p>
             )}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 text-sm">
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
           {seller?.phone && (
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Phone</p>
-              <p className="font-semibold text-gray-700">{seller.phone}</p>
+            <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFEAE4]">
+              <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider mb-1">Direct Contact</p>
+              <p className="font-bold text-xs sm:text-sm text-stone-800">{seller.phone}</p>
             </div>
           )}
           {seller?.city && (
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">City</p>
-              <p className="font-semibold text-gray-700">📍 {seller.city}</p>
+            <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFEAE4]">
+              <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider mb-1">Merchant City</p>
+              <p className="font-bold text-xs sm:text-sm text-stone-800">📍 {seller.city}</p>
             </div>
           )}
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Member Since</p>
-            <p className="font-semibold text-gray-700">{joined}</p>
+          <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFEAE4]">
+            <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider mb-1">Member Since</p>
+            <p className="font-bold text-xs sm:text-sm text-stone-800">{joined}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Orders Done</p>
-            <p className="font-semibold text-gray-700">{orders}</p>
+          <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFEAE4]">
+            <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider mb-1">Fulfilled Orders</p>
+            <p className="font-bold text-xs sm:text-sm text-[#9B7036]">{orders} packages</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Seller Type</p>
-            <p className="font-semibold text-gray-700 capitalize">{seller?.seller_type || 'Individual'}</p>
+          <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFEAE4]">
+            <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider mb-1">Merchant Type</p>
+            <p className="font-bold text-xs sm:text-sm text-stone-800 capitalize">{seller?.seller_type || 'Individual'}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">Max Listings</p>
-            <p className="font-semibold text-gray-700">{maxListings}</p>
+          <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EFEAE4]">
+            <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider mb-1">Listing Quota</p>
+            <p className="font-bold text-xs sm:text-sm text-stone-800">{maxListings} listings</p>
           </div>
         </div>
       </div>
-      <div className="bg-white rounded-2xl shadow-sm border border-[#FBEFF1] p-6">
-        <h3 className="text-sm font-semibold text-gray-600 mb-3">Seller Level</h3>
-        <LevelBadge level={levelInfo.level} label={levelInfo.label} colorClass={levelInfo.color} />
-        <LevelProgress info={levelInfo} ordersLabel={`${orders} completed order${orders !== 1 ? 's' : ''}`} />
-        <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-center">
+
+      {/* Seller Tier Progression */}
+      <div className="bg-white rounded-3xl shadow-xs border border-[#EADBCC] p-6 sm:p-8 space-y-4">
+        <h3 className="text-base font-serif font-bold text-stone-900">Merchant Milestone Tier</h3>
+        <LevelProgress info={levelInfo} ordersLabel={`${orders} fulfilled order${orders !== 1 ? 's' : ''}`} />
+        <div className="grid grid-cols-3 gap-3 text-xs text-center pt-2">
           {[
-            { l: 1, label: 'Starter Seller', at: 'On registration' },
-            { l: 2, label: 'Trusted Seller', at: '10+ orders' },
-            { l: 3, label: 'Elite Seller', at: '50+ orders' },
+            { l: 1, label: 'Starter Seller', at: 'Registered Merchant' },
+            { l: 2, label: 'Trusted Seller', at: '10+ Orders' },
+            { l: 3, label: 'Elite Seller', at: '50+ Orders' },
           ].map(({ l, label, at }) => (
-            <div key={l} className={`rounded-xl p-2 border ${levelInfo.level >= l ? 'bg-[#FFF5F8] border-[#ECD4A8] text-[#a37b3d]' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
-              <p className="font-bold">L{l}</p>
-              <p className="font-medium text-[10px]">{label}</p>
-              <p className="text-[9px] mt-0.5">{at}</p>
+            <div
+              key={l}
+              className={`rounded-xl p-3.5 border transition-all ${
+                levelInfo.level >= l
+                  ? 'bg-[#FAF3E8] border-[#ECD4A8] text-[#4A3B2C] shadow-xs'
+                  : 'bg-[#FAF7F2] border-[#EFEAE4] text-stone-400'
+              }`}
+            >
+              <p className="text-xs font-serif font-bold text-[#9B7036]">Level 0{l}</p>
+              <p className="font-bold text-xs mt-0.5 text-stone-900">{label}</p>
+              <p className="text-[10px] text-stone-400 mt-0.5">{at}</p>
             </div>
           ))}
         </div>
@@ -301,23 +322,23 @@ function SellerAccountView({ seller }) {
 // ── Nav view lists ────────────────────────────────────────────────────────────
 
 const BUYER_VIEWS = [
-  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-  { id: 'marketplace', label: 'Marketplace', icon: <ShoppingBag size={20} /> },
-  { id: 'visual', label: 'Find by Photo', icon: <Camera size={20} /> },
-  { id: 'dowry', label: 'Budget Estimator', icon: <Calculator size={20} /> },
-  { id: 'orders', label: 'My Orders', icon: <Package size={20} /> },
-  { id: 'bnpl', label: 'My BNPL', icon: <ShoppingCart size={20} /> },
-  { id: 'account', label: 'My Account', icon: <User size={20} /> },
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={19} /> },
+  { id: 'marketplace', label: 'Marketplace', icon: <ShoppingBag size={19} /> },
+  { id: 'visual', label: 'Find by Photo', icon: <Camera size={19} /> },
+  { id: 'dowry', label: 'Budget Estimator', icon: <Calculator size={19} /> },
+  { id: 'orders', label: 'My Orders', icon: <Package size={19} /> },
+  { id: 'bnpl', label: 'My BNPL', icon: <ShoppingCart size={19} /> },
+  { id: 'account', label: 'My Account', icon: <User size={19} /> },
 ];
 
 const SELLER_VIEWS = [
-  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-  { id: 'upload', label: 'Upload Product', icon: <PlusCircle size={20} /> },
-  { id: 'products', label: 'My Products', icon: <Package size={20} /> },
-  { id: 'orders', label: 'Orders to Fulfill', icon: <ShoppingCart size={20} /> },
-  { id: 'reviews', label: 'Reviews', icon: <Star size={20} /> },
-  { id: 'finance', label: 'Financial Projection', icon: <LineChart size={20} /> },
-  { id: 'account', label: 'My Account', icon: <User size={20} /> },
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={19} /> },
+  { id: 'upload', label: 'Upload Product', icon: <PlusCircle size={19} /> },
+  { id: 'products', label: 'My Products', icon: <Package size={19} /> },
+  { id: 'orders', label: 'Orders to Fulfill', icon: <ShoppingCart size={19} /> },
+  { id: 'reviews', label: 'Reviews', icon: <Star size={19} /> },
+  { id: 'finance', label: 'Financial Projection', icon: <LineChart size={19} /> },
+  { id: 'account', label: 'My Account', icon: <User size={19} /> },
 ];
 
 // Maps old view IDs (used by SellerDashboard's onNavigate) to new URL segments
@@ -385,59 +406,67 @@ function BuyerLayout() {
 
   return (
     <div className="min-h-screen bg-[#FCFBFB] flex">
-      {/* Sidebar */}
-      <aside className="fixed md:sticky md:top-0 w-64 h-screen shrink-0 bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-y-auto z-40">
-        <div className="p-5 border-b border-gray-100/50">
-          <div className="flex items-center gap-3 mb-4">
-            <img src={logo} alt="ShaadiSahulat" className="w-10 h-10 object-contain flex-shrink-0" />
-            <div>
-              <h1 className="font-heading font-bold text-gray-800 text-base leading-tight tracking-tight">ShaadiSahulat</h1>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-0.5">Buyer Portal</p>
+      {/* Sticky Left Sidebar */}
+      <aside className="sticky top-0 h-screen w-64 shrink-0 bg-white/90 backdrop-blur-xl border-r border-[#EFEAE4] shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col justify-between z-30 select-none">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="p-5 border-b border-[#EFEAE4]">
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="ShaadiSahulat" className="w-10 h-10 object-contain flex-shrink-0" />
+              <div>
+                <h1 className="font-heading font-bold text-stone-900 text-base leading-tight tracking-tight">ShaadiSahulat</h1>
+                <p className="text-[11px] text-[#9B7036] font-bold uppercase tracking-wider mt-0.5">Buyer Portal</p>
+              </div>
             </div>
           </div>
-        </div>
-        <nav className="p-3 space-y-1.5 mt-2">
-          {BUYER_VIEWS.map((v) => (
-            <button
-              key={v.id}
-              onClick={() => navigate(`/buyer/${v.id}`)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${seg === v.id
-                  ? 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
-                  : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-gray-800'
+
+          <nav className="p-3 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
+            {BUYER_VIEWS.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => navigate(`/buyer/${v.id}`)}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                  seg === v.id
+                    ? 'bg-gradient-to-r from-[#FAF3E8] to-[#FFF5F8] text-[#9B7036] shadow-2xs border border-[#ECD4A8]/80'
+                    : 'text-stone-600 hover:bg-[#FAF7F2] hover:text-stone-900'
                 }`}
-            >
-              <span className={`text-lg transition-transform duration-300 ${seg === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
-              <span>{v.label}</span>
-              <NavBadge count={navBadges[v.id]} />
-            </button>
-          ))}
-        </nav>
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100/50 bg-white/40 backdrop-blur-md">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-sm bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8]">
-              {buyer?.name?.[0]?.toUpperCase()}
+              >
+                <span className={`transition-transform duration-200 ${seg === v.id ? 'text-[#9B7036] scale-105' : 'text-stone-400'}`}>
+                  {v.icon}
+                </span>
+                <span className="flex-1 text-left">{v.label}</span>
+                <NavBadge count={navBadges[v.id]} />
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Pinned Bottom User Card */}
+        <div className="p-4 border-t border-[#EFEAE4] bg-[#FAF7F2]/60">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-2xs bg-gradient-to-br from-[#1C1814] to-[#362A1F] border border-[#9B7036]/40 text-[#ECD4A8]">
+              {buyer?.name?.[0]?.toUpperCase() || 'B'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-800 truncate">{buyer?.name}</p>
-              <p className="text-xs text-gray-500 truncate">{buyer?.email}</p>
+              <p className="text-xs font-bold text-stone-900 truncate">{buyer?.name || 'Buyer'}</p>
+              <p className="text-[11px] text-stone-500 truncate">{buyer?.email}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full px-4 py-2.5 text-sm font-medium text-red-600 bg-white border border-red-100 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all shadow-sm flex items-center justify-center gap-2"
+            className="w-full px-3 py-2 text-xs font-bold text-rose-700 bg-white border border-rose-200/70 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
             Sign Out
           </button>
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col min-h-screen">
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-h-screen min-w-0">
+        <header className="bg-white/95 backdrop-blur-md shadow-xs border-b border-[#EFEAE4] sticky top-0 z-20">
           <div className="px-4 py-3 flex items-center justify-between gap-3">
             <div className="md:hidden flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#a37b3d] to-[#ECD4A8] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
-              <h1 className="font-bold text-gray-800">ShaadiSahulat</h1>
+              <div className="w-8 h-8 bg-gradient-to-br from-[#9B7036] to-[#ECD4A8] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
+              <h1 className="font-bold text-stone-900">ShaadiSahulat</h1>
             </div>
             {/* Big-Task-Batch2 §Thrift Search — common Search bar in the
                 Navbar, shown ONLY on marketplace/thrift/product pages. */}
@@ -451,8 +480,8 @@ function BuyerLayout() {
                 }} />
               </div>
             )}
-            <div className="flex items-center gap-2 ml-auto">
-              <span className="hidden sm:block text-xs text-gray-500">Hi, {buyer?.name?.split(' ')[0]}</span>
+            <div className="flex items-center gap-2.5 ml-auto">
+              <span className="hidden sm:block text-xs font-semibold text-stone-600">Hi, {buyer?.name?.split(' ')[0]}</span>
               {/* Big-Task-Batch2 §0: hide the NotificationBell on the Dashboard page only */}
               {!isDashboard && (
                 <NotificationBell
@@ -463,11 +492,12 @@ function BuyerLayout() {
               )}
               <button
                 onClick={() => setCart(true)}
-                className="relative flex items-center gap-2 px-3 py-1.5 bg-[#a37b3d] text-white rounded-xl text-sm font-medium hover:bg-[#8a6633] transition-colors shadow-sm"
+                className="relative flex items-center gap-2 px-3.5 py-1.5 bg-[#9B7036] text-white rounded-xl text-xs font-bold hover:bg-[#835d2c] transition-all shadow-xs cursor-pointer"
               >
-                <ShoppingCart size={16} />
+                <ShoppingCart size={15} />
+                <span>Cart</span>
                 {totalItems > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                     {totalItems > 9 ? '9+' : totalItems}
                   </span>
                 )}
@@ -480,7 +510,7 @@ function BuyerLayout() {
             <Outlet />
           </div>
         </div>
-        <footer className="text-center py-3 text-xs text-gray-400 border-t border-gray-200 bg-white">
+        <footer className="text-center py-4 text-xs text-stone-400 border-t border-[#EFEAE4] bg-white">
           ShaadiSahulat — FYP 2026 | NUCES Chiniot-Faisalabad
         </footer>
       </main>
@@ -491,12 +521,12 @@ function BuyerLayout() {
       {isDashboard && totalItems > 0 && (
         <button
           onClick={openCart}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-[#a37b3d] to-[#8a6633] text-white font-bold shadow-2xl hover:shadow-xl hover:scale-105 transition-all"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-[#9B7036] to-[#7E5724] text-white font-bold shadow-luxury hover:scale-105 transition-all cursor-pointer"
           title="View Cart"
         >
-          <ShoppingCart size={20} />
+          <ShoppingCart size={19} />
           <span>Cart</span>
-          <span className="ml-1 bg-white text-[#a37b3d] text-xs font-extrabold rounded-full w-5 h-5 flex items-center justify-center">
+          <span className="ml-1 bg-white text-[#9B7036] text-xs font-extrabold rounded-full w-5 h-5 flex items-center justify-center">
             {totalItems > 9 ? '9+' : totalItems}
           </span>
         </button>
@@ -532,62 +562,70 @@ function SellerLayout() {
 
   return (
     <div className="min-h-screen bg-[#FCFBFB] flex">
-      {/* Sidebar */}
-      <aside className="fixed md:static w-64 h-screen bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-y-auto z-40">
-        <div className="p-5 border-b border-gray-100/50">
-          <div className="flex items-center gap-3 mb-4">
-            <img src={logo} alt="ShaadiSahulat" className="w-10 h-10 object-contain flex-shrink-0" />
-            <div>
-              <h1 className="font-heading font-bold text-gray-800 text-base leading-tight tracking-tight">ShaadiSahulat</h1>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-0.5">Seller Portal</p>
+      {/* Sticky Left Sidebar */}
+      <aside className="sticky top-0 h-screen w-64 shrink-0 bg-white/90 backdrop-blur-xl border-r border-[#EFEAE4] shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col justify-between z-30 select-none">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="p-5 border-b border-[#EFEAE4]">
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="ShaadiSahulat" className="w-10 h-10 object-contain flex-shrink-0" />
+              <div>
+                <h1 className="font-heading font-bold text-stone-900 text-base leading-tight tracking-tight">ShaadiSahulat</h1>
+                <p className="text-[11px] text-[#9B7036] font-bold uppercase tracking-wider mt-0.5">Merchant Portal</p>
+              </div>
             </div>
           </div>
-        </div>
-        <nav className="p-3 space-y-1.5 mt-2">
-          {SELLER_VIEWS.map((v) => (
-            <button
-              key={v.id}
-              onClick={() => navigate(`/seller/${v.id}`)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${seg === v.id
-                  ? 'bg-gradient-to-r from-[#FFF5F8] to-[#FDF2F3] text-[#a37b3d] shadow-sm border border-[#FBEFF1]'
-                  : 'text-gray-500 hover:bg-white hover:shadow-sm hover:text-gray-800'
+
+          <nav className="p-3 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
+            {SELLER_VIEWS.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => navigate(`/seller/${v.id}`)}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                  seg === v.id
+                    ? 'bg-gradient-to-r from-[#FAF3E8] to-[#FFF5F8] text-[#9B7036] shadow-2xs border border-[#ECD4A8]/80'
+                    : 'text-stone-600 hover:bg-[#FAF7F2] hover:text-stone-900'
                 }`}
-            >
-              <span className={`text-lg transition-transform duration-300 ${seg === v.id ? 'scale-110' : ''}`}>{v.icon}</span>
-              <span>{v.label}</span>
-              <NavBadge count={navBadges[v.id]} />
-            </button>
-          ))}
-        </nav>
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100/50 bg-white/40 backdrop-blur-md">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-sm bg-gradient-to-br from-[#c09858] to-[#a37b3d]">
-              {seller?.name?.[0]?.toUpperCase()}
+              >
+                <span className={`transition-transform duration-200 ${seg === v.id ? 'text-[#9B7036] scale-105' : 'text-stone-400'}`}>
+                  {v.icon}
+                </span>
+                <span className="flex-1 text-left">{v.label}</span>
+                <NavBadge count={navBadges[v.id]} />
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Pinned Bottom Merchant Card */}
+        <div className="p-4 border-t border-[#EFEAE4] bg-[#FAF7F2]/60">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[#ECD4A8] text-sm font-bold shadow-2xs bg-gradient-to-br from-[#1C1814] to-[#362A1F] border border-[#9B7036]/40">
+              {seller?.name?.[0]?.toUpperCase() || 'S'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-800 truncate">{seller?.name}</p>
-              <p className="text-xs text-gray-500 truncate">{seller?.email}</p>
+              <p className="text-xs font-bold text-stone-900 truncate">{seller?.name || 'Seller'}</p>
+              <p className="text-[11px] text-stone-500 truncate">{seller?.email}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full px-4 py-2.5 text-sm font-medium text-red-600 bg-white border border-red-100 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all shadow-sm flex items-center justify-center gap-2"
+            className="w-full px-3 py-2 text-xs font-bold text-rose-700 bg-white border border-rose-200/70 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
             Sign Out
           </button>
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+        <header className="bg-white/95 backdrop-blur-md shadow-xs border-b border-[#EFEAE4] sticky top-0 z-20">
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="md:hidden flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#c09858] to-[#a37b3d] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
-              <h1 className="font-bold text-gray-800">ShaadiSahulat</h1>
+              <div className="w-8 h-8 bg-gradient-to-br from-[#9B7036] to-[#ECD4A8] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
+              <h1 className="font-bold text-stone-900">ShaadiSahulat</h1>
             </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <span className="hidden sm:block text-xs text-gray-500">Hi, {seller?.name?.split(' ')[0]}</span>
+            <div className="flex items-center gap-3 ml-auto">
+              <span className="hidden sm:block text-xs font-semibold text-stone-600">Store: <strong className="text-stone-900">{seller?.name}</strong></span>
               <NotificationBell
                 userId={seller?.seller_id}
                 role="seller"
@@ -601,7 +639,7 @@ function SellerLayout() {
             <Outlet />
           </div>
         </div>
-        <footer className="text-center py-3 text-xs text-gray-400 border-t border-gray-200 bg-white">
+        <footer className="text-center py-4 text-xs text-stone-400 border-t border-[#EFEAE4] bg-white">
           ShaadiSahulat — FYP 2026 | NUCES Chiniot-Faisalabad
         </footer>
       </main>

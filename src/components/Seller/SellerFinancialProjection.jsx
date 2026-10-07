@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { listSellerPackages } from '../../api/orderApi';
 import ExpandableItems from '../Common/ExpandableItems';
+import SellerPageHero from '../Common/SellerPageHero';
 
 const PLATFORM_FEE_PCT = 5;
 
@@ -127,8 +128,9 @@ export default function SellerFinancialProjection({ seller }) {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <div className="w-12 h-12 border-4 border-[#FBEFF1] border-t-[#a37b3d] rounded-full animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-stone-500">
+        <div className="w-10 h-10 border-3 border-[#FAF3E8] border-t-[#9B7036] rounded-full animate-spin mb-3"></div>
+        <p className="text-sm font-medium font-serif italic text-stone-600">Calculating financial metrics...</p>
       </div>
     );
   }
@@ -136,167 +138,280 @@ export default function SellerFinancialProjection({ seller }) {
   const { financials, last7Days, revenueByCategory, recentCompleted } = derived;
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="bg-gradient-to-tr from-[#1a0a1e]/90 via-[#2d2d44]/90 to-[#3d3455]/90 rounded-2xl p-6 text-white shadow-lg border border-white/10">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-slate-300 text-xs font-bold tracking-wide mb-3">
-          <span>🏪</span> Seller Portal · Financial Projections
+    <div className="space-y-6 animate-fade-in pb-12 max-w-7xl mx-auto">
+      {/* Page Hero */}
+      <SellerPageHero
+        badge="Merchant Treasury"
+        title="Financial Analytics & Revenue"
+        subtitle="Track live earnings from fulfilled orders, sales volume, category distributions, and automated payout releases."
+        imageKey="finances"
+        rightSlot={
+          <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm p-1 rounded-2xl border border-[#EADBCC]">
+            {[
+              { id: '7d', label: 'Last 7 Days' },
+              { id: '1m', label: 'Past Month' },
+              { id: 'total', label: 'All-Time' },
+            ].map(opt => {
+              const active = range === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setRange(opt.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    active
+                      ? 'bg-gradient-to-r from-[#9B7036] to-[#7d5624] text-white shadow-sm'
+                      : 'text-stone-600 hover:text-[#9B7036]'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        }
+      />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="bg-white rounded-3xl p-6 shadow-luxury border border-[#EFEAE4]">
+          <div className="w-10 h-10 rounded-2xl bg-[#FAF3E8] border border-[#ECD4A8] text-[#9B7036] flex items-center justify-center text-lg mb-3">
+            💰
+          </div>
+          <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Finalized Revenue</p>
+          <h3 className="font-serif text-3xl font-bold text-[#9B7036] mt-1">
+            PKR {financials.thisMonth.revenue.toLocaleString()}
+          </h3>
+          <p className="text-xs text-emerald-700 font-medium mt-2 flex items-center gap-1">
+            <span>✓</span> Completed &amp; verified orders
+          </p>
         </div>
-        <h1 className="text-3xl font-bold mb-1 bg-gradient-to-r from-slate-200 via-white to-slate-400 bg-clip-text text-transparent">💹 Financial Projections</h1>
-        <p className="text-slate-400">Live revenue from finalized completed orders</p>
-        <div className="flex flex-wrap gap-2 mt-4">
-          {[
-            { id: '7d', label: '7 Days' },
-            { id: '1m', label: '1 Month' },
-            { id: 'total', label: 'Total' },
-          ].map(opt => (
-            <label key={opt.id} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border ${
-              range === opt.id ? 'bg-white text-[#a37b3d] border-white' : 'bg-white/10 text-white border-white/20'
-            }`}>
-              <input type="radio" className="sr-only" name="fin-range" checked={range === opt.id}
-                onChange={() => setRange(opt.id)} />
-              {opt.label}
-            </label>
-          ))}
+
+        <div className="bg-white rounded-3xl p-6 shadow-luxury border border-[#EFEAE4]">
+          <div className="w-10 h-10 rounded-2xl bg-[#FAF3E8] border border-[#ECD4A8] text-[#9B7036] flex items-center justify-center text-lg mb-3">
+            📦
+          </div>
+          <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Fulfilled Orders</p>
+          <h3 className="font-serif text-3xl font-bold text-stone-900 mt-1">
+            {financials.thisMonth.orders}
+          </h3>
+          <p className="text-xs text-stone-500 mt-2">
+            Average Order Value: <span className="font-semibold text-stone-700">PKR {Math.round(financials.thisMonth.avgOrderValue).toLocaleString()}</span>
+          </p>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 shadow-luxury border border-[#EFEAE4]">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center text-lg mb-3">
+            🏦
+          </div>
+          <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Net Merchant Payout</p>
+          <h3 className="font-serif text-3xl font-bold text-emerald-700 mt-1">
+            PKR {lifetimeNetRevenue.toLocaleString()}
+          </h3>
+          <p className="text-xs text-stone-500 mt-2">
+            After 5% standard platform commission
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#FBEFF1]">
-          <h3 className="text-sm font-bold text-gray-800 mb-1">Past 7 Days — Orders</h3>
-          <div className="h-40">
+      {/* Analytics Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="bg-white rounded-3xl p-6 shadow-luxury border border-[#EFEAE4]">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-serif text-base font-bold text-stone-900">Weekly Order Volume</h3>
+              <p className="text-xs text-stone-500">Fulfilled orders per day</p>
+            </div>
+            <span className="text-xs font-bold px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full border border-purple-200">
+              Orders Trend
+            </span>
+          </div>
+          <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={last7Days}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f1" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#F0ECE1" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#9ca3af" />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                <Tooltip />
-                <Line type="monotone" dataKey="orders" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #EADBCC', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                />
+                <Line type="monotone" dataKey="orders" stroke="#7c3aed" strokeWidth={2.5} dot={{ r: 4, fill: '#7c3aed' }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#FBEFF1]">
-          <h3 className="text-sm font-bold text-gray-800 mb-1">Past 7 Days — Revenue</h3>
-          <div className="h-40">
+
+        <div className="bg-white rounded-3xl p-6 shadow-luxury border border-[#EFEAE4]">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-serif text-base font-bold text-stone-900">Weekly Revenue Inflow</h3>
+              <p className="text-xs text-stone-500">Daily gross revenue (PKR)</p>
+            </div>
+            <span className="text-xs font-bold px-2.5 py-1 bg-[#FAF3E8] text-[#9B7036] rounded-full border border-[#ECD4A8]">
+              PKR Volume
+            </span>
+          </div>
+          <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={last7Days}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f1f1" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#F0ECE1" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#9ca3af" />
                 <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
-                <Tooltip formatter={v => `PKR ${Number(v).toLocaleString()}`} />
-                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                <Tooltip
+                  formatter={v => [`PKR ${Number(v).toLocaleString()}`, 'Revenue']}
+                  contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #EADBCC', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                />
+                <Line type="monotone" dataKey="revenue" stroke="#9B7036" strokeWidth={2.5} dot={{ r: 4, fill: '#9B7036' }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#FBEFF1]">
-          <p className="text-gray-500 text-sm font-medium">Finalized Orders</p>
-          <h3 className="text-2xl font-bold text-primary-900 mt-1">{financials.thisMonth.orders}</h3>
-          <p className="text-xs text-gray-500 mt-2">Avg: PKR {Math.round(financials.thisMonth.avgOrderValue).toLocaleString()}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#FBEFF1]">
-          <p className="text-gray-500 text-sm font-medium">Finalized Revenue</p>
-          <h3 className="text-2xl font-bold text-[#a37b3d] mt-1">PKR {financials.thisMonth.revenue.toLocaleString()}</h3>
-          <p className="text-xs text-emerald-600 mt-2">Status COMPLETED only</p>
-        </div>
-      </div>
-
-      <div className="flex gap-2 bg-gray-100 p-1 rounded-xl overflow-x-auto">
+      {/* Tabs Navigation */}
+      <div className="flex gap-2 bg-white/80 backdrop-blur-sm p-1.5 rounded-2xl border border-[#EFEAE4] overflow-x-auto">
         {[
-          { id: 'overview', label: 'Overview', icon: '📊' },
-          { id: 'revenue', label: 'Revenue', icon: '💰' },
+          { id: 'overview', label: 'Summary Overview', icon: '📊' },
+          { id: 'revenue', label: 'Category Revenue', icon: '💎' },
           { id: 'history', label: 'Sales & Transactions', icon: '📋' },
-          { id: 'recent', label: 'Recent', icon: '🚚' },
-        ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
-              activeTab === tab.id ? 'bg-white text-[#a37b3d] shadow-sm' : 'text-gray-600 hover:text-gray-800'
-            }`}>
-            <span>{tab.icon}</span><span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
+          { id: 'recent', label: 'Recent Dispatches', icon: '🚚' },
+        ].map(tab => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                isActive
+                  ? 'bg-gradient-to-r from-[#9B7036] to-[#7d5624] text-white shadow-sm'
+                  : 'text-stone-600 hover:text-[#9B7036] hover:bg-stone-50'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
+      {/* Tab: Overview */}
       {activeTab === 'overview' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FBEFF1] space-y-2">
-          <div className="flex justify-between"><span className="text-sm text-gray-600">Finalized Revenue</span><span className="font-bold text-[#a37b3d]">PKR {financials.thisMonth.revenue.toLocaleString()}</span></div>
-          <div className="flex justify-between"><span className="text-sm text-gray-600">Orders Completed</span><span className="font-bold">{financials.thisMonth.orders}</span></div>
-          <div className="border-t pt-2 flex justify-between"><span className="text-sm font-medium">Avg Order Value</span><span className="font-bold text-[#a37b3d]">PKR {Math.round(financials.thisMonth.avgOrderValue).toLocaleString()}</span></div>
+        <div className="bg-white rounded-3xl p-7 shadow-luxury border border-[#EFEAE4] space-y-4">
+          <h3 className="font-serif text-lg font-bold text-stone-900 border-b border-[#FAF7F2] pb-3">Financial Performance Summary</h3>
+          <div className="divide-y divide-[#FAF7F2] text-sm">
+            <div className="flex justify-between py-3">
+              <span className="text-stone-600">Gross Finalized Revenue</span>
+              <span className="font-serif font-bold text-lg text-[#9B7036]">PKR {financials.thisMonth.revenue.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between py-3">
+              <span className="text-stone-600">Total Confirmed Orders</span>
+              <span className="font-semibold text-stone-900">{financials.thisMonth.orders}</span>
+            </div>
+            <div className="flex justify-between py-3">
+              <span className="text-stone-600">Average Basket Size</span>
+              <span className="font-serif font-bold text-[#9B7036]">PKR {Math.round(financials.thisMonth.avgOrderValue).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between py-3">
+              <span className="text-stone-600">Standard Platform Commission (5%)</span>
+              <span className="font-mono text-stone-500">- PKR {Math.round(financials.thisMonth.revenue * 0.05).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between py-3 bg-[#FAF3E8]/40 -mx-7 px-7 rounded-b-2xl">
+              <span className="font-bold text-stone-900">Estimated Net Payout</span>
+              <span className="font-serif text-xl font-bold text-emerald-700">PKR {Math.round(financials.thisMonth.revenue * 0.95).toLocaleString()}</span>
+            </div>
+          </div>
         </div>
       )}
 
+      {/* Tab: Revenue by Category */}
       {activeTab === 'revenue' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FBEFF1]">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Revenue by Category</h2>
-          {revenueByCategory.length > 0 ? revenueByCategory.map((item, idx) => (
-            <div key={idx} className="pb-4 border-b border-gray-100 last:border-0">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-medium text-gray-800 capitalize">{item.category.replace(/_/g, ' ')}</span>
-                <span className="text-lg font-bold text-[#a37b3d]">PKR {item.revenue.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center">
-                <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
-                  <div className="bg-gradient-to-r from-violet-600 to-indigo-400 h-2 rounded-full" style={{ width: `${item.percentage}%` }} />
+        <div className="bg-white rounded-3xl p-7 shadow-luxury border border-[#EFEAE4]">
+          <h3 className="font-serif text-lg font-bold text-stone-900 mb-4">Revenue Breakdown by Bridal Category</h3>
+          {revenueByCategory.length > 0 ? (
+            <div className="space-y-4">
+              {revenueByCategory.map((item, idx) => (
+                <div key={idx} className="p-4 rounded-2xl bg-[#FAF7F2]/60 border border-[#EFEAE4]">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-bold text-stone-800 capitalize">{item.category.replace(/_/g, ' ')}</span>
+                    <span className="font-serif text-lg font-bold text-[#9B7036]">PKR {item.revenue.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 bg-stone-200 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-[#9B7036] to-[#ECD4A8] h-2.5 rounded-full transition-all duration-500"
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-bold text-stone-600 w-12 text-right">{item.percentage}%</span>
+                  </div>
                 </div>
-                <span className="text-sm font-bold w-12 text-right">{item.percentage}%</span>
-              </div>
+              ))}
             </div>
-          )) : (
-            <p className="text-xs text-gray-400 text-center py-8">No finalized category revenue yet.</p>
+          ) : (
+            <p className="text-xs text-stone-400 text-center py-12">No categorized sales recorded for this timeframe.</p>
           )}
         </div>
       )}
 
+      {/* Tab: Sales History */}
       {activeTab === 'history' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FBEFF1]">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="bg-white rounded-3xl p-7 shadow-luxury border border-[#EFEAE4]">
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
             <div>
-              <h2 className="text-xl font-bold text-gray-800">Sales &amp; Transactions</h2>
-              <p className="text-xs text-gray-500">Finalized COMPLETED orders only · click item text to expand</p>
+              <h3 className="font-serif text-lg font-bold text-stone-900">Sales &amp; Transaction Ledger</h3>
+              <p className="text-xs text-stone-500">Fully settled and completed buyer orders</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500">Net after 5% fee</p>
-              <p className="text-2xl font-black text-[#a37b3d]">PKR {lifetimeNetRevenue.toLocaleString()}</p>
+              <p className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Total Net Settled</p>
+              <p className="font-serif text-2xl font-bold text-[#9B7036]">PKR {lifetimeNetRevenue.toLocaleString()}</p>
             </div>
           </div>
+
           {derived.salesHistory.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-8">No finalized sales in this period.</p>
+            <p className="text-xs text-stone-400 text-center py-12">No finalized sales recorded in this period.</p>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto border border-[#EFEAE4] rounded-2xl">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="px-3 py-3 text-left text-gray-500 font-bold uppercase">Items</th>
-                      <th className="px-3 py-3 text-left text-gray-500 font-bold uppercase">Buyer</th>
-                      <th className="px-3 py-3 text-left text-gray-500 font-bold uppercase">Date</th>
-                      <th className="px-3 py-3 text-right text-gray-500 font-bold uppercase">Gross</th>
-                      <th className="px-3 py-3 text-right text-gray-500 font-bold uppercase">Received</th>
+                    <tr className="bg-[#FAF7F2] border-b border-[#EFEAE4]">
+                      <th className="px-4 py-3.5 text-left text-stone-600 font-bold uppercase tracking-wider text-[11px]">Items</th>
+                      <th className="px-4 py-3.5 text-left text-stone-600 font-bold uppercase tracking-wider text-[11px]">Buyer</th>
+                      <th className="px-4 py-3.5 text-left text-stone-600 font-bold uppercase tracking-wider text-[11px]">Date</th>
+                      <th className="px-4 py-3.5 text-right text-stone-600 font-bold uppercase tracking-wider text-[11px]">Gross (PKR)</th>
+                      <th className="px-4 py-3.5 text-right text-stone-600 font-bold uppercase tracking-wider text-[11px]">Net Received</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-[#FAF7F2]">
                     {pagedSales.map(s => (
-                      <tr key={s.id} className="hover:bg-gray-50/50">
-                        <td className="px-3 py-3"><ExpandableItems items={s.items} fallback={s.order_id} /></td>
-                        <td className="px-3 py-3 text-gray-600">{s.buyer}</td>
-                        <td className="px-3 py-3 text-gray-500">{s.completedAt ? new Date(s.completedAt).toLocaleString() : '—'}</td>
-                        <td className="px-3 py-3 text-right text-gray-500">PKR {Math.round(s.gross).toLocaleString()}</td>
-                        <td className="px-3 py-3 text-right text-[#a37b3d] font-bold">PKR {s.net.toLocaleString()}</td>
+                      <tr key={s.id} className="hover:bg-[#FAF7F2]/50 transition-colors">
+                        <td className="px-4 py-3.5"><ExpandableItems items={s.items} fallback={s.order_id} /></td>
+                        <td className="px-4 py-3.5 text-stone-700 font-medium">{s.buyer}</td>
+                        <td className="px-4 py-3.5 text-stone-500">{s.completedAt ? new Date(s.completedAt).toLocaleDateString() : '—'}</td>
+                        <td className="px-4 py-3.5 text-right text-stone-600 font-mono">PKR {Math.round(s.gross).toLocaleString()}</td>
+                        <td className="px-4 py-3.5 text-right font-serif font-bold text-base text-[#9B7036]">PKR {s.net.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+
               {salesPageCount > 1 && (
-                <div className="flex justify-center gap-3 mt-4">
-                  <button onClick={() => setSalesPage(p => Math.max(1, p - 1))} disabled={salesPage <= 1}
-                    className="px-3 py-1 text-xs border rounded-lg disabled:opacity-40">Prev</button>
-                  <span className="px-3 py-1 text-xs text-gray-500">Page {salesPage} / {salesPageCount}</span>
-                  <button onClick={() => setSalesPage(p => Math.min(salesPageCount, p + 1))} disabled={salesPage >= salesPageCount}
-                    className="px-3 py-1 text-xs border rounded-lg disabled:opacity-40">Next</button>
+                <div className="flex items-center justify-center gap-3 mt-5">
+                  <button
+                    onClick={() => setSalesPage(p => Math.max(1, p - 1))}
+                    disabled={salesPage <= 1}
+                    className="px-4 py-1.5 text-xs font-semibold border border-[#EADBCC] rounded-xl hover:bg-stone-50 disabled:opacity-40 transition-colors"
+                  >
+                    ← Prev
+                  </button>
+                  <span className="text-xs text-stone-500 font-medium">Page {salesPage} of {salesPageCount}</span>
+                  <button
+                    onClick={() => setSalesPage(p => Math.min(salesPageCount, p + 1))}
+                    disabled={salesPage >= salesPageCount}
+                    className="px-4 py-1.5 text-xs font-semibold border border-[#EADBCC] rounded-xl hover:bg-stone-50 disabled:opacity-40 transition-colors"
+                  >
+                    Next →
+                  </button>
                 </div>
               )}
             </>
@@ -304,33 +419,43 @@ export default function SellerFinancialProjection({ seller }) {
         </div>
       )}
 
+      {/* Tab: Recent Activity */}
       {activeTab === 'recent' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#FBEFF1]">
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Recent Activity</h2>
-          <p className="text-xs text-gray-500 mb-4">Delivered / in-progress toward completion (not yet finalized sales).</p>
+        <div className="bg-white rounded-3xl p-7 shadow-luxury border border-[#EFEAE4]">
+          <h3 className="font-serif text-lg font-bold text-stone-900 mb-1">Recent In-Flight Dispatches</h3>
+          <p className="text-xs text-stone-500 mb-4">Orders delivered or awaiting final buyer acceptance release</p>
+
           {recentCompleted.length > 0 ? (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="px-4 py-3 text-left">Order</th>
-                  <th className="px-4 py-3 text-left">Items</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {recentCompleted.map(p => (
-                  <tr key={p.package_id}>
-                    <td className="px-4 py-3 font-bold">{p.order?.order_id || p.order_id}</td>
-                    <td className="px-4 py-3"><ExpandableItems items={p.items || p.order?.items || []} /></td>
-                    <td className="px-4 py-3">{p.status}</td>
-                    <td className="px-4 py-3 text-right text-[#a37b3d] font-bold">PKR {(p.subtotal || 0).toLocaleString()}</td>
+            <div className="overflow-x-auto border border-[#EFEAE4] rounded-2xl">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-[#FAF7F2] border-b border-[#EFEAE4]">
+                    <th className="px-4 py-3.5 text-left text-stone-600 font-bold uppercase tracking-wider text-[11px]">Order Code</th>
+                    <th className="px-4 py-3.5 text-left text-stone-600 font-bold uppercase tracking-wider text-[11px]">Items</th>
+                    <th className="px-4 py-3.5 text-left text-stone-600 font-bold uppercase tracking-wider text-[11px]">Package Status</th>
+                    <th className="px-4 py-3.5 text-right text-stone-600 font-bold uppercase tracking-wider text-[11px]">Subtotal</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#FAF7F2]">
+                  {recentCompleted.map(p => (
+                    <tr key={p.package_id} className="hover:bg-[#FAF7F2]/50 transition-colors">
+                      <td className="px-4 py-3.5 font-mono font-bold text-stone-800">#{p.order?.order_id || p.order_id}</td>
+                      <td className="px-4 py-3.5"><ExpandableItems items={p.items || p.order?.items || []} /></td>
+                      <td className="px-4 py-3.5">
+                        <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full font-bold text-[10px] uppercase">
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-serif font-bold text-[#9B7036] text-base">
+                        PKR {(p.subtotal || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
-            <p className="text-xs text-gray-400 text-center py-8">No recent deliveries.</p>
+            <p className="text-xs text-stone-400 text-center py-12">No recent deliveries currently in progress.</p>
           )}
         </div>
       )}

@@ -37,8 +37,14 @@ function requireSameSiteRequest(req, res, next) {
     return res.status(403).json({ success: false, code: "CSRF_REJECTED", error: "Missing request header." });
   }
   const origin = req.get("origin");
-  if (origin && origin !== getAuthConfig().frontendOrigin.replace(/\/$/, "")) {
-    return res.status(403).json({ success: false, code: "CSRF_REJECTED", error: "Origin not allowed." });
+  if (origin) {
+    const clean = origin.replace(/\/$/, "");
+    const configured = (getAuthConfig().frontendOrigin || "").replace(/\/$/, "");
+    const isDev = process.env.NODE_ENV !== "production";
+    const isLocal = isDev && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(clean);
+    if (clean !== configured && !isLocal) {
+      return res.status(403).json({ success: false, code: "CSRF_REJECTED", error: "Origin not allowed." });
+    }
   }
   next();
 }

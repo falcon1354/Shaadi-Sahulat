@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Shirt, Sofa, Monitor, Utensils, Sparkles, Gift, Package } from 'lucide-react';
+import { Shirt, Sofa, Monitor, Utensils, Sparkles, Gift, Package, ArrowLeft, CheckCircle2, UploadCloud, Plus } from 'lucide-react';
 import sellerApi from '../../api/sellerApi';
 import { useCategories } from '../../hooks/useCategories';
 import { isRetiredCategory } from '../../lib/dowryDisplay';
+import SellerPageHero from '../Common/SellerPageHero';
+import heroImg from '../../assets/hero/Hero_Retail.jpeg';
 
 // ── Category tree (mirrors config.py SELLER_CATEGORY_TREE) ────────────────
 const CATEGORY_TREE = [
@@ -412,23 +414,40 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
   // ── Step 1 — Pick major category ─────────────────────────────────────────
   if (!majorCat) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-primary-200 p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Upload New Product</h2>
-        <p className="text-sm text-gray-500 mb-5">Select a category to continue</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {effectiveCatTree.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => selectMajorCat(cat.id)}
-              className="flex flex-col items-center gap-3 p-6 glass-card border border-gray-100 rounded-[1.5rem]
-                         hover:border-primary-400 hover:bg-primary-50/50 hover-lift transition-all text-center"
-            >
-              <div className="p-3 bg-white rounded-full shadow-sm">
-                {cat.icon}
-              </div>
-              <span className="text-sm font-semibold text-gray-700">{cat.label}</span>
-            </button>
-          ))}
+      <div className="space-y-6 max-w-5xl mx-auto pb-12 animate-fade-in">
+        <SellerPageHero
+          badge={<><Package size={12} /> Merchant Studio</>}
+          title="List New Wedding Inventory"
+          subtitle="Choose the department and category for your new bridal gown, groom ensemble, furniture set, or appliances."
+          image={heroImg}
+          imageAlt="Luxury bridal catalog inventory studio"
+        />
+
+        <div className="bg-white rounded-3xl shadow-xs border border-[#EADBCC] p-6 sm:p-8 space-y-6">
+          <div>
+            <h2 className="text-xl font-serif font-bold text-stone-900">Select Department Category</h2>
+            <p className="text-xs text-stone-500 mt-1">Choose a category to open custom attributes and pricing intelligence</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {effectiveCatTree.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => selectMajorCat(cat.id)}
+                className="flex flex-col items-center gap-3.5 p-6 rounded-3xl border border-[#EFEAE4] bg-[#FAF7F2]/40 hover:bg-[#FAF7F2] hover:border-[#ECD4A8] hover:shadow-luxury transition-all text-center group cursor-pointer hover:-translate-y-1 duration-300"
+              >
+                <div className="p-4 bg-white rounded-2xl shadow-xs border border-[#EADBCC]/60 text-[#9B7036] group-hover:bg-[#9B7036] group-hover:text-white transition-colors duration-300">
+                  {cat.icon}
+                </div>
+                <div>
+                  <span className="text-sm font-serif font-bold text-stone-900 group-hover:text-[#9B7036] transition-colors block">{cat.label}</span>
+                  <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mt-0.5 block">
+                    {cat.subcategories?.length || 1} subcategories
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -436,452 +455,356 @@ export default function ProductUpload({ sellerId, sellerCity = '', onUploaded })
 
   // ── Step 2 — Product form ─────────────────────────────────────────────────
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-primary-200 p-6">
-      {/* Header with back button */}
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={() => setMajorCat(null)}
-          className="text-sm text-gray-400 hover:text-primary-950 transition-colors flex items-center gap-1">
-          ← Back
-        </button>
-        <span className="text-lg">{catDef.icon}</span>
-        <h2 className="text-xl font-bold text-gray-800">Upload {catDef.label}</h2>
-      </div>
+    <div className="space-y-6 max-w-4xl mx-auto pb-12 animate-fade-in">
+      <SellerPageHero
+        badge={<><Package size={12} /> Step 2: Listing Details</>}
+        title={`Upload ${catDef?.label || 'Product'}`}
+        subtitle="Fill in detailed specifications, pricing structure, and upload high-resolution boutique imagery."
+        image={heroImg}
+        imageAlt="ShaadiSahulat Product Studio"
+        rightSlot={
+          <button
+            onClick={() => setMajorCat(null)}
+            className="px-4 py-2 rounded-2xl bg-white border border-[#EADBCC] text-stone-700 hover:text-stone-900 hover:bg-[#FAF7F2] text-xs font-bold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <ArrowLeft size={14} /> Switch Category
+          </button>
+        }
+      />
 
-      {result && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
-          Product uploaded! ID: <span className="font-mono font-semibold">{result.product_id}</span>
-          {' '}— {result.images_saved} image(s) saved
-          {result.embeddings_extracted > 0 && `, ${result.embeddings_extracted} embedding(s) extracted`}.
-        </div>
-      )}
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* ── New / Thrift Toggle — gated by category's `storefront` field ─── */}
-        {(() => {
-          const sf = catDef?.storefront || 'both';
-          // If only one listing type is allowed, no toggle is shown
-          if (sf === 'new') return null;
-          if (sf === 'thrift') return null;
-          // 'both' → show toggle
-          return (
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Listing Type</p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setListingType('new'); setForm(f => ({ ...f, marketplace_type: 'new', condition: 'New' })); }}
-                  className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border-2 ${
-                    listingType === 'new'
-                      ? 'border-[#a37b3d] bg-[#FFF5F8] text-[#a37b3d] shadow-md'
-                      : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
-                  }`}
-                >
-                  🛍️ New Product
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setListingType('thrift'); setForm(f => ({ ...f, marketplace_type: 'thrift', condition: 'Thrift', stock_quantity: '1' })); }}
-                  className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border-2 ${
-                    listingType === 'thrift'
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md'
-                      : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
-                  }`}
-                >
-                  ♻️ Thrift Item
-                </button>
-              </div>
-              {listingType === 'thrift' && (
-                <p className="text-xs text-emerald-600 mt-2 font-medium">
-                  Thrift items: quantity locked to 1, go live immediately, final sale (no returns)
-                </p>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* ── Subcategory ─────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {majorCat === 'wedding_dress' ? 'Dress Type *' : 'Subcategory *'}
-            </label>
-            <select value={form.subcategory} onChange={(e) => setForm(f => ({ ...f, subcategory: e.target.value, item_type: '' }))} required
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <option value="">— Select —</option>
-              {subcatOptions.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-            </select>
-          </div>
-
-          {/* Item type — only when subcategory has nested items */}
-          {itemOptions && (
+      <div className="bg-white rounded-3xl shadow-xs border border-[#EADBCC] p-6 sm:p-8 space-y-6">
+        {result && (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {majorCat === 'wedding_dress' ? 'Style *' : 'Item Type *'}
-              </label>
-              <select value={form.item_type} onChange={set('item_type')} required
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option value="">— Select —</option>
-                {itemOptions.map(it => <option key={it.id} value={it.id}>{it.label}</option>)}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* ── Title + Description ──────────────────────────────────────── */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-          <input type="text" value={form.title} onChange={set('title')} required
-            placeholder={majorCat === 'wedding_dress' ? 'e.g. Royal Red Bridal Lehenga' : 'e.g. Elegant 6-seater Sofa Set'}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description *
-            <span className="ml-1 text-xs text-gray-400 font-normal">
-              (Detailed description helps buyers find your product)
-            </span>
-          </label>
-          <textarea value={form.description} onChange={set('description')} required rows={3}
-            placeholder="Describe color, material, style, condition and any special features…"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none" />
-        </div>
-
-        {/* ── Wedding dress specific fields ────────────────────────────── */}
-        {majorCat === 'wedding_dress' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
-              <input type="text" value={form.color} onChange={set('color')} placeholder="e.g. Deep Red"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fabric</label>
-              <select value={form.fabric} onChange={set('fabric')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option value="">— Select —</option>
-                {FABRICS.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Embroidery</label>
-              <select value={form.embroidery_type} onChange={set('embroidery_type')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option value="">— Select —</option>
-                {EMBROIDERY.map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
-              <select value={form.size} onChange={set('size')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option value="">— Select —</option>
-                {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <p className="font-bold">Product successfully listed in catalog!</p>
+              <p className="text-emerald-700 mt-0.5">
+                Product ID: <span className="font-mono font-bold">{result.product_id}</span> — {result.images_saved} image(s) saved
+                {result.embeddings_extracted > 0 && ` (${result.embeddings_extracted} AI dress embeddings extracted)`}.
+              </p>
             </div>
           </div>
         )}
 
-        {/* ── Furniture specific ───────────────────────────────────────── */}
-        {majorCat === 'furniture' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
-              <input type="text" value={form.color} onChange={set('color')} placeholder="e.g. Walnut Brown"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
-              <select value={form.material} onChange={set('material')}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                <option value="">— Select —</option>
-                {FURNITURE_MATS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
+        {error && (
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 font-semibold">
+            {error}
           </div>
         )}
 
-        {/* ── Electronics specific ─────────────────────────────────────── */}
-        {majorCat === 'electronics' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-              <input type="text" value={form.brand} onChange={set('brand')} placeholder="e.g. Samsung, Haier, Dawlance"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-          </div>
-        )}
-
-        {/* ── Kitchen Items specific ────────────────────────────────────── */}
-        {majorCat === 'kitchen_items' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-              <input type="text" value={form.brand} onChange={set('brand')} placeholder="e.g. National, Dawlance"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
-              <input type="text" value={form.material} onChange={set('material')} placeholder="e.g. Steel, Bone China"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-          </div>
-        )}
-
-        {/* ── Decoration specific ────────────────────────────────────────── */}
-        {(majorCat === 'decoration' || majorCat === 'miscellaneous') && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
-              <input type="text" value={form.color} onChange={set('color')} placeholder="e.g. Warm White, Gold"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-            </div>
-          </div>
-        )}
-
-        {/* ── Custom fields from admin ──────────────────────────────────── */}
-        {(selectedSubcat?.custom_fields?.length > 0) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {selectedSubcat.custom_fields.map(cf => (
-                <div key={cf.field_id}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {cf.label}{cf.required ? ' *' : ''}
-                  </label>
-                  {cf.type === 'select' ? (
-                    <select
-                      value={form[`cf_${cf.field_id}`] || ''}
-                      onChange={e => setForm(f => ({ ...f, [`cf_${cf.field_id}`]: e.target.value }))}
-                      required={cf.required}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="">— Select —</option>
-                      {(cf.options || []).map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  ) : (
-                    <input
-                      type={cf.type === 'number' ? 'number' : 'text'}
-                      value={form[`cf_${cf.field_id}`] || ''}
-                      onChange={e => setForm(f => ({ ...f, [`cf_${cf.field_id}`]: e.target.value }))}
-                      required={cf.required}
-                      placeholder={cf.type === 'number' ? '0' : `Enter ${cf.label.toLowerCase()}`}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  )}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* New / Thrift Toggle */}
+          {(() => {
+            const sf = catDef?.storefront || 'both';
+            if (sf === 'new' || sf === 'thrift') return null;
+            return (
+              <div className="bg-[#FAF7F2] rounded-2xl border border-[#EADBCC] p-4">
+                <p className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">Listing Channel</p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setListingType('new'); setForm(f => ({ ...f, marketplace_type: 'new', condition: 'New' })); }}
+                    className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all border-2 cursor-pointer ${
+                      listingType === 'new'
+                        ? 'border-[#9B7036] bg-white text-[#9B7036] shadow-xs'
+                        : 'border-transparent bg-white/60 text-stone-500 hover:bg-white'
+                    }`}
+                  >
+                    🛍️ Brand New Boutique Retail
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setListingType('thrift'); setForm(f => ({ ...f, marketplace_type: 'thrift', condition: 'Thrift', stock_quantity: '1' })); }}
+                    className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all border-2 cursor-pointer ${
+                      listingType === 'thrift'
+                        ? 'border-emerald-700 bg-emerald-50 text-emerald-800 shadow-xs'
+                        : 'border-transparent bg-white/60 text-stone-500 hover:bg-white'
+                    }`}
+                  >
+                    ♻️ Pre-Loved Thrift Listing
+                  </button>
                 </div>
-              ))}
-          </div>
-        )}
+                {listingType === 'thrift' && (
+                  <p className="text-[11px] text-emerald-700 mt-2 font-medium">
+                    Thrift items: quantity locked to 1, go live immediately, final sale.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
-        {/* ── City ────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-            <input type="text" value={form.city} onChange={set('city')} placeholder="e.g. Lahore"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Stock Qty</label>
-            <input type="number" value={listingType === 'thrift' ? '1' : form.stock_quantity}
-              onChange={set('stock_quantity')} min="1" placeholder="1"
-              disabled={listingType === 'thrift'}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:text-gray-400" />
-            {listingType === 'thrift' && (
-              <p className="text-xs text-emerald-600 mt-1">Thrift items are always quantity 1</p>
+          {/* Subcategory */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                {majorCat === 'wedding_dress' ? 'Dress Type *' : 'Subcategory *'}
+              </label>
+              <select value={form.subcategory} onChange={(e) => setForm(f => ({ ...f, subcategory: e.target.value, item_type: '' }))} required
+                className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white">
+                <option value="">— Select Subcategory —</option>
+                {subcatOptions.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </div>
+
+            {itemOptions && (
+              <div>
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                  {majorCat === 'wedding_dress' ? 'Style *' : 'Item Type *'}
+                </label>
+                <select value={form.item_type} onChange={set('item_type')} required
+                  className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white">
+                  <option value="">— Select Style —</option>
+                  {itemOptions.map(it => <option key={it.id} value={it.id}>{it.label}</option>)}
+                </select>
+              </div>
             )}
           </div>
-        </div>
 
-        {/* ── Thrift-specific: Original Price + Discounted Price ──────────── */}
-        {listingType === 'thrift' && (
-          <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-2">♻️ Thrift Item Details</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Title + Description */}
+          <div>
+            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Product Title *</label>
+            <input type="text" value={form.title} onChange={set('title')} required
+              placeholder={majorCat === 'wedding_dress' ? 'e.g. Royal Red Hand-Embroidered Bridal Lehenga' : 'e.g. Luxury 6-Seater Velvet Dining Set'}
+              className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+              Description *
+              <span className="ml-1 text-[11px] text-stone-400 font-normal lowercase">
+                (Detailed attributes help visual search and buyer inquiries)
+              </span>
+            </label>
+            <textarea value={form.description} onChange={set('description')} required rows={3}
+              placeholder="Describe color hues, fabric texture, embroidery intricacy, condition, and included accessories…"
+              className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white resize-none" />
+          </div>
+
+          {/* Wedding dress specific fields */}
+          {majorCat === 'wedding_dress' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Original Price (PKR) *
-                </label>
-                <input type="number" value={form.original_price} onChange={set('original_price')} required
-                  min="0" placeholder="e.g. 50000"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                <p className="text-[11px] text-gray-500 mt-1">Was price — used to compute discount % automatically.</p>
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Primary Color</label>
+                <input type="text" value={form.color} onChange={set('color')} placeholder="e.g. Maroon & Gold"
+                  className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Discounted Price (PKR) *
-                </label>
-                <input type="number" value={form.price} onChange={set('price')} required
-                  min="0" placeholder="e.g. 35000"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                {form.original_price && form.price && Number(form.original_price) > 0 && Number(form.price) > 0 && Number(form.price) < Number(form.original_price) && (
-                  <p className="text-[11px] text-emerald-700 mt-1 font-semibold">
-                    {Math.round((1 - Number(form.price) / Number(form.original_price)) * 100)}% off (auto-computed by backend)
-                  </p>
-                )}
-                {form.original_price && form.price && Number(form.price) >= Number(form.original_price) && Number(form.original_price) > 0 && (
-                  <p className="text-[11px] text-red-600 mt-1 font-semibold">
-                    Discounted price must be less than original price.
-                  </p>
-                )}
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Fabric</label>
+                <select value={form.fabric} onChange={set('fabric')}
+                  className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white">
+                  <option value="">— Select —</option>
+                  {FABRICS.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Condition *</label>
-                <select value={form.condition} onChange={set('condition')}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                  <option value="Thrift">Thrift</option>
-                  <option value="Like New">Like New</option>
-                  <option value="Used">Used</option>
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Embroidery</label>
+                <select value={form.embroidery_type} onChange={set('embroidery_type')}
+                  className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white">
+                  <option value="">— Select —</option>
+                  {EMBROIDERY.map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Size</label>
+                <select value={form.size} onChange={set('size')}
+                  className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white">
+                  <option value="">— Select —</option>
+                  {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
             </div>
-            <p className="text-xs text-emerald-600 mt-2">
-              ⚠️ Actual photos of the item are required for thrift listings. Upload clear photos showing the real condition.
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* ── Price + Discount (Retail / new only — hidden for thrift) ─── */}
-        {listingType !== 'thrift' && (
-        <div className="p-4 bg-gray-50 rounded-xl space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price (PKR) *
-                {priceRange && (
-                  <span className="ml-1 text-xs text-gray-400 font-normal">
-                    Range: PKR {priceRange.min.toLocaleString()} – {priceRange.max.toLocaleString()}
-                  </span>
-                )}
-              </label>
-              <input
-                type="number" value={form.price} onChange={set('price')} required
-                min={priceRange?.min || 0} max={priceRange?.max}
-                placeholder={priceRange ? `${priceRange.min.toLocaleString()} – ${priceRange.max.toLocaleString()}` : 'e.g. 25000'}
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white ${
-                  priceError
-                    ? 'border-red-400 focus:ring-red-400'
-                    : 'border-gray-200 focus:ring-primary-500'
-                }`}
-              />
-              {priceError && (
-                <p className="mt-1 text-xs text-red-600 font-medium">{priceError}</p>
-              )}
-
-              {/* §11.3 Inline price suggestion — shown below price field */}
-              {priceSuggestion && (() => {
-                const lo  = priceSuggestion.range_low  || 0;
-                const hi  = priceSuggestion.range_high || 0;
-                if (lo === 0 && hi === 0) return null;
-                const avg = Math.round((lo + hi) / 2);
-                const pct = priceSuggestion.band_pct || 30;
-                const isBelow = priceNum > 0 && priceNum < lo;
-                const isAbove = priceNum > 0 && hi > 0 && priceNum > hi;
-                const isInRange = priceNum > 0 && !isBelow && !isAbove;
-                return (
-                  <div className="mt-1.5">
-                    <p className="text-[11px] text-blue-600 font-medium">
-                      Suggested: PKR {lo.toLocaleString()} – {hi.toLocaleString()}
-                      {' '}(avg PKR {avg.toLocaleString()}, ±{pct}%)
-                    </p>
-                    {isInRange && (
-                      <p className="text-[11px] text-green-600 mt-0.5">✓ Within suggested range</p>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Discount</label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowDiscount(v => !v); setForm(f => ({ ...f, discount_pct: '' })); }}
-                  className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                    showDiscount
-                      ? 'bg-green-100 text-green-700 border-green-300'
-                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:border-[#FBEFF1]'
-                  }`}
-                >
-                  {showDiscount ? '✓ Discount ON' : '+ Add Discount'}
-                </button>
-                {showDiscount && (
-                  <div className="flex items-center gap-1 flex-1">
-                    <input type="number" value={form.discount_pct} onChange={set('discount_pct')}
-                      min="1" max="50" placeholder="e.g. 15"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" />
-                    <span className="text-sm text-gray-500 flex-shrink-0">%</span>
-                  </div>
-                )}
+          {/* Furniture specific */}
+          {majorCat === 'furniture' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Finish / Color</label>
+                <input type="text" value={form.color} onChange={set('color')} placeholder="e.g. Teak Wood Brown"
+                  className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white" />
               </div>
-              {discountPrice !== null && (
-                <p className="mt-1 text-xs text-green-600 font-semibold">
-                  Sale price: PKR {discountPrice.toLocaleString()} ({form.discount_pct}% off)
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-        )}
-
-        {/* ── Image upload ─────────────────────────────────────────────────── */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {maxImages === 1 ? 'Product Image *' : `Images * (up to ${maxImages})`}
-            <span className="ml-2 text-xs text-gray-400 font-normal">JPG/PNG/WebP, max 5 MB</span>
-          </label>
-          <div
-            className="border-2 border-dashed border-primary-300 rounded-xl p-4 text-center cursor-pointer hover:border-primary-500 transition-colors"
-            onClick={() => fileRef.current?.click()}
-          >
-            <p className="text-sm text-gray-500">
-              {maxImages === 1
-                ? 'Click to upload 1 product photo'
-                : 'Click to select images or drag & drop'}
-            </p>
-            <input
-              ref={fileRef} type="file" multiple={maxImages > 1}
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleFiles}
-            />
-          </div>
-
-          {previews.length > 0 && (
-            <div className="mt-3 flex gap-3 flex-wrap">
-              {previews.map((src, idx) => (
-                <div key={idx} className="relative">
-                  <img src={src} alt="" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
-                  {idx === 0 && maxImages > 1 && (
-                    <span className="absolute -top-1 -left-1 bg-primary-900 text-white text-xs px-1 rounded">Primary</span>
-                  )}
-                  <button type="button" onClick={() => removeImage(idx)}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none">
-                    ×
-                  </button>
-                </div>
-              ))}
+              <div>
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Primary Material</label>
+                <select value={form.material} onChange={set('material')}
+                  className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white">
+                  <option value="">— Select Material —</option>
+                  {FURNITURE_MATS.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
             </div>
           )}
-        </div>
 
-        <button
-          type="submit" disabled={loading}
-          className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-800 text-white font-semibold rounded-xl
-                     hover:from-primary-600 hover:to-primary-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading
-            ? <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                {majorCat === 'wedding_dress' ? 'Uploading & Extracting Embeddings…' : 'Uploading…'}
-              </span>
-            : `Upload ${catDef.label}`}
-        </button>
-      </form>
+          {/* Electronics & Kitchen items */}
+          {(majorCat === 'electronics' || majorCat === 'kitchen_items') && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Brand Name</label>
+                <input type="text" value={form.brand} onChange={set('brand')} placeholder="e.g. Samsung, Haier, Dawlance"
+                  className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white" />
+              </div>
+              {majorCat === 'kitchen_items' && (
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Material</label>
+                  <input type="text" value={form.material} onChange={set('material')} placeholder="e.g. Stainless Steel, Bone China"
+                    className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* City + Stock */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Merchant City</label>
+              <input type="text" value={form.city} onChange={set('city')} placeholder="e.g. Lahore"
+                className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Available Stock Qty</label>
+              <input type="number" value={listingType === 'thrift' ? '1' : form.stock_quantity}
+                onChange={set('stock_quantity')} min="1" placeholder="1"
+                disabled={listingType === 'thrift'}
+                className="w-full border border-[#EADBCC] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white disabled:bg-stone-100 disabled:text-stone-400" />
+            </div>
+          </div>
+
+          {/* Thrift Specific Prices */}
+          {listingType === 'thrift' && (
+            <div className="p-5 bg-emerald-50/70 rounded-3xl border border-emerald-200 space-y-3">
+              <p className="text-xs font-bold text-emerald-900 uppercase tracking-wider">♻️ Thrift Pre-Loved Pricing</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Original Retail Price (PKR) *</label>
+                  <input type="number" value={form.original_price} onChange={set('original_price')} required
+                    min="0" placeholder="e.g. 80000"
+                    className="w-full border border-emerald-300 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Discounted Selling Price (PKR) *</label>
+                  <input type="number" value={form.price} onChange={set('price')} required
+                    min="0" placeholder="e.g. 45000"
+                    className="w-full border border-emerald-300 rounded-xl px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Retail Pricing + Discount */}
+          {listingType !== 'thrift' && (
+            <div className="p-5 bg-[#FAF7F2] rounded-3xl border border-[#EADBCC] space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                    Price (PKR) *
+                  </label>
+                  <input
+                    type="number" value={form.price} onChange={set('price')} required
+                    placeholder="e.g. 65000"
+                    className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 bg-white ${
+                      priceError ? 'border-rose-400 focus:ring-rose-400' : 'border-[#EADBCC] focus:ring-[#9B7036]'
+                    }`}
+                  />
+                  {priceSuggestion && (() => {
+                    const lo = priceSuggestion.range_low || 0;
+                    const hi = priceSuggestion.range_high || 0;
+                    if (lo === 0 && hi === 0) return null;
+                    return (
+                      <p className="text-[11px] text-[#9B7036] font-bold mt-1.5">
+                        Market Range: PKR {lo.toLocaleString()} – {hi.toLocaleString()}
+                      </p>
+                    );
+                  })()}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">Promotional Discount</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowDiscount(v => !v); setForm(f => ({ ...f, discount_pct: '' })); }}
+                      className={`px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        showDiscount
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : 'bg-white text-stone-600 border-[#EADBCC] hover:bg-stone-50'
+                      }`}
+                    >
+                      {showDiscount ? '✓ Discount Active' : '+ Add Sale %'}
+                    </button>
+                    {showDiscount && (
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <input type="number" value={form.discount_pct} onChange={set('discount_pct')}
+                          min="1" max="50" placeholder="e.g. 15"
+                          className="w-full border border-[#EADBCC] rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#9B7036] bg-white" />
+                        <span className="text-xs text-stone-500 font-bold">%</span>
+                      </div>
+                    )}
+                  </div>
+                  {discountPrice !== null && (
+                    <p className="mt-1.5 text-xs text-emerald-700 font-bold">
+                      Customer Sale Price: PKR {discountPrice.toLocaleString()} ({form.discount_pct}% off)
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Image Upload Zone */}
+          <div>
+            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
+              {maxImages === 1 ? 'Product Image *' : `Product Images * (up to ${maxImages})`}
+              <span className="ml-2 text-[11px] text-stone-400 font-normal lowercase">High resolution JPG/PNG/WebP</span>
+            </label>
+            <div
+              className="border-2 border-dashed border-[#ECD4A8] bg-[#FAF7F2]/40 rounded-3xl p-6 text-center cursor-pointer hover:bg-[#FAF7F2] hover:border-[#9B7036] transition-all"
+              onClick={() => fileRef.current?.click()}
+            >
+              <UploadCloud size={32} className="mx-auto text-[#9B7036] mb-2" />
+              <p className="text-xs font-bold text-stone-800">Click to upload or drag & drop bridal imagery</p>
+              <p className="text-[11px] text-stone-400 mt-0.5">Clear photos attract significantly higher engagement</p>
+              <input
+                ref={fileRef} type="file" multiple={maxImages > 1}
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleFiles}
+              />
+            </div>
+
+            {previews.length > 0 && (
+              <div className="mt-4 flex gap-3 flex-wrap">
+                {previews.map((src, idx) => (
+                  <div key={idx} className="relative w-20 h-20 rounded-2xl overflow-hidden border border-[#EADBCC] shadow-2xs group">
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                    {idx === 0 && maxImages > 1 && (
+                      <span className="absolute bottom-1 left-1 bg-[#9B7036] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">Primary</span>
+                    )}
+                    <button type="button" onClick={() => removeImage(idx)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-rose-600 text-white rounded-full text-xs flex items-center justify-center cursor-pointer shadow-xs">
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="submit" disabled={loading}
+            className="w-full py-3.5 bg-gradient-to-r from-[#9B7036] to-[#7E5724] text-white font-bold rounded-2xl shadow-luxury hover:scale-[1.01] transition-all disabled:opacity-50 cursor-pointer text-sm flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Publishing Listing to Catalog…</span>
+              </>
+            ) : (
+              <>
+                <Plus size={16} /> Publish {catDef?.label || 'Product'}
+              </>
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
+
