@@ -2,7 +2,8 @@
  * Dispute API client — chat, seller 48h response, admin outcomes, SLA.
  */
 import { authFetch } from "./http";
-const BASE = "http://localhost:5000/api/disputes";
+import { apiUrl } from "./base";
+const BASE = apiUrl("/api/disputes");
 
 export async function listDisputes(role, id, filter) {
   const q = new URLSearchParams({ role, id });

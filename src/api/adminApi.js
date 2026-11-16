@@ -1,6 +1,7 @@
 import { authFetch } from "./http";
+import { apiUrl } from "./base";
 
-const BASE = "http://localhost:5000/api/admin";
+const BASE = apiUrl("/api/admin");
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 // Login: see src/context/AuthContext.jsx (POST /api/auth/login, portal "admin").

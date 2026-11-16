@@ -3,7 +3,8 @@
  * Buyer identity is sent as `Authorization: Bearer <token>` by authFetch (src/api/http.js).
  */
 import { authFetch } from "./http";
-const BASE = "http://localhost:5000/api/bnpl";
+import { apiUrl } from "./base";
+const BASE = apiUrl("/api/bnpl");
 
 export async function checkEligibility(buyerId, amount) {
   const res = await authFetch(`${BASE}/eligibility?amount=${amount}`);

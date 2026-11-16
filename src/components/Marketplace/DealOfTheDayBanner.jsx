@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { absoluteApiUrl, apiUrl } from '../../api/base';
 
 export default function DealOfTheDayBanner({ categoryId = 'ALL' }) {
   const [banners, setBanners] = useState([]);
@@ -9,11 +10,11 @@ export default function DealOfTheDayBanner({ categoryId = 'ALL' }) {
   const resolveImageUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
-    return `http://localhost:5000/${path.replace(/^\/+/, '')}`;
+    return absoluteApiUrl(`/${path.replace(/^\/+/, '')}`);
   };
 
   useEffect(() => {
-    axios.get(`/api/banners/active?categoryId=${categoryId}`)
+    axios.get(`${apiUrl('/api/banners/active')}?categoryId=${categoryId}`)
       .then(res => setBanners(res.data))
       .catch(err => console.error(err));
   }, [categoryId]);

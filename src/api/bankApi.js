@@ -3,7 +3,8 @@
  * The officer token is kept in sessionStorage (tab-scoped, cleared when the tab closes)
  * under 'ss_bank_officer' — never in localStorage, which persists across sessions.
  */
-const BASE = "http://localhost:5000/api/bank";
+import { apiUrl } from "./base";
+const BASE = apiUrl("/api/bank");
 
 function _headers(token) {
   return { "x-officer-token": token };

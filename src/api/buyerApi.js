@@ -1,6 +1,7 @@
 import { authFetch } from "./http";
-const BASE = "http://localhost:5000/api/buyer";
-const DOWRY_BASE = "http://localhost:5000/api/dowry";
+import { apiUrl } from "./base";
+const BASE = apiUrl("/api/buyer");
+const DOWRY_BASE = apiUrl("/api/dowry");
 
 // Registration / login: see src/context/AuthContext.jsx (POST /api/auth/buyer/register, /api/auth/login).
 

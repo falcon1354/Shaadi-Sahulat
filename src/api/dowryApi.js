@@ -1,6 +1,7 @@
 import { authAxios as axios } from './http';
+import { apiUrl } from './base';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const API_BASE = apiUrl('/api');
 
 const dowryApi = {
   estimate: async (data) => {

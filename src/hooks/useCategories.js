@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { isRetiredCategory } from '../lib/dowryDisplay';
+import { apiUrl, absoluteApiUrl } from '../api/base';
 
-const BASE = 'http://localhost:5000/api/categories';
-const BACKEND_BASE = 'http://localhost:5000';
+const BASE = apiUrl('/api/categories');
 
 const _cacheByKey = {};
 const _promiseByKey = {};
@@ -53,7 +53,7 @@ export function resolveCategoryIconUrl(icon) {
     let path = trimmed
       .replace(/^\/+/, '')
       .replace(/^uploads\/?/i, '');
-    return `${BACKEND_BASE}/uploads/${path}`;
+    return absoluteApiUrl(`/uploads/${path}`);
   }
   return null;
 }

@@ -65,6 +65,7 @@ const reviewRoutes       = require("./routes/reviews");
 const notificationRoutes = require("./routes/notifications");
 const { router: bannerRoutes, cleanupExpiredBanners } = require("./routes/banners");
 const fileRoutes         = require("./routes/files");
+const paymentRoutes      = require("./routes/payments");
 
 // NEW: Socket.io server
 const { initSocket, getStatus } = require("./lib/socket");
@@ -80,7 +81,16 @@ const httpServer = http.createServer(app);
 // ── Middleware ──────────────────────────────────────────────────────────────
 // Only the configured frontend may call the API from a browser (no wildcard CORS).
 // (An allow-list reflects only a matching Origin; any other origin gets no CORS headers.)
-app.use(cors({ origin: [getAuthConfig().frontendOrigin.replace(/\/$/, "")] }));
+app.use(cors({
+  origin: [getAuthConfig().frontendOrigin.replace(/\/$/, "")],
+  credentials: true,
+}));
+// Polar signs the raw request body. This must run before express.json() parses it.
+app.post(
+  "/api/payments/webhook",
+  express.raw({ type: "application/json", limit: "1mb" }),
+  paymentRoutes.handlePolarWebhook
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -132,6 +142,7 @@ app.use("/api/reviews",       reviewRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/banners",       bannerRoutes);
 app.use("/api/files",         fileRoutes);
+app.use("/api/payments",      paymentRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -147,6 +158,7 @@ app.get("/api/health", (req, res) => {
       "disputes",
       "reviews",
       "notifications",
+      "payments",
       "socket.io",
       "ai-reviews",
       "groq-ai",

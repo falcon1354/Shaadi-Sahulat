@@ -418,10 +418,18 @@ export default function AdminWalletPage({ admin }) {
                     <div>
                       <span className="text-[10px] font-bold text-gray-400 uppercase block">Payment Method</span>
                       <p className={`font-bold text-xs ${orderDetail.order?.payment_method === 'COD' ? 'text-amber-800' : 'text-emerald-800'}`}>
-                        {orderDetail.order?.payment_method === 'COD' ? '💵 Cash on Delivery (COD)' : '🏦 BNPL Installment Plan'}
+                        {orderDetail.order?.payment_method === 'POLAR'
+                          ? '💳 Card (Polar)'
+                          : orderDetail.order?.payment_method === 'COD'
+                            ? '💵 Cash on Delivery (COD)'
+                            : '🏦 BNPL Installment Plan'}
                       </p>
                       <p className="text-[10px] text-gray-400">
-                        {orderDetail.order?.payment_method === 'COD' ? 'Courier collected cash at door' : 'Bank funded to platform'}
+                        {orderDetail.order?.payment_method === 'POLAR'
+                          ? 'Card payment held until release'
+                          : orderDetail.order?.payment_method === 'COD'
+                            ? 'Courier collected cash at door'
+                            : 'Bank funded to platform'}
                       </p>
                     </div>
                   </div>

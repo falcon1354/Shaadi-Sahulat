@@ -2,7 +2,8 @@
  * Order API client — buyer + seller endpoints.
  */
 import { authFetch } from "./http";
-const BASE = "http://localhost:5000/api/orders";
+import { apiUrl } from "./base";
+const BASE = apiUrl("/api/orders");
 
 // Identity is sent as `Authorization: Bearer <token>` by authFetch (src/api/http.js).
 // buyerId / sellerId parameters are kept for call-site compatibility.

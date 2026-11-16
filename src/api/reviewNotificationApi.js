@@ -2,8 +2,9 @@
  * Review + Notification API clients.
  */
 import { authFetch } from "./http";
-const REV_BASE = "http://localhost:5000/api/reviews";
-const NTF_BASE = "http://localhost:5000/api/notifications";
+import { apiUrl } from "./base";
+const REV_BASE = apiUrl("/api/reviews");
+const NTF_BASE = apiUrl("/api/notifications");
 
 // ── Reviews ────────────────────────────────────────────────────────────────
 

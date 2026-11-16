@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../../api/http';
 import sellerApi, { resolveImageUrl } from '../../api/sellerApi';
+import { apiUrl } from '../../api/base';
 
-const BASE = 'http://localhost:5000/api/banners';
+const BASE = apiUrl('/api/banners');
 
 export default function SellerBannerOffer({ seller }) {
   const [products, setProducts] = useState([]);

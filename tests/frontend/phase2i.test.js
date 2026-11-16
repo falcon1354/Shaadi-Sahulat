@@ -62,10 +62,11 @@ test("dispute evidence links use the signed url from the API, never raw storage 
   assert.ok(!/e\.file_path/.test(src), "file_path is not used");
 });
 
-test("BNPL / bank document links are backend-relative signed urls (unchanged components)", () => {
+test("BNPL / bank document links open the signed url through the API origin", () => {
   for (const f of ["src/components/BNPL/BNPLStatusPage.jsx", "src/components/Bank/BankDashboardPage.jsx"]) {
     const src = read(f);
-    assert.match(src, /href=\{`http:\/\/localhost:5000\$\{d\.url\}`\}/, f);
+    assert.match(src, /resolveMediaUrl\(/, f);
+    assert.ok(!src.includes("http://localhost:5000"), f);
   }
 });
 

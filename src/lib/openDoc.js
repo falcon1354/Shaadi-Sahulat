@@ -2,11 +2,12 @@
  * Open a document URL that may be absolute (Cloudinary) or an API path
  * requiring auth headers. Uses a blob tab so Authorization / custom headers work.
  */
+import { absoluteApiUrl } from "../api/base";
+
 export function resolveMediaUrl(url) {
   if (!url) return "";
   if (/^https?:\/\//i.test(url)) return url;
-  const base = "http://localhost:5000";
-  return url.startsWith("/") ? `${base}${url}` : `${base}/${url}`;
+  return absoluteApiUrl(url.startsWith("/") ? url : `/${url}`);
 }
 
 export async function openProtectedDocument(url, headers = {}) {

@@ -234,7 +234,8 @@ router.post("/orders/:order_id/release-payment", async (req, res) => {
       });
     }
 
-    // BNPL Orders: Banker pays Admin first. Admin manually releases to seller.
+    // BNPL and Polar: the platform is holding the buyer's payment and releases the seller's net.
+    const heldLabel = order.payment_method === "POLAR" ? "Polar" : "BNPL";
     const existing = await SellerPayout.findOne({ order_id: order.order_id });
     if (existing) {
       return res.status(400).json({ success: false, error: "Payment already released for this order.", payout: existing });
@@ -255,7 +256,7 @@ router.post("/orders/:order_id/release-payment", async (req, res) => {
       payout_method: "BANK_TRANSFER",
       released_by: req.user.id,
       released_at: new Date(),
-      notes: "Payment released by admin for BNPL order.",
+      notes: `Payment released by admin for ${heldLabel} order.`,
     });
 
     // Credit seller's wallet balance
@@ -289,7 +290,7 @@ router.post("/orders/:order_id/release-payment", async (req, res) => {
       at: new Date(),
       by: "admin",
       by_id: req.user.id,
-      note: `BNPL payment released to seller. TXN ${txnId}. Net to seller: PKR ${breakdown.net_to_seller.toLocaleString()} (after 5% commission PKR ${breakdown.commission.toLocaleString()} + shipping PKR ${breakdown.shipping.toLocaleString()}).`,
+        note: `${heldLabel} payment released to seller. TXN ${txnId}. Net to seller: PKR ${breakdown.net_to_seller.toLocaleString()} (after 5% commission PKR ${breakdown.commission.toLocaleString()} + shipping PKR ${breakdown.shipping.toLocaleString()}).`,
     });
     await order.save();
 
@@ -309,7 +310,7 @@ router.post("/orders/:order_id/release-payment", async (req, res) => {
     // Notify seller
     await notifySellerAndAdmin({
       seller_id: order.primary_seller_id,
-      title: "BNPL Payment Released to Seller",
+      title: `${heldLabel} payment released to seller`,
       message: `Payment of PKR ${breakdown.net_to_seller.toLocaleString()} (TXN ${txnId}) has been transferred to your account for order ${order.order_id}. Order COMPLETED.`,
       type: "payout",
       ref_id: order.order_id,
@@ -317,7 +318,7 @@ router.post("/orders/:order_id/release-payment", async (req, res) => {
 
     return res.json({
       success: true,
-      message: "BNPL payment released. Order marked as COMPLETED.",
+      message: `${heldLabel} payment released. Order marked as COMPLETED.`,
       payout,
       breakdown,
       wallet_balance: wallet.balance,

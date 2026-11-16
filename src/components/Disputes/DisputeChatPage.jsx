@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import disputeApi from "../../api/disputeApi";
+import { absoluteApiUrl } from "../../api/base";
 import { useSocket } from "../../context/SocketContext";
 
 /**
@@ -199,7 +200,7 @@ export default function DisputeChatPage({ user }) {
   };
 
   // Evidence is private: the API returns short-lived signed links (/api/files/private?...).
-  const evidenceUrl = (e) => (e.url ? `http://localhost:5000${e.url}` : "#");
+  const evidenceUrl = (e) => (e.url ? absoluteApiUrl(e.url) : "#");
 
   const tabs = [
     { id: "chat", label: "Chat" },

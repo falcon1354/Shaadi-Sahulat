@@ -30,6 +30,9 @@ import AdminDisputesPage from './components/Admin/AdminDisputesPage';
 import AdminWalletPage from './components/Admin/AdminWalletPage';
 import AdminBnplRepaymentsPage from './components/Admin/AdminBnplRepaymentsPage';
 import CheckoutPage from './components/Cart/CheckoutPage';
+import PaymentReturnPage from './components/Payments/PaymentReturnPage';
+import BuyerPaymentsPage from './components/Payments/BuyerPaymentsPage';
+import AdminPaymentsPage from './components/Payments/AdminPaymentsPage';
 import BuyerOrdersPage from './components/Orders/BuyerOrdersPage';
 import BuyerOrderDetailPage from './components/Orders/BuyerOrderDetailPage';
 import BNPLApplyPage from './components/BNPL/BNPLApplyPage';
@@ -58,7 +61,7 @@ import ResetPasswordPage from './components/Auth/ResetPasswordPage';
 import VerifyEmailPage from './components/Auth/VerifyEmailPage';
 import {
   LayoutDashboard, ShoppingBag, Camera, Calculator, TrendingUp, User,
-  ShoppingCart, PlusCircle, Package, LineChart, Star
+  ShoppingCart, PlusCircle, Package, LineChart, Star, CreditCard
 } from 'lucide-react';
 import logo from './assets/ShaadiSahulat Logo PNG.png';
 
@@ -276,6 +279,7 @@ const BUYER_VIEWS = [
   { id: 'visual', label: 'Find by Photo', icon: <Camera size={20} /> },
   { id: 'dowry', label: 'Budget Estimator', icon: <Calculator size={20} /> },
   { id: 'orders', label: 'My Orders', icon: <Package size={20} /> },
+  { id: 'payments', label: 'Card Payments', icon: <CreditCard size={20} /> },
   { id: 'bnpl', label: 'My BNPL', icon: <ShoppingCart size={20} /> },
   { id: 'account', label: 'My Account', icon: <User size={20} /> },
 ];
@@ -962,6 +966,8 @@ export default function App() {
                 <Route path="product/:productId" element={<BuyerProductDetailPage />} />
                 <Route path="orders" element={<BuyerOrdersPageWrapper />} />
                 <Route path="orders/:orderId" element={<BuyerOrderDetailPageWrapper />} />
+                <Route path="payments" element={<BuyerPaymentsPage />} />
+                <Route path="payments/return" element={<PaymentReturnPage />} />
                 <Route path="bnpl" element={<BNPLStatusPageWrapper />} />
                 <Route path="checkout" element={<CheckoutPageWrapper />} />
               </Route>
@@ -1011,6 +1017,7 @@ export default function App() {
 <Route path="disputes" element={<AdminDisputesPageWrapper />} />
 <Route path="reviews" element={<AdminReviewsPageWrapper />} />
 <Route path="wallet" element={<AdminWalletPageWrapper />} />
+<Route path="payments" element={<AdminPaymentsPage />} />
 <Route path="security" element={<AdminSecurityPage />} />
 <Route path="bnpl-repayments" element={<AdminBnplRepaymentsPageWrapper />} />
               </Route>

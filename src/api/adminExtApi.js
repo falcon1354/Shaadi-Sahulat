@@ -2,7 +2,8 @@
  * Admin extensions API client — orders, disputes, wallet, payouts, BNPL oversight.
  */
 import { authFetch } from "./http";
-const BASE = "http://localhost:5000/api/admin";
+import { apiUrl } from "./base";
+const BASE = apiUrl("/api/admin");
 
 // Admin identity is sent as `Authorization: Bearer <token>` by authFetch (src/api/http.js).
 // adminId parameters are kept for call-site compatibility.

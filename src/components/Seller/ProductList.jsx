@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Trash2, ExternalLink, Search, ChevronRight } from 'lucide-react';
 import sellerApi from '../../api/sellerApi';
+import { apiUrl } from '../../api/base';
 import { useCategories } from '../../hooks/useCategories';
 
 const STATUS_COLORS = {
@@ -49,7 +50,7 @@ function EditModal({ product, onSave, onClose }) {
       color:          form.color          || '',
       condition:      form.condition      || '',
     });
-    fetch(`/api/seller/price-suggestion?${params}`)
+    fetch(`${apiUrl('/api/seller/price-suggestion')}?${params}`)
       .then(r => r.json())
       .then(data => { if (data.success && data.suggestion) setPriceSuggestion(data.suggestion); })
       .catch(() => {});

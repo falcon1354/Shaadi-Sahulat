@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resolveImageUrl } from '../../api/sellerApi';
+import { apiUrl } from '../../api/base';
 
-const BANNER_API = 'http://localhost:5000/api/banners/active';
+const BANNER_API = apiUrl('/api/banners/active');
 
 export default function DealOfTheDayBanner({ categoryId, storefront }) {
   const navigate = useNavigate();

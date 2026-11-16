@@ -8,7 +8,8 @@
  *      product title + description + the buyer's selected rating.
  */
 import { authFetch } from "./http";
-const BASE = 'http://localhost:5000/api/reviews/ai';
+import { apiUrl } from "./base";
+const BASE = apiUrl("/api/reviews/ai");
 
 export async function suggestRating({ text, product_title, product_description }) {
   const res = await authFetch(`${BASE}/suggest-rating`, {

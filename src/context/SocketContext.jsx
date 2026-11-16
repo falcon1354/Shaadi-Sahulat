@@ -34,8 +34,9 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState,
 import { useAuth } from './AuthContext';
 // JWT handshake + token-refresh/reconnect logic lives in src/api/socketClient.js (unit-tested).
 import { createAuthenticatedSocket } from '../api/socketClient';
+import { API_ORIGIN } from '../api/base';
 
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = API_ORIGIN || 'http://localhost:5000';
 
 const SocketContext = createContext(null);
 

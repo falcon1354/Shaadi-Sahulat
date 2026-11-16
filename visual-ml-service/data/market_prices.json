@@ -1,47 +1,47 @@
 {
-  "updated_at": "2026-09-08T08:58:00.487691+00:00",
+  "updated_at": "2026-09-24T17:37:09.109220+00:00",
   "categories": {
     "wedding_dress": {
-      "avg": 86277,
-      "median": 49686,
-      "min": 12500,
+      "avg": 84548,
+      "median": 49179,
+      "min": 5000,
       "max": 395000,
-      "count": 46,
-      "avg_top5_cheapest": 17100,
+      "count": 47,
+      "avg_top5_cheapest": 13400,
       "priority_ranges": {
         "High": {
-          "min": 94905,
-          "max": 125102
+          "min": 93003,
+          "max": 122595
         },
         "Medium": {
-          "min": 70747,
-          "max": 101807
+          "min": 69329,
+          "max": 99767
         },
         "Low": {
-          "min": 56080,
-          "max": 77649
+          "min": 54956,
+          "max": 76093
         }
       },
       "subcategories": {
         "bridal": {
-          "avg": 44782,
-          "median": 46664,
-          "min": 23500,
+          "avg": 43539,
+          "median": 44062,
+          "min": 5000,
           "max": 73368,
-          "count": 31,
-          "avg_top5_cheapest": 25100,
+          "count": 32,
+          "avg_top5_cheapest": 20800,
           "priority_ranges": {
             "High": {
-              "min": 49260,
-              "max": 64934
+              "min": 47893,
+              "max": 63132
             },
             "Medium": {
-              "min": 36721,
-              "max": 52843
+              "min": 35702,
+              "max": 51376
             },
             "Low": {
-              "min": 29108,
-              "max": 40304
+              "min": 28300,
+              "max": 39185
             }
           },
           "item_types": {
@@ -90,24 +90,24 @@
               }
             },
             "bridal_saree": {
-              "avg": 49862,
-              "median": 51053,
-              "min": 26926,
+              "avg": 44254,
+              "median": 50623,
+              "min": 5000,
               "max": 61585,
-              "count": 7,
-              "avg_top5_cheapest": 45225,
+              "count": 8,
+              "avg_top5_cheapest": 34287,
               "priority_ranges": {
                 "High": {
-                  "min": 54848,
-                  "max": 72300
+                  "min": 48679,
+                  "max": 64168
                 },
                 "Medium": {
-                  "min": 40887,
-                  "max": 58837
+                  "min": 36288,
+                  "max": 52220
                 },
                 "Low": {
-                  "min": 32410,
-                  "max": 44876
+                  "min": 28765,
+                  "max": 39829
                 }
               }
             },

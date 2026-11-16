@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import sellerApi from '../../api/sellerApi';
+import sellerApi, { ML_URL } from '../../api/sellerApi';
 
 // Compact similarity breakdown shown in a tooltip on hover
 function SimilarityTooltip({ item }) {
@@ -42,7 +42,7 @@ function SimilarityTooltip({ item }) {
 function ResultCard({ item }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const imageUrl = item.image_url
-    ? (item.image_url.startsWith('http') ? item.image_url : `http://localhost:5002${item.image_url}`)
+    ? (item.image_url.startsWith('http') ? item.image_url : `${ML_URL}${item.image_url}`)
     : null;
 
   const hasDiscount = item.discount_price && item.discount_price < item.price;

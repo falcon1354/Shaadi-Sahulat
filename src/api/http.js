@@ -4,8 +4,8 @@
  *   • The access JWT lives ONLY in this module's memory (never localStorage /
  *     sessionStorage / URL). It is lost on reload and restored via /api/auth/refresh.
  *   • The refresh token lives ONLY in the HttpOnly `ss_rt` cookie. Auth-cookie
- *     requests use RELATIVE /api/auth/* URLs so they go through the Vite proxy and
- *     the browser attaches the cookie (same origin).
+ *     requests use /api/auth/* (relative in local dev, VITE_API_URL when set)
+ *     and credentials so the browser attaches the cookie.
  *   • authFetch() is a drop-in replacement for fetch(): it adds
  *     `Authorization: Bearer <token>` and, on a 401, performs ONE shared refresh and
  *     retries the original request ONCE. 403 is returned untouched (never refreshes).
@@ -13,9 +13,20 @@
  */
 
 import axios from "axios";
+import { API_ORIGIN, apiUrl } from "./base";
 
-const AUTH_BASE = "/api/auth";
+const AUTH_BASE = apiUrl("/api/auth");
 const CSRF_HEADER = { "X-Requested-With": "ShaadiSahulat" };
+
+function authCredentials(explicit) {
+  if (API_ORIGIN) return "include";
+  return explicit || "same-origin";
+}
+
+function resolveRequest(input) {
+  if (typeof input === "string" && input.startsWith("/")) return apiUrl(input);
+  return input;
+}
 
 let accessToken = null;
 let refreshInFlight = null;
@@ -84,7 +95,7 @@ export function refreshSession() {
       try {
         const res = await fetch(`${AUTH_BASE}/refresh`, {
           method: "POST",
-          credentials: "same-origin",
+          credentials: authCredentials("same-origin"),
           headers: CSRF_HEADER,
         });
         const body = await readJson(res);
@@ -107,38 +118,44 @@ export function refreshSession() {
  * Only retries when the request actually carried an access token.
  */
 export async function authFetch(input, init = {}) {
+  const url = resolveRequest(input);
   const sentToken = accessToken;
-  const res = await fetch(input, { ...init, headers: withAuthHeader(init.headers, sentToken) });
+  const send = (token) => fetch(url, {
+    ...init,
+    credentials: authCredentials(init.credentials),
+    headers: withAuthHeader(init.headers, token),
+  });
+  const res = await send(sentToken);
 
   if (res.status === 403) {
-    emit("forbidden", { url: String(input) });
+    emit("forbidden", { url: String(url) });
     return res;
   }
   if (res.status !== 401 || !sentToken) return res;
 
   // Another request may already have refreshed while this one was in flight.
   if (accessToken && accessToken !== sentToken) {
-    return fetch(input, { ...init, headers: withAuthHeader(init.headers, accessToken) });
+    return send(accessToken);
   }
 
   const refreshed = await refreshSession();
   if (!refreshed) {
-    emit("session-expired", { url: String(input) });
+    emit("session-expired", { url: String(url) });
     return res;
   }
   // Retry exactly once — the retried response is returned as-is (no further refresh).
-  return fetch(input, { ...init, headers: withAuthHeader(init.headers, accessToken) });
+  return send(accessToken);
 }
 
 // ── Auth endpoints (cookie-setting; never trigger refresh) ──────────────────
 
-/** POST to /api/auth/<path> through the Vite proxy so the HttpOnly cookie is set/sent. */
+/** POST to /api/auth/<path> so the HttpOnly cookie is set and sent. */
 export async function authPost(path, body, { bearer = false } = {}) {
   const headers = { "Content-Type": "application/json", ...CSRF_HEADER };
   if (bearer && accessToken) headers.Authorization = `Bearer ${accessToken}`;
   const res = await fetch(`${AUTH_BASE}${path}`, {
     method: "POST",
-    credentials: "same-origin",
+    credentials: authCredentials("same-origin"),
     headers,
     body: JSON.stringify(body || {}),
   });
@@ -147,7 +164,7 @@ export async function authPost(path, body, { bearer = false } = {}) {
 
 /** GET /api/auth/me with the current access token (one refresh+retry via authFetch). */
 export async function fetchMe() {
-  const res = await authFetch(`${AUTH_BASE}/me`, { credentials: "same-origin" });
+  const res = await authFetch(`${AUTH_BASE}/me`);
   const body = await readJson(res);
   return res.ok && body?.user ? body.user : null;
 }
@@ -180,7 +197,9 @@ export function authErrorMessage(status, body) {
 
 // ── axios instance for helpers that use axios ───────────────────────────────
 
-export const authAxios = axios.create();
+export const authAxios = axios.create({
+  withCredentials: Boolean(API_ORIGIN),
+});
 
 authAxios.interceptors.request.use((config) => {
   if (config.headers) {

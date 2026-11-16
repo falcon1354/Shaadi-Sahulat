@@ -636,6 +636,37 @@ router.post("/:dispute_id/admin-decision", requireAdmin, async (req, res) => {
         }
       }
 
+      if (order.payment_method === "POLAR") {
+        try {
+          const { refundOrderShare } = require("../lib/polar/refund");
+          const polarRefund = await refundOrderShare(order, {
+            reason: "customer_request",
+            comment: `Dispute ${dispute.dispute_id}`,
+            adminId: req.user.id,
+            stockAlreadyRestored: true,
+          });
+          if (polarRefund.refunded) order.payment_status = "REFUNDED";
+          else if (polarRefund.error) {
+            order.timeline.push({
+              status: "CANCELLED",
+              at: now,
+              by: "admin",
+              by_id: req.user.id,
+              note: `Polar refund was not completed: ${polarRefund.error}`,
+            });
+          }
+        } catch (polarErr) {
+          console.error("[disputes] Polar refund failed:", polarErr.message);
+          order.timeline.push({
+            status: "CANCELLED",
+            at: now,
+            by: "admin",
+            by_id: req.user.id,
+            note: `Polar refund failed: ${polarErr.message}. Retry from Card Payments.`,
+          });
+        }
+      }
+
       order.timeline.push({
         status: "CANCELLED",
         at: now,

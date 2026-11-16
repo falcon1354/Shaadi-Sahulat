@@ -162,7 +162,7 @@ export default function FinalProjection({ buyer }) {
           date:       paidAt,
           amount:     o.total_amount || 0,
           method:     o.payment_method,
-          methodNote: o.payment_method === 'BNPL' ? 'BNPL plan' : 'Cash on Delivery',
+          methodNote: o.payment_method === 'BNPL' ? 'BNPL plan' : o.payment_method === 'POLAR' ? 'Card (Polar)' : 'Cash on Delivery',
         });
       }
     });

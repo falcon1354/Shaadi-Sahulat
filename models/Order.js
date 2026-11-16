@@ -4,6 +4,7 @@
  * Payment methods (per BNPL&Delivery.md):
  *   - COD         : cash on delivery
  *   - BNPL        : Buy Now Pay Later installment plan
+ *   - POLAR       : card payment captured by Polar.sh (held until admin release)
  *
  * Status lifecycle (per BNPL&Delivery.md Module 2 Steps 1-11):
  *   PENDING_BNPL_APPROVAL  → BNPL only, awaiting bank decision
@@ -62,7 +63,7 @@ const orderSchema = new mongoose.Schema(
 
     shipping_address: { type: addressSchema, default: () => ({}) },
 
-    payment_method:  { type: String, enum: ["COD", "BNPL"], required: true },
+    payment_method:  { type: String, enum: ["COD", "BNPL", "POLAR"], required: true },
     payment_status:  {
       type: String,
       enum: [
@@ -96,6 +97,8 @@ const orderSchema = new mongoose.Schema(
 
     // BNPL link (only when payment_method === "BNPL")
     bnpl_application_id: { type: String, default: "", index: true },
+    // Polar.sh card payment (only when payment_method === "POLAR")
+    polar_transaction_id: { type: String, default: "", index: true },
 
     bank_processing_fee:     { type: Number, default: 0 },
     buyer_confirmed_receipt: { type: Boolean, default: false },

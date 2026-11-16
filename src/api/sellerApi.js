@@ -5,9 +5,10 @@
  * Images uploaded to the ML Flask service are served from port 5002.
  */
 import { authFetch } from "./http";
+import { apiUrl, absoluteApiUrl, ML_ORIGIN } from "./base";
 
-const BASE_URL   = "http://localhost:5000/api/seller";
-export const ML_URL = "http://localhost:5002";
+const BASE_URL   = apiUrl("/api/seller");
+export const ML_URL = ML_ORIGIN;
 
 // ── Seller registration / auth ────────────────────────────────────────────
 
@@ -163,7 +164,7 @@ export function resolveImageUrl(imageUrl) {
   }
   // Legacy Node uploads
   if (imageUrl.startsWith("/uploads/") || imageUrl.startsWith("uploads/")) {
-    return `http://localhost:5000${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+    return absoluteApiUrl(imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`);
   }
   return `${ML_URL}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
 }

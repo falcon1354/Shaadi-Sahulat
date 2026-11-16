@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import orderApi from "../../api/orderApi";
+import { createPolarCheckout, getPaymentConfig } from "../../api/paymentApi";
 import { saveAddress, getSavedAddresses, getFullBuyerData } from "../../api/buyerApi";
 
 /** Refresh local dowry budgets from Mongo after order (spent is deducted server-side). */
@@ -149,6 +150,7 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [placedOrder, setPlacedOrder] = useState(null);
+  const [polarEnabled, setPolarEnabled] = useState(false);
 
   // Address autocomplete — selecting a suggestion autofills city + province
   const [addressResults, setAddressResults] = useState([]);
@@ -157,6 +159,10 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
   const addressTimer = useRef(null);
   const addressLineRef = useRef(null);
   const skipNextSearch = useRef(false);
+
+  useEffect(() => {
+    getPaymentConfig().then((cfg) => setPolarEnabled(!!cfg?.enabled)).catch(() => setPolarEnabled(false));
+  }, []);
 
   // Load saved addresses
   useEffect(() => {
@@ -249,6 +255,21 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
         ...address,
         house_number: address.house_number,
       };
+      if (paymentMethod === "POLAR") {
+        const polar = await createPolarCheckout({
+          items: items.map((it) => ({ product_id: it.product_id, qty: it.qty })),
+          shippingAddress,
+          deliveryMethod,
+        });
+        if (!polar.success || !polar.checkout_url) {
+          throw new Error(polar.error || "Could not open card checkout");
+        }
+        if (buyer?.buyer_id && address.line1) {
+          saveAddress(buyer.buyer_id, shippingAddress).catch(() => {});
+        }
+        window.location.assign(polar.checkout_url);
+        return;
+      }
       const result = await orderApi.createOrder({
         buyerId: buyer.buyer_id,
         items: items.map(it => ({
@@ -496,16 +517,36 @@ export default function CheckoutPage({ buyer, items, onClose, onSuccess }) {
           <span className="font-semibold text-gray-800">Bank Installment Plan (BNPL)</span>
           <span className="text-xs text-gray-500 ml-2">Get approved in minutes. 3 or 6 month plan. 4% processing fee.</span>
         </label>
+        <label className={`block border rounded-xl p-3 mt-2 cursor-pointer ${paymentMethod === "POLAR" ? "border-[#a37b3d] bg-[#FFF5F8]" : "border-gray-200"} ${polarEnabled ? "" : "opacity-60"}`}>
+          <input
+            type="radio"
+            name="payment"
+            checked={paymentMethod === "POLAR"}
+            onChange={() => setPaymentMethod("POLAR")}
+            disabled={!polarEnabled}
+            className="mr-2"
+          />
+          <span className="font-semibold text-gray-800">Card payment (Polar)</span>
+          <span className="text-xs text-gray-500 ml-2">
+            {polarEnabled
+              ? "Pay now in PKR. The order is created after Polar confirms the charge."
+              : "Card payments are not configured on this server yet."}
+          </span>
+        </label>
       </div>
 
       {error && <div className="text-red-600 text-sm mb-3">{error}</div>}
 
       <button
         onClick={handlePlaceOrder}
-        disabled={loading}
+        disabled={loading || (paymentMethod === "POLAR" && !polarEnabled)}
         className="w-full py-3 bg-[#a37b3d] hover:bg-[#8a6633] text-white rounded-xl text-sm font-semibold disabled:opacity-50"
       >
-        {loading ? "Placing Order..." : `PLACE ORDER — PKR ${grandTotal.toLocaleString()}`}
+        {loading
+          ? (paymentMethod === "POLAR" ? "Opening secure checkout..." : "Placing Order...")
+          : paymentMethod === "POLAR"
+            ? `PAY WITH CARD — PKR ${grandTotal.toLocaleString()}`
+            : `PLACE ORDER — PKR ${grandTotal.toLocaleString()}`}
       </button>
     </div>
   );
