@@ -78,6 +78,10 @@ const PORT = process.env.PORT || 5000;
 // Create a single HTTP server that both Express and Socket.io share.
 const httpServer = http.createServer(app);
 
+// Railway (and Vercel) put a reverse proxy in front of the app. Trust exactly one hop so
+// req.ip / rate limiting use the real client address and secure cookies work.
+app.set("trust proxy", 1);
+
 // ── Middleware ──────────────────────────────────────────────────────────────
 // Only the configured frontend may call the API from a browser (no wildcard CORS).
 // (An allow-list reflects only a matching Origin; any other origin gets no CORS headers.)

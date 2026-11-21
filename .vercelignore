@@ -1,0 +1,27 @@
+# Frontend-only upload for `vercel` (Vite build needs src/, index.html, configs, package*.json)
+node_modules/
+.env
+.env.*
+/dist/
+/visual-ml-service/
+/ml-service/
+/tone-voice/
+/colab-notebook/
+/Claude outputs/
+/uploads/
+/eng.traineddata
+/scripts/
+/seeds/
+/models/
+/controllers/
+/routes/
+/services/
+/lib/
+/config/
+/tests/
+/exports/
+/backups/
+/ShaadiSahulatBackups/
+*.archive
+*.archive.gz
+.mail-outbox/

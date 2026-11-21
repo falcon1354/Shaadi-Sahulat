@@ -48,11 +48,23 @@ visual-ml-service/uploads/tryon/
 !visual-ml-service/models/.gitkeep
 
 # Local test uploads
-Uploads/tryon-test-person.jpg
-Uploads/.ocr-tmp/
+uploads/tryon-test-person.jpg
+uploads/.ocr-tmp/
 
 # Python packaging
 pip-wheel-metadata/
 
 # Local dev email outbox (EMAIL_TRANSPORT=console) — contains one-time links
 .mail-outbox/
+
+# Database backups and credentials - never commit
+ShaadiSahulatBackups/
+backups/
+*.archive
+*.archive.gz
+mongo-uri.xml
+*.bson
+*.bson.gz
+.vercel
+.env*
+!.env.example
