@@ -662,7 +662,7 @@ test("AI: anonymous dowry estimate is limited per IP (30 / 10 min)", async () =>
 
 test("AI: every expensive route is wired to a limiter", () => {
   const checks = {
-    "routes/visual.js": [/"\/recommend",\s*optionalAuth,\s*limits\.visualRecommend,\s*upload/, /"\/tryon",\s*authenticate,\s*limits\.tryOn,/, /"\/tryon\/fit", limits\.tryOnFit,/],
+    "routes/visual.js": [/"\/recommend",\s*optionalAuth,\s*limits\.visualRecommend,\s*upload/, /"\/tryon",\s*authenticate,\s*limits\.tryOn,/, /"\/tryon\/fit", authenticate, limits\.tryOnFit,/],
     "routes/reviews.js": [/suggest-rating", authenticate, limits\.aiSuggestRating/, /generate-reviews", authenticate, limits\.aiGenerate/, /preview-voice", requireBuyer, limits\.reviewVoice/],
     "routes/dowry.js": [/"\/estimate",\s+limits\.dowryEstimate/, /"\/rule-only",\s+limits\.dowryEstimate/],
     "routes/bnpl.js": [/ocr-preview", requireBuyer, limits\.ocr, ocrPreviewUpload/, /"\/applications", requireBuyer, limits\.bnplSubmit, upload/],
