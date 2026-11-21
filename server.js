@@ -111,7 +111,7 @@ const PUBLIC_UPLOAD_DIRS = ["Banners", "Categories", "CategoryPlaceholders", "Re
 for (const dir of PUBLIC_UPLOAD_DIRS) {
   app.use(
     `/uploads/${dir}`,
-    express.static(path.join(__dirname, "Uploads", dir), {
+    express.static(path.join(__dirname, "uploads", dir), {
       fallthrough: false,
       dotfiles: "deny",
       index: false,

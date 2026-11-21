@@ -150,7 +150,7 @@ mongoose.connection.db = {
 // ── Temporary upload files (unique folder, removed in test.after) ───────────
 
 const TAG = `__phase2i_${process.pid}`;
-const UP = path.join(ROOT, "Uploads");
+const UP = path.join(ROOT, "uploads");
 const REL = {
   cnic: `BNPL/${TAG}/BNPL-A/cnic_front.png`,
   evidence: `Dispute/${TAG}/evidence.png`,
