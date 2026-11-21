@@ -45,6 +45,13 @@ const AdminWallet = require("../models/AdminWallet");
 
 const { requireBuyer, requireSeller, authenticate } = require("../lib/auth");
 const { forbid, sameOrAbsent } = require("../lib/authorize");
+
+/** Buyers must never receive the seller-side order link credential. */
+function hideSellerViewToken(order) {
+  if (!order) return order;
+  const { seller_view_token, ...rest } = order; // eslint-disable-line no-unused-vars
+  return rest;
+}
 const {
   generateOrderId,
   generatePackageId,
@@ -56,6 +63,7 @@ const {
   computeBankProcessingFee,
   validateTrackingNumber,
   formatTrackingNumber,
+  generateNotificationId,
 } = require("../lib/helpers");
 const DowryEstimation = require("../models/DowryEstimation");
 const { pushNotification, notifyBuyerAndAdmin, notifySellerAndAdmin, notifyAll } = require("../lib/notify");
@@ -299,7 +307,7 @@ const shippingAddress = {
           allPackages.push(...pkgs);
         } else {
           await Notification.create([{
-            notification_id: `N-${Date.now()}`,
+            notification_id: generateNotificationId(),
             user_id: "admin",
             user_role: "admin",
             title: "BNPL Order Awaiting Approval",
@@ -329,8 +337,9 @@ const shippingAddress = {
       message: multiSeller && payment_method === "COD"
         ? `Checkout created ${createdOrders.length} seller orders (session ${sessionId}).`
         : `Order ${primary.order_id} created${allPackages.length ? ` with ${allPackages.length} package(s)` : " (awaiting BNPL approval)"}.`,
-      order: primary.toObject(),
-      orders: createdOrders.map((o) => o.toObject()),
+      // Only buyers reach this route: never return the seller-side link credential.
+      order: hideSellerViewToken(primary.toObject()),
+      orders: createdOrders.map((o) => hideSellerViewToken(o.toObject())),
       checkout_session_id: sessionId || null,
       checkout_group_color: color || null,
       packages: allPackages.map((p) => ({
@@ -393,7 +402,7 @@ router.get("/", authenticate, async (req, res) => {
         Order.countDocuments({ buyer_id }),
       ]);
       const has_more = skip + orders.length < total_count;
-      return res.json({ success: true, orders, total_count, page, has_more });
+      return res.json({ success: true, orders: orders.map(hideSellerViewToken), total_count, page, has_more });
     }
     if (seller_id) {
       const packages = await Package.find({ seller_id }).sort({ created_at: -1 }).lean();
@@ -432,7 +441,8 @@ router.get("/:order_id", authenticate, requireOrderParticipant, async (req, res)
 
     return res.json({
       success: true,
-      order,
+      // The seller view token is a seller-side link credential; buyers never need it.
+      order: req.user.role === "buyer" ? hideSellerViewToken(order) : order,
       packages,
       disputes: disputes.map(presentDispute),
       available_actions,
@@ -1001,17 +1011,27 @@ router.post("/:order_id/review", requireBuyer, async (req, res) => {
 
 // ---------- seller fetches order by hashed token (Big-Task-Batch2 §Seller Orders #10) ----------
 // GET /api/orders/by-token/:token — returns the order + packages for a seller
-// who received a shareable URL like /orders/ORD-2026-31207?t=<token>.
-// The token prevents buyers from guessing a seller's order-detail URL.
-router.get("/by-token/:token", async (req, res) => {
+// who opened a link like /seller/orders/ORD-2026-31207?t=<token>.
+// SECURITY: the token alone is NOT a credential. It used to be (no auth here), so anyone
+// holding a link — and buyers, who received the token in their own order JSON — could read
+// the buyer's name, email, phone and address. Now the caller must be signed in as a seller
+// with a package in that order (only their own packages are returned) or as an admin.
+router.get("/by-token/:token", authenticate, async (req, res) => {
   try {
+    const { role, id } = req.user;
+    if (role !== "seller" && role !== "admin") return forbid(res);
     const token = String(req.params.token || "").trim();
     if (!token || token.length < 12) {
       return res.status(400).json({ success: false, error: "Invalid token" });
     }
     const order = await Order.findOne({ seller_view_token: token }).lean();
     if (!order) return res.status(404).json({ success: false, error: "Order not found for this token" });
-    const packages = await Package.find({ order_id: order.order_id }).lean();
+    const pkgFilter = role === "seller" ? { order_id: order.order_id, seller_id: id } : { order_id: order.order_id };
+    const packages = await Package.find(pkgFilter).lean();
+    // Same answer as an unknown token, so a seller cannot probe other sellers' orders.
+    if (role === "seller" && packages.length === 0) {
+      return res.status(404).json({ success: false, error: "Order not found for this token" });
+    }
     return res.json({ success: true, order, packages });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

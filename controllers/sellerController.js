@@ -6,6 +6,8 @@
  */
 
 const sellerClient = require("../services/sellerClient");
+// Read-only product endpoints are served from MongoDB when visual-ml-service is not deployed.
+const catalog = require("../lib/productCatalog");
 
 // Registration / login live in controllers/authController.js (POST /api/auth/*).
 // The legacy /api/seller/register + /login handlers were removed in Phase 2I.
@@ -67,7 +69,9 @@ async function listProducts(req, res) {
 
 async function getProduct(req, res) {
   try {
-    const result = await sellerClient.getProduct(req.params.product_id);
+    const result = catalog.useLocalCatalog()
+      ? await catalog.getProduct(req.params.product_id)
+      : await sellerClient.getProduct(req.params.product_id);
     const code   = result.success === false ? 404 : 200;
     res.status(code).json(result);
   } catch (err) {
@@ -97,7 +101,9 @@ async function deleteProduct(req, res) {
 
 async function getPublicProducts(req, res) {
   try {
-    const result = await sellerClient.getPublicProducts(req.query);
+    const result = catalog.useLocalCatalog()
+      ? await catalog.getPublicProducts(req.query)
+      : await sellerClient.getPublicProducts(req.query);
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -116,7 +122,9 @@ async function getCategories(req, res) {
 async function searchProducts(req, res) {
   try {
     const { q, major_category, marketplace_type, limit } = req.query;
-    const result = await sellerClient.searchProducts({ q, major_category, marketplace_type, limit });
+    const result = catalog.useLocalCatalog()
+      ? await catalog.searchProducts({ q, major_category, marketplace_type, limit })
+      : await sellerClient.searchProducts({ q, major_category, marketplace_type, limit });
     const code   = result.success === false ? 400 : 200;
     res.status(code).json(result);
   } catch (err) {

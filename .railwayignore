@@ -1,0 +1,24 @@
+# API-only upload for `railway up` (frontend is deployed by Vercel; ML services postponed)
+node_modules/
+.env
+.env.*
+!.env.example
+/dist/
+/visual-ml-service/
+/ml-service/
+/tone-voice/
+/colab-notebook/
+/Claude outputs/
+/scripts/backup/
+/backups/
+/ShaadiSahulatBackups/
+*.archive
+*.archive.gz
+.mail-outbox/
+/public/
+/src/
+/uploads/BNPL/
+/uploads/Dispute/
+/uploads/Imagess/
+/scripts/original-dataset/
+/tests/

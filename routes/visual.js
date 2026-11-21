@@ -72,7 +72,8 @@ router.post(
   ]),
   visualController.tryOn
 );
-router.post("/tryon/fit", limits.tryOnFit, visualController.tryOnFit);
+// Fit analysis also runs on the ML service → signed-in users only (was anonymous).
+router.post("/tryon/fit", authenticate, limits.tryOnFit, visualController.tryOnFit);
 router.get("/tryon/health", visualController.tryOnHealth);
 
 module.exports = router;

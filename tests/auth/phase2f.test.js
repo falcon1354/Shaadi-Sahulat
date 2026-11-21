@@ -152,7 +152,9 @@ function seed() {
     { seller_id: "sel_B", name: "Seller B", email: "sb@x.test", password_hash: "h" },
   ];
   stores.Order.push(
-    { _id: "o1", order_id: "ORD-A", buyer_id: "buyer_A", status: "CONFIRMED", items: [], total_amount: 100 },
+    { _id: "o1", order_id: "ORD-A", buyer_id: "buyer_A", status: "CONFIRMED", items: [], total_amount: 100,
+      seller_view_token: "tokA0123456789abcdef0123", buyer_name: "Buyer A", buyer_phone: "03001234567",
+      shipping_address: { line1: "1 Private Street", city: "Lahore" } },
     { _id: "o2", order_id: "ORD-B", buyer_id: "buyer_B", status: "CONFIRMED", items: [], total_amount: 200 },
   );
   stores.Package.push(
@@ -649,4 +651,76 @@ test("ATTACK MATRIX: every decision follows the JWT identity", async () => {
   assert.equal((await call("GET", "/api/dowry/history/buyer_B", { token: T.buyerA() })).status, 403);
   // Invalid Bearer + legacy headers → 401 (never falls back)
   assert.equal((await call("GET", "/api/admin/buyers", { token: "bad.token.here", headers: FORGED_ADMIN })).status, 401);
+});
+
+// ── Security audit 2026-11-20: seller view-token link + try-on fit ───────────────────────────
+// GET /api/orders/by-token/:token used to need NO login and returned the buyer's name, email,
+// phone and address to anyone holding the token (which buyers also received in their own orders).
+test("by-token: anonymous and forged-header callers get 401, never order data", async () => {
+  const anon = await call("GET", "/api/orders/by-token/tokA0123456789abcdef0123");
+  assert.equal(anon.status, 401);
+  assert.ok(!JSON.stringify(anon.body).includes("Private Street"));
+  const forged = await call("GET", "/api/orders/by-token/tokA0123456789abcdef0123", { headers: FORGED_ADMIN });
+  assert.equal(forged.status, 401);
+  assert.equal((await call("GET", "/api/orders/by-token/tokA0123456789abcdef0123", { token: "bad.token.here" })).status, 401);
+});
+
+test("by-token: buyers (even the order owner) are forbidden; non-participant seller gets 404", async () => {
+  assert.equal((await call("GET", "/api/orders/by-token/tokA0123456789abcdef0123", { token: T.buyerA() })).status, 403);
+  assert.equal((await call("GET", "/api/orders/by-token/tokA0123456789abcdef0123", { token: T.buyerB() })).status, 403);
+  const other = await call("GET", "/api/orders/by-token/tokA0123456789abcdef0123", { token: T.sellerB() });
+  assert.equal(other.status, 404);
+  assert.ok(!JSON.stringify(other.body).includes("Private Street"));
+});
+
+test("by-token: participating seller gets the order with ONLY its own packages; admin allowed", async () => {
+  stores.Package.push({ _id: "p3", package_id: "PKG-A2", order_id: "ORD-A", seller_id: "sel_B", status: "CONFIRMED" });
+  const r = await call("GET", "/api/orders/by-token/tokA0123456789abcdef0123", { token: T.sellerA() });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.order.order_id, "ORD-A");
+  assert.deepEqual(r.body.packages.map((p) => p.package_id), ["PKG-A"]);
+  const a = await call("GET", "/api/orders/by-token/tokA0123456789abcdef0123", { token: T.admin() });
+  assert.equal(a.status, 200);
+  assert.equal(a.body.packages.length, 2);
+});
+
+test("buyers never receive the seller view token in their order list or order detail", async () => {
+  const list = await call("GET", "/api/orders/", { token: T.buyerA() });
+  assert.equal(list.status, 200);
+  assert.ok(list.body.orders.length >= 1);
+  assert.ok(!JSON.stringify(list.body).includes("seller_view_token"));
+  const one = await call("GET", "/api/orders/ORD-A", { token: T.buyerA() });
+  assert.equal(one.status, 200);
+  assert.equal(one.body.order.seller_view_token, undefined);
+  // The participating seller still gets it (needed for its order-detail link).
+  const seller = await call("GET", "/api/orders/", { token: T.sellerA() });
+  assert.equal(seller.body.packages.find((p) => p.order_id === "ORD-A").order.seller_view_token, "tokA0123456789abcdef0123");
+});
+
+test("try-on fit requires a signed-in user (was anonymous)", async () => {
+  assert.equal((await call("POST", "/api/visual/tryon/fit", { body: { height_cm: 160 } })).status, 401);
+  assert.equal((await call("POST", "/api/visual/tryon/fit", { body: {}, headers: FORGED_BUYER_B })).status, 401);
+  assert.notEqual((await call("POST", "/api/visual/tryon/fit", { token: T.buyerA(), body: {} })).status, 401);
+});
+
+test("seller view tokens are 24 hex chars from a CSPRNG and unique", () => {
+  const { makeSellerToken } = require("../../lib/checkoutSession");
+  const seen = new Set(Array.from({ length: 500 }, () => makeSellerToken("ORD-X", "buyer_X")));
+  assert.equal(seen.size, 500);
+  for (const t of seen) assert.match(t, /^[0-9a-f]{24}$/);
+});
+
+test("buyers never receive the seller view token in the order-creation response either", async () => {
+  const body = {
+    items: [{ product_id: "P-A", qty: 1 }],
+    shipping_address: { line1: "House 1", city: "Lahore", phone: "03001234567" },
+    payment_method: "COD",
+  };
+  const r = await call("POST", "/api/orders", { token: T.buyerA(), body });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  const stored = stores.Order.at(-1);
+  assert.match(String(stored.seller_view_token || ""), /^[0-9a-f]{24}$/, "the token is still stored for the seller");
+  assert.ok(!JSON.stringify(r.body).includes("seller_view_token"), "no token field in the response");
+  assert.ok(!JSON.stringify(r.body).includes(stored.seller_view_token), "token value not in the response");
+  assert.equal(r.body.order.order_id, stored.order_id);
 });

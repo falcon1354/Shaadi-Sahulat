@@ -46,6 +46,7 @@ const {
   buildInstallmentSchedule,
   offerExpiry,
   generateOfferNo,
+  generateNotificationId,
 } = require("../lib/helpers");
 const { notifyBuyerAndAdmin } = require("../lib/notify");
 const { finalizeBnplApproval } = require("../lib/bnplFulfillment");
@@ -473,7 +474,7 @@ router.post(
         // Log to admin activity log via notification
         const Notification = require("../models/Notification");
         await Notification.create([{
-          notification_id: `N-${Date.now()}`,
+          notification_id: generateNotificationId(),
           user_id: "admin",
           user_role: "admin",
           title: "BNPL Application Rejected",

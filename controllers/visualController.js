@@ -195,7 +195,7 @@ exports.tryOn = async (req, res) => {
 
     // Make image URL absolute via visual ML host for the browser
     if (result.result_image_url && result.result_image_url.startsWith("/")) {
-      const base = process.env.VISUAL_ML_URL || "http://localhost:5002";
+      const base = (process.env.VISUAL_ML_PUBLIC_URL || process.env.VISUAL_ML_URL || "http://localhost:5002").replace(/\/$/, "");
       result.result_image_url = `${base}${result.result_image_url}`;
     }
     return res.json(result);

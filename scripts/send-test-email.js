@@ -38,8 +38,9 @@ const mailer = require("../lib/mailer");
       text: `This is a test email from ${mailer.APP_NAME}. If you received it, email delivery works.`,
       html: `<p>This is a test email from <b>${mailer.APP_NAME}</b>. If you received it, email delivery works.</p>`,
     });
-    if (result.transport === "smtp" && result.delivered) {
-      console.log(`RESULT    : SUCCESS — the SMTP server accepted the message for ${mailer.maskEmail(to)} (id ${result.messageId || "n/a"}).`);
+    if ((result.transport === "smtp" || result.transport === "resend") && result.delivered) {
+      const who = result.transport === "resend" ? "Resend" : "the SMTP server";
+      console.log(`RESULT    : SUCCESS — ${who} accepted the message for ${mailer.maskEmail(to)} (id ${result.messageId || "n/a"}).`);
       console.log("            Check the inbox (and Spam) of that address.");
     } else if (result.transport === "console") {
       console.log(`RESULT    : WRITTEN to .mail-outbox/${result.file} — Console transport - NOT delivered to ${mailer.maskEmail(to)}.`);

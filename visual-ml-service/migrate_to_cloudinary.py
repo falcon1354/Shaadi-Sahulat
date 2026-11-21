@@ -17,7 +17,7 @@ from pymongo import MongoClient
 from config import MONGO_URI, MONGO_DB, PRODUCTS_COLLECTION, UPLOADS_DIR
 from cloudinary_storage import is_configured, upload_file
 
-NODE_UPLOADS = root / "Uploads"
+NODE_UPLOADS = root / "uploads"
 
 
 def is_http(url: str) -> bool:

@@ -1,0 +1,36 @@
+[
+    {
+        "_id": "6a2abf6b7bfa3374c8e8fc27",
+        "seller_id": "sel_fd85f9829b35",
+        "name": "Ahmad",
+        "email": "ahmd@gmail.com",
+        "phone": "030333333",
+        "city": "Lahore",
+        "created_at": "2026-06-11T14:00:11.864Z",
+        "updated_at": "2026-06-11T14:00:11.864Z"
+    },
+    {
+        "_id": "6a2ae4c60e4a6659aec5e1f4",
+        "seller_id": "sel_8adb42bba8a7",
+        "name": "ShaadiSahulat Demo",
+        "email": "admin@shaadisahulat.com",
+        "phone": "0300-0000000",
+        "city": "Lahore",
+        "created_at": "2026-06-11T16:39:34.860Z",
+        "updated_at": "2026-06-11T16:39:34.860Z"
+    },
+    {
+        "_id": "6a2bd90c0e48b4ae17248006",
+        "email": "ahmed@shaadisahulat.com",
+        "city": "Lahore",
+        "created_at": "2026-06-13T21:45:27.840Z",
+        "name": "Ahmed Traders",
+        "phone": "03001234567",
+        "seller_id": "SELLER_001",
+        "updated_at": "2026-06-13T21:45:27.840Z",
+        "category_restriction": null,
+        "completed_orders": 52,
+        "max_listings": null,
+        "seller_type": "company"
+    }
+]

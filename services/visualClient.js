@@ -11,6 +11,9 @@ const FormData = require("form-data");
 const VisualRecommendation = require("../models/VisualRecommendation");
 
 const ML_SERVICE_URL  = process.env.VISUAL_ML_URL || "http://localhost:5002";
+// Browser-facing base for relative image paths. In production VISUAL_ML_URL is a private
+// *.railway.internal address the browser cannot reach, so set VISUAL_ML_PUBLIC_URL.
+const ML_PUBLIC_URL   = (process.env.VISUAL_ML_PUBLIC_URL || ML_SERVICE_URL).replace(/\/$/, "");
 const REQUEST_TIMEOUT = 30000;
 
 /**
@@ -78,7 +81,7 @@ function enrichResults(mlResults) {
     // Resolve image URL: relative paths need the ML service base prepended
     let imageUrl = result.image_url || result.image_path || "";
     if (imageUrl && imageUrl.startsWith("/")) {
-      imageUrl = `${ML_SERVICE_URL}${imageUrl}`;
+      imageUrl = `${ML_PUBLIC_URL}${imageUrl}`;
     }
 
     return {

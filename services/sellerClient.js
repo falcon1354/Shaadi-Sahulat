@@ -18,6 +18,12 @@ const TIMEOUT = 60000; // 60 s — image embedding can take a moment
  * Flask keeps the authoritative seller_type / max_listings / seller_id rules.
  */
 async function createSellerInternal({ name, email, phone, city, seller_type, password_hash, auth }) {
+  // visual-ml-service not deployed (VISUAL_ML_URL unset): create the seller directly in MongoDB
+  // with the same rules and result shape (lib/sellerStore.js). Otherwise Flask stays authoritative.
+  const sellerStore = require("../lib/sellerStore");
+  if (sellerStore.useDirectSellerStore()) {
+    return sellerStore.createSellerDirect({ name, email, phone, city, seller_type, password_hash, auth });
+  }
   const flaskHttp = require("../lib/flaskHttp");
   const res = await flaskHttp.post("/seller/internal/create", {
     name, email, phone, city, seller_type, password_hash, auth,
