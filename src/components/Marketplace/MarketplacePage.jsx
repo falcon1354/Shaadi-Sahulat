@@ -564,6 +564,7 @@ export default function MarketplacePage({
   const [total,       setTotal]       = useState(0);
   const [page,        setPage]        = useState(1);
   const [loading,     setLoading]     = useState(false);
+  const [loadError,   setLoadError]   = useState(false);  // API unreachable / success:false
   const [viewProduct, setViewProduct] = useState(null);
 
   // Apply category when arriving from product-page breadcrumb navigation
@@ -630,6 +631,7 @@ export default function MarketplacePage({
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const data = await sellerApi.getPublicProducts({
         major_category: activeCat || undefined,
@@ -646,9 +648,14 @@ export default function MarketplacePage({
       if (data.success !== false) {
         setProducts(data.products || []);
         setTotal(data.total || 0);
+      } else {
+        setProducts([]);
+        setTotal(0);
+        setLoadError(true);
       }
     } catch (_) {
       setProducts([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -1044,6 +1051,13 @@ export default function MarketplacePage({
       {loading ? (
         <div className="flex justify-center items-center py-20">
           <div className="w-10 h-10 border-4 border-[#ECD4A8] border-t-[#a37b3d] rounded-full animate-spin" />
+        </div>
+      ) : loadError ? (
+        <div className="text-center py-16" role="alert">
+          <p className="text-4xl mb-3">⚠️</p>
+          <p className="text-gray-700 text-sm font-medium">Marketplace temporarily unavailable.</p>
+          <p className="text-gray-500 text-xs mt-1">We couldn’t load products right now. Please try again shortly.</p>
+          <button onClick={load} className="mt-3 text-xs text-[#a37b3d] hover:underline">Retry</button>
         </div>
       ) : displayProducts.length === 0 ? (
         <div className="text-center py-16">
