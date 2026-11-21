@@ -56,6 +56,7 @@ const {
   computeBankProcessingFee,
   validateTrackingNumber,
   formatTrackingNumber,
+  generateNotificationId,
 } = require("../lib/helpers");
 const DowryEstimation = require("../models/DowryEstimation");
 const { pushNotification, notifyBuyerAndAdmin, notifySellerAndAdmin, notifyAll } = require("../lib/notify");
@@ -299,7 +300,7 @@ const shippingAddress = {
           allPackages.push(...pkgs);
         } else {
           await Notification.create([{
-            notification_id: `N-${Date.now()}`,
+            notification_id: generateNotificationId(),
             user_id: "admin",
             user_role: "admin",
             title: "BNPL Order Awaiting Approval",
