@@ -337,8 +337,9 @@ const shippingAddress = {
       message: multiSeller && payment_method === "COD"
         ? `Checkout created ${createdOrders.length} seller orders (session ${sessionId}).`
         : `Order ${primary.order_id} created${allPackages.length ? ` with ${allPackages.length} package(s)` : " (awaiting BNPL approval)"}.`,
-      order: primary.toObject(),
-      orders: createdOrders.map((o) => o.toObject()),
+      // Only buyers reach this route: never return the seller-side link credential.
+      order: hideSellerViewToken(primary.toObject()),
+      orders: createdOrders.map((o) => hideSellerViewToken(o.toObject())),
       checkout_session_id: sessionId || null,
       checkout_group_color: color || null,
       packages: allPackages.map((p) => ({

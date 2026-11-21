@@ -709,3 +709,18 @@ test("seller view tokens are 24 hex chars from a CSPRNG and unique", () => {
   assert.equal(seen.size, 500);
   for (const t of seen) assert.match(t, /^[0-9a-f]{24}$/);
 });
+
+test("buyers never receive the seller view token in the order-creation response either", async () => {
+  const body = {
+    items: [{ product_id: "P-A", qty: 1 }],
+    shipping_address: { line1: "House 1", city: "Lahore", phone: "03001234567" },
+    payment_method: "COD",
+  };
+  const r = await call("POST", "/api/orders", { token: T.buyerA(), body });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  const stored = stores.Order.at(-1);
+  assert.match(String(stored.seller_view_token || ""), /^[0-9a-f]{24}$/, "the token is still stored for the seller");
+  assert.ok(!JSON.stringify(r.body).includes("seller_view_token"), "no token field in the response");
+  assert.ok(!JSON.stringify(r.body).includes(stored.seller_view_token), "token value not in the response");
+  assert.equal(r.body.order.order_id, stored.order_id);
+});
